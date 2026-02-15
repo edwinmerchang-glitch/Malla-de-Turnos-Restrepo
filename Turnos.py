@@ -23,39 +23,69 @@ st.markdown("""
 
 create_tables()
 
-# -------- CREAR ADMIN POR DEFECTO SI NO EXISTE --------
-from database import get_connection
-from auth import create_user, user_exists
-
+# -------- VERIFICAR/CREAR ADMIN POR DEFECTO --------
 def ensure_admin_exists():
     """Asegura que exista un usuario administrador por defecto"""
-    conn = None
     try:
         conn = get_connection()
         c = conn.cursor()
+        
+        # Verificar estructura de la tabla
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE,
+            password TEXT,
+            role TEXT
+        )""")
+        conn.commit()
         
         # Verificar si hay algún admin
         c.execute("SELECT * FROM users WHERE role='admin'")
         admin_exists = c.fetchone()
         
         if not admin_exists:
-            # Verificar si el usuario admin ya existe (por si acaso)
-            if not user_exists("admin"):
+            # Verificar si el usuario admin ya existe
+            c.execute("SELECT * FROM users WHERE username='admin'")
+            user_admin = c.fetchone()
+            
+            if not user_admin:
+                # Crear nuevo admin
+                from auth import create_user
                 success, message = create_user("admin", "Admin123*", "admin")
                 if success:
-                    print("Usuario admin creado exitosamente")
+                    print("✅ Usuario admin creado exitosamente")
                 else:
-                    print(f"Error creando admin: {message}")
+                    print(f"❌ Error creando admin: {message}")
             else:
-                # Si existe pero no es admin, actualizar su rol
+                # Actualizar usuario existente a admin
                 c.execute("UPDATE users SET role='admin' WHERE username='admin'")
                 conn.commit()
-                print("Usuario admin actualizado a rol admin")
+                print("✅ Usuario existente actualizado a admin")
+        
+        # Verificar que se creó correctamente
+        c.execute("SELECT username, role FROM users WHERE username='admin'")
+        admin_check = c.fetchone()
+        if admin_check:
+            print(f"✅ Admin verificado: {admin_check[0]} - {admin_check[1]}")
+        else:
+            print("❌ No se pudo verificar el admin")
+            
     except Exception as e:
-        print(f"Error en ensure_admin_exists: {str(e)}")
+        print(f"❌ Error en ensure_admin_exists: {str(e)}")
     finally:
         if conn:
             conn.close()
+
+# Ejecutar verificación de admin
+ensure_admin_exists()
+
+# Inicializar session state
+if "login" not in st.session_state:
+    st.session_state.login = False
+    st.session_state.mobile = False
+    st.session_state.user = None
+    st.session_state.role = None
 
 # Ejecutar la creación del admin
 ensure_admin_exists()
@@ -69,18 +99,15 @@ if "login" not in st.session_state:
 if not st.session_state.login:
     st.title("🔐 Acceso al Sistema")
     
-    # Para debugging (opcional, puedes quitarlo después)
-    with st.expander("ℹ️ Información de depuración", expanded=False):
-        st.write("Usuario por defecto: admin")
-        st.write("Contraseña por defecto: Admin123*")
-        st.write("La contraseña es sensible a mayúsculas y minúsculas")
-
-    user = st.text_input("Usuario")
-    pwd = st.text_input("Contraseña", type="password")
-
-    col1, col2 = st.columns([1, 3])
+    # Crear dos columnas para mejor organización
+    col1, col2 = st.columns([2, 1])
+    
     with col1:
-        if st.button("Ingresar", type="primary"):
+        st.markdown("### Iniciar sesión")
+        user = st.text_input("Usuario", placeholder="Ingresa tu usuario")
+        pwd = st.text_input("Contraseña", type="password", placeholder="Ingresa tu contraseña")
+        
+        if st.button("Ingresar", type="primary", use_container_width=True):
             if user and pwd:
                 res = login_user(user, pwd)
                 if res:
@@ -89,24 +116,44 @@ if not st.session_state.login:
                     st.session_state.role = res[0]
                     st.rerun()
                 else:
-                    st.error("❌ Credenciales incorrectas. Verifica usuario y contraseña.")
+                    st.error("❌ Credenciales incorrectas")
             else:
-                st.warning("⚠️ Por favor ingresa usuario y contraseña")
+                st.warning("⚠️ Ingresa usuario y contraseña")
     
-    # Opción para resetear admin si hay problemas
     with col2:
-        if st.button("🔄 Resetear admin por defecto"):
-            conn = get_connection()
-            c = conn.cursor()
-            c.execute("DELETE FROM users WHERE username='admin'")
-            conn.commit()
-            conn.close()
-            success, message = create_user("admin", "Admin123*", "admin")
-            if success:
-                st.success("Admin reseteado. Usa: admin / Admin123*")
-                st.rerun()
-            else:
-                st.error(f"Error: {message}")
+        st.markdown("### 🔧 Ayuda")
+        st.info(
+            """
+            **Credenciales por defecto:**
+            - Usuario: `admin`
+            - Contraseña: `Admin123*`
+            
+            *La contraseña es sensible a mayúsculas*
+            """
+        )
+        
+        if st.button("🔄 Resetear admin", use_container_width=True):
+            try:
+                conn = get_connection()
+                c = conn.cursor()
+                
+                # Eliminar admin existente
+                c.execute("DELETE FROM users WHERE username='admin'")
+                
+                # Crear nuevo admin
+                from auth import create_user
+                success, message = create_user("admin", "Admin123*", "admin")
+                
+                if success:
+                    st.success("✅ Admin reseteado. Usa: admin / Admin123*")
+                    st.rerun()
+                else:
+                    st.error(f"❌ Error: {message}")
+                
+                conn.commit()
+                conn.close()
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
 
 # ---------- PANEL ----------
 else:

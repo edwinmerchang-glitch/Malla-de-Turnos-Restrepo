@@ -46,9 +46,16 @@ def login_user(username, password):
 
 def user_exists(username):
     """Verifica si un usuario ya existe"""
-    conn = get_connection()
-    c = conn.cursor()
-    c.execute("SELECT id FROM users WHERE username=?", (username,))
-    result = c.fetchone()
-    conn.close()
-    return result is not None
+    conn = None
+    try:
+        conn = get_connection()
+        c = conn.cursor()
+        c.execute("SELECT id FROM users WHERE username=?", (username,))
+        result = c.fetchone()
+        return result is not None
+    except Exception as e:
+        print(f"Error en user_exists: {str(e)}")
+        return False
+    finally:
+        if conn:
+            conn.close()
