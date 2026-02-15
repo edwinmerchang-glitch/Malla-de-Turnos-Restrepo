@@ -1,0 +1,6 @@
+streamlit
+pandas
+streamlit-calendar
+openpyxl
+yagmail
+qrcode
