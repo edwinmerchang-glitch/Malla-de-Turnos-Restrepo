@@ -23,6 +23,20 @@ st.markdown("""
 
 create_tables()
 
+# -------- CREAR ADMIN POR DEFECTO SI NO EXISTE --------
+from database import get_connection
+from auth import create_user
+
+conn = get_connection()
+c = conn.cursor()
+c.execute("SELECT * FROM users WHERE role='admin'")
+admin_exists = c.fetchone()
+conn.close()
+
+if not admin_exists:
+    create_user("admin", "Admin123*", "admin")
+
+
 if "login" not in st.session_state:
     st.session_state.login = False
     st.session_state.mobile = False
