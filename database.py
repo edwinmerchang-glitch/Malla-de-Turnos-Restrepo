@@ -1,36 +1,31 @@
-import sqlite3
-import os
+from sqlalchemy import create_engine, Column, Integer, String, Date, ForeignKey
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(BASE_DIR, "data")
-DB_PATH = os.path.join(DATA_DIR, "turnos.db")
+engine = create_engine("sqlite:///data.db", connect_args={"check_same_thread": False})
+Session = sessionmaker(bind=engine)
+Base = declarative_base()
 
-os.makedirs(DATA_DIR, exist_ok=True)
+class Empleado(Base):
+    __tablename__ = "empleados"
+    id = Column(Integer, primary_key=True)
+    nombre = Column(String)
+    usuario = Column(String, unique=True)
+    password = Column(String)
+    rol = Column(String)  # admin / empleado
 
-def get_conn():
-    return sqlite3.connect(DB_PATH, check_same_thread=False)
+class Turno(Base):
+    __tablename__ = "turnos"
+    id = Column(Integer, primary_key=True)
+    nombre = Column(String)
+    inicio = Column(String)
+    fin = Column(String)
 
-def init_db():
-    conn = get_conn()
-    c = conn.cursor()
+class Asignacion(Base):
+    __tablename__ = "asignaciones"
+    id = Column(Integer, primary_key=True)
+    empleado_id = Column(Integer, ForeignKey("empleados.id"))
+    fecha = Column(Date)
+    turno = Column(String)
 
-    c.execute('''CREATE TABLE IF NOT EXISTS empleados (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nombre TEXT NOT NULL,
-        cargo TEXT,
-        documento TEXT UNIQUE,
-        area TEXT,
-        horario_entrada TEXT,
-        horario_salida TEXT
-    )''')
-
-    c.execute('''CREATE TABLE IF NOT EXISTS turnos (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        empleado_id INTEGER,
-        fecha DATE,
-        codigo_turno TEXT,
-        UNIQUE(empleado_id, fecha)
-    )''')
-
-    conn.commit()
-    conn.close()
+Base.metadata.create_all(engine)

@@ -1,139 +1,132 @@
 import streamlit as st
-import pandas as pd
-from db import init_db, get_conn
-from auth import proteger_app
-from utils import get_febrero_2026, CODIGOS_TURNOS, dia_semana
+from database import Session, Empleado, Turno, Asignacion
+from auth import login
+from scheduler import generar_malla_inteligente
+from reports import resumen_mensual, exportar_excel, exportar_pdf
+from ui import header
+from streamlit_calendar import calendar
+from datetime import date
 
-st.set_page_config("Gestión Profesional de Turnos", layout="wide")
+st.set_page_config("Malla Turnos Corporativa", layout="wide")
 
-proteger_app()
-init_db()
+if not login():
+    st.stop()
 
-conn = get_conn()
-rol = st.session_state["rol"]
+session = Session()
+rol = st.session_state.rol
 
-st.title("📆 Sistema Profesional de Turnos")
+header("📆 Sistema Corporativo de Malla de Turnos")
 
-# ============================
-# MENÚ SEGÚN ROL
-# ============================
+menu = st.sidebar.radio("Menú", ["📅 Calendario", "👥 Empleados", "⏰ Turnos",
+                                 "🤖 Auto-Asignación", "📊 Reportes"]
+                        if rol == "admin" else ["📅 Mis Turnos"])
 
-if rol == "admin":
-    menu = st.sidebar.radio("Menú", ["Empleados", "Programar", "Calendario", "Reportes"])
-else:
-    menu = st.sidebar.radio("Menú", ["Mi Turno"])
+# ---------------- EMPLEADOS ----------------
+if menu == "👥 Empleados":
+    header("Gestión de Empleados")
 
-# ============================
-# EMPLEADOS
-# ============================
+    with st.form("nuevo_emp"):
+        nombre = st.text_input("Nombre")
+        usuario = st.text_input("Usuario")
+        pwd = st.text_input("Contraseña", type="password")
+        rol_emp = st.selectbox("Rol", ["empleado", "admin"])
+        if st.form_submit_button("Crear"):
+            session.add(Empleado(nombre=nombre, usuario=usuario, password=pwd, rol=rol_emp))
+            session.commit()
+            st.success("Empleado creado")
 
-if menu == "Empleados":
-    st.header("👥 Empleados")
+    data = session.query(Empleado).all()
+    st.dataframe([(e.id, e.nombre, e.usuario, e.rol) for e in data],
+                 columns=["ID", "Nombre", "Usuario", "Rol"], use_container_width=True)
 
-    with st.form("form_emp"):
-        c1,c2,c3 = st.columns(3)
-        nombre = c1.text_input("Nombre")
-        cargo = c2.text_input("Cargo")
-        doc = c3.text_input("Documento")
-        area = c1.text_input("Área")
-        he = c2.time_input("Entrada")
-        hs = c3.time_input("Salida")
+# ---------------- TURNOS ----------------
+if menu == "⏰ Turnos":
+    header("Gestión de Turnos")
 
-        if st.form_submit_button("Guardar"):
-            conn.execute("""
-                INSERT OR IGNORE INTO empleados
-                (nombre,cargo,documento,area,horario_entrada,horario_salida)
-                VALUES (?,?,?,?,?,?)
-            """,(nombre,cargo,doc,area,str(he),str(hs)))
-            conn.commit()
-            st.success("Empleado guardado")
+    with st.form("nuevo_turno"):
+        nombre = st.text_input("Nombre")
+        inicio = st.text_input("Inicio (07:00)")
+        fin = st.text_input("Fin (15:00)")
+        if st.form_submit_button("Crear"):
+            session.add(Turno(nombre=nombre, inicio=inicio, fin=fin))
+            session.commit()
+            st.success("Turno creado")
 
-    df = pd.read_sql("SELECT * FROM empleados", conn)
+    data = session.query(Turno).all()
+    st.dataframe([(t.nombre, t.inicio, t.fin) for t in data],
+                 columns=["Turno", "Inicio", "Fin"], use_container_width=True)
+
+# ---------------- AUTO-ASIGNACIÓN ----------------
+if menu == "🤖 Auto-Asignación":
+    header("Asignación Inteligente")
+
+    empleados = session.query(Empleado).filter_by(rol="empleado").all()
+    turnos = session.query(Turno).all()
+
+    fecha = st.date_input("Fecha inicio")
+    dias = st.slider("Días", 7, 90, 30)
+
+    if st.button("Generar Malla"):
+        datos = generar_malla_inteligente(empleados, turnos, fecha, dias)
+        for emp_id, f, turno in datos:
+            session.add(Asignacion(empleado_id=emp_id, fecha=f, turno=turno))
+        session.commit()
+        st.success("Malla generada automáticamente")
+
+# ---------------- CALENDARIO ----------------
+if menu == "📅 Calendario":
+    header("Calendario Visual")
+
+    asignaciones = session.query(Asignacion).all()
+    empleados = session.query(Empleado).all()
+    mapa = {e.id: e.nombre for e in empleados}
+
+    eventos = [{
+        "title": f"{mapa[a.empleado_id]} - {a.turno}",
+        "start": str(a.fecha),
+        "allDay": True
+    } for a in asignaciones]
+
+    calendar(events=eventos, options={
+        "initialView": "dayGridMonth",
+        "locale": "es",
+        "height": 720
+    })
+
+# ---------------- MODO EMPLEADO ----------------
+if menu == "📅 Mis Turnos":
+    header("Mis Turnos")
+
+    emp = session.query(Empleado).filter_by(usuario=st.session_state.user).first()
+    asignaciones = session.query(Asignacion).filter_by(empleado_id=emp.id).all()
+
+    eventos = [{
+        "title": a.turno,
+        "start": str(a.fecha),
+        "allDay": True
+    } for a in asignaciones]
+
+    calendar(events=eventos, options={
+        "initialView": "dayGridMonth",
+        "locale": "es",
+        "height": 720
+    })
+
+# ---------------- REPORTES ----------------
+if menu == "📊 Reportes":
+    header("Reportes Gerenciales")
+
+    df = resumen_mensual(session)
     st.dataframe(df, use_container_width=True)
 
-# ============================
-# PROGRAMAR
-# ============================
-
-elif menu == "Programar":
-    st.header("🗓️ Programar Turnos")
-
-    emp = pd.read_sql("SELECT id,nombre FROM empleados", conn)
-    nombre = st.selectbox("Empleado", emp['nombre'])
-    emp_id = emp[emp['nombre']==nombre]['id'].values[0]
-
-    fecha = st.date_input("Fecha")
-    turno = st.selectbox("Turno", list(CODIGOS_TURNOS.keys()))
-
-    if st.button("Guardar"):
-        conn.execute("""
-            INSERT OR REPLACE INTO turnos
-            (empleado_id,fecha,codigo_turno)
-            VALUES (?,?,?)
-        """,(emp_id,fecha,turno))
-        conn.commit()
-        st.success("Turno asignado")
-
-# ============================
-# CALENDARIO
-# ============================
-
-elif menu == "Calendario":
-    st.header("📅 Calendario Febrero 2026")
-
-    emp = pd.read_sql("SELECT id,nombre FROM empleados", conn)
-    dias = get_febrero_2026()
-
-    tabla = []
-
-    for _, e in emp.iterrows():
-        fila = [e['nombre']]
-        for d in dias:
-            r = conn.execute("""
-                SELECT codigo_turno FROM turnos
-                WHERE empleado_id=? AND fecha=?
-            """,(e['id'],d.date())).fetchone()
-
-            fila.append(r[0] if r else "")
-        tabla.append(fila)
-
-    columnas = ["Empleado"] + [f"{d.day}\n{dia_semana(d)}" for d in dias]
-    df = pd.DataFrame(tabla, columns=columnas)
-
-    st.dataframe(df, height=650, use_container_width=True)
-
-# ============================
-# REPORTES
-# ============================
-
-elif menu == "Reportes":
-    st.header("📊 Reportes")
-
-    df = pd.read_sql("""
-        SELECT e.nombre, t.fecha, t.codigo_turno
-        FROM turnos t
-        JOIN empleados e ON e.id = t.empleado_id
-    """, conn)
-
-    st.dataframe(df, use_container_width=True)
-
-    st.download_button("📥 Exportar Excel", df.to_excel(index=False), "turnos.xlsx")
-
-# ============================
-# EMPLEADO
-# ============================
-
-elif menu == "Mi Turno":
-    st.header("📱 Mi Turno")
-
-    nombre = st.text_input("Digite su nombre")
-
-    if nombre:
-        df = pd.read_sql("""
-            SELECT t.fecha, t.codigo_turno
-            FROM turnos t
-            JOIN empleados e ON e.id = t.empleado_id
-            WHERE e.nombre LIKE ?
-        """, conn, params=(f"%{nombre}%",))
-
-        st.dataframe(df, use_container_width=True)
+    c1, c2 = st.columns(2)
+    with c1:
+        st.download_button("📥 Descargar Excel",
+                           exportar_excel(df),
+                           "reporte_turnos.xlsx",
+                           use_container_width=True)
+    with c2:
+        st.download_button("📄 Descargar PDF",
+                           exportar_pdf(df),
+                           "reporte_turnos.pdf",
+                           use_container_width=True)
