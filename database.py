@@ -13,6 +13,8 @@ class Empleado(Base):
     usuario = Column(String, unique=True)
     password = Column(String)
     rol = Column(String)  # admin / empleado
+    area = Column(String)  # NUEVO: área del empleado
+    cargo = Column(String)  # NUEVO: cargo del empleado
     
     # Relación con asignaciones
     asignaciones = relationship("Asignacion", back_populates="empleado")
@@ -49,7 +51,9 @@ if session.query(Empleado).count() == 0:
         nombre="Administrador",
         usuario="admin",
         password="admin123",
-        rol="admin"
+        rol="admin",
+        area="Administración",  # NUEVO
+        cargo="Administrador del Sistema"  # NUEVO
     )
     session.add(admin)
     session.commit()

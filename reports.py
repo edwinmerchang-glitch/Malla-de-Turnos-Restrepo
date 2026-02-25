@@ -9,15 +9,52 @@ def resumen_mensual(session):
 
     data = session.query(Asignacion).all()
     emp = session.query(Empleado).all()
-    mapa = {e.id: e.nombre for e in emp}
+    mapa = {e.id: {"nombre": e.nombre, "area": e.area, "cargo": e.cargo} for e in emp}
 
     df = pd.DataFrame([(a.fecha, a.turno, a.empleado_id) for a in data],
                       columns=["Fecha", "Turno", "EmpleadoID"])
 
-    df["Empleado"] = df["EmpleadoID"].map(mapa)
+    df["Empleado"] = df["EmpleadoID"].map(lambda x: mapa[x]["nombre"] if x in mapa else "N/A")
+    df["Área"] = df["EmpleadoID"].map(lambda x: mapa[x]["area"] if x in mapa and mapa[x]["area"] else "N/A")
+    df["Cargo"] = df["EmpleadoID"].map(lambda x: mapa[x]["cargo"] if x in mapa and mapa[x]["cargo"] else "N/A")
     df["Mes"] = pd.to_datetime(df["Fecha"]).dt.month
 
-    return df.groupby(["Empleado", "Mes"]).size().reset_index(name="Total Turnos")
+    return df
+
+def resumen_por_area(session):
+    """Genera resumen de turnos por área"""
+    from database import Asignacion, Empleado
+    
+    data = session.query(Asignacion).all()
+    empleados = {e.id: e for e in session.query(Empleado).all()}
+    
+    resumen = {}
+    for a in data:
+        if a.empleado_id in empleados:
+            emp = empleados[a.empleado_id]
+            area = emp.area if emp.area else "Sin área"
+            
+            if area not in resumen:
+                resumen[area] = {
+                    "total_turnos": 0,
+                    "empleados": set(),
+                    "turnos_por_empleado": {}
+                }
+            
+            resumen[area]["total_turnos"] += 1
+            resumen[area]["empleados"].add(emp.nombre)
+    
+    # Convertir a DataFrame
+    datos = []
+    for area, stats in resumen.items():
+        datos.append({
+            "Área": area,
+            "Total turnos": stats["total_turnos"],
+            "Empleados": len(stats["empleados"]),
+            "Promedio turnos/empleado": round(stats["total_turnos"] / len(stats["empleados"]), 1)
+        })
+    
+    return pd.DataFrame(datos)
 
 def exportar_excel(df):
     buffer = BytesIO()
