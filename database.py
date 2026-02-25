@@ -1,5 +1,5 @@
 from sqlalchemy import create_engine, Column, Integer, String, Date, ForeignKey
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.orm import sessionmaker
 
 engine = create_engine("sqlite:///data.db", connect_args={"check_same_thread": False})
@@ -13,6 +13,9 @@ class Empleado(Base):
     usuario = Column(String, unique=True)
     password = Column(String)
     rol = Column(String)  # admin / empleado
+    
+    # Relación con asignaciones
+    asignaciones = relationship("Asignacion", back_populates="empleado")
 
 class Turno(Base):
     __tablename__ = "turnos"
@@ -20,14 +23,22 @@ class Turno(Base):
     nombre = Column(String)
     inicio = Column(String)
     fin = Column(String)
+    
+    # Relación con asignaciones
+    asignaciones = relationship("Asignacion", back_populates="turno")
 
 class Asignacion(Base):
     __tablename__ = "asignaciones"
     id = Column(Integer, primary_key=True)
     empleado_id = Column(Integer, ForeignKey("empleados.id"))
     fecha = Column(Date)
-    turno = Column(String)
+    turno_id = Column(Integer, ForeignKey("turnos.id"))
+    
+    # Relaciones
+    empleado = relationship("Empleado", back_populates="asignaciones")
+    turno = relationship("Turno", back_populates="asignaciones")
 
+# Crear tablas
 Base.metadata.create_all(engine)
 
 # ---- CREAR ADMIN POR DEFECTO SI NO EXISTE ----

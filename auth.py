@@ -19,7 +19,7 @@ def login():
                 st.session_state.auth = True
                 st.session_state.user = emp.usuario
                 st.session_state.rol = emp.rol
-                st.experimental_rerun()
+                st.rerun()  # Cambiado de experimental_rerun a rerun
             else:
                 st.error("Credenciales incorrectas")
 
