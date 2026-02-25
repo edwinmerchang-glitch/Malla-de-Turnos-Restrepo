@@ -29,3 +29,17 @@ class Asignacion(Base):
     turno = Column(String)
 
 Base.metadata.create_all(engine)
+
+# ---- CREAR ADMIN POR DEFECTO SI NO EXISTE ----
+session = Session()
+
+if session.query(Empleado).count() == 0:
+    admin = Empleado(
+        nombre="Administrador",
+        usuario="admin",
+        password="admin123",
+        rol="admin"
+    )
+    session.add(admin)
+    session.commit()
+    print("✅ Usuario admin creado: admin / admin123")
