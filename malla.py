@@ -66,19 +66,19 @@ st.sidebar.markdown("""
 <style>
     /* Estilos generales del sidebar */
     .sidebar-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
         padding: 2rem 1rem;
         border-radius: 0 0 20px 20px;
         margin-bottom: 1.5rem;
         text-align: center;
         color: white;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3);
     }
     .sidebar-header h1 {
         font-size: 1.8rem;
         margin: 0;
         font-weight: bold;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
     }
     .sidebar-header p {
         margin: 0.5rem 0 0;
@@ -111,6 +111,7 @@ st.sidebar.markdown("""
         margin-right: 0.8rem;
         min-width: 30px;
         text-align: center;
+        color: #2ecc71;
     }
     .user-info-label {
         color: #666;
@@ -132,7 +133,7 @@ st.sidebar.markdown("""
     .menu-title {
         font-size: 1.1rem;
         font-weight: bold;
-        color: #667eea;
+        color: #2ecc71;
         margin-bottom: 1rem;
         padding-bottom: 0.5rem;
         border-bottom: 2px solid #f0f0f0;
@@ -140,81 +141,24 @@ st.sidebar.markdown("""
         align-items: center;
         gap: 0.5rem;
     }
-    .menu-button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border: none;
-        border-radius: 10px;
-        padding: 0.8rem;
-        margin: 0.3rem 0;
-        width: 100%;
-        font-size: 1rem;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.3s;
-        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-    }
-    .menu-button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 15px rgba(102, 126, 234, 0.4);
-    }
-    .menu-button:active {
-        transform: translateY(0);
-    }
-    .menu-button-outline {
-        background: white;
-        color: #667eea;
-        border: 2px solid #667eea;
-        box-shadow: none;
-    }
-    .menu-button-outline:hover {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-color: transparent;
-    }
     .current-page {
         background: linear-gradient(135deg, #f6f9fc 0%, #e6f0f7 100%);
         border-radius: 10px;
         padding: 0.8rem;
         margin-top: 1rem;
-        border: 1px solid #667eea;
+        border: 1px solid #2ecc71;
         display: flex;
         align-items: center;
         gap: 0.5rem;
     }
     .current-page-icon {
         font-size: 1.2rem;
+        color: #2ecc71;
     }
     .current-page-text {
-        color: #667eea;
+        color: #2ecc71;
         font-weight: bold;
         font-size: 0.95rem;
-    }
-    .logout-button {
-        background: linear-gradient(135deg, #ff6b6b 0%, #ee5253 100%);
-        color: white;
-        border: none;
-        border-radius: 10px;
-        padding: 0.8rem;
-        width: 100%;
-        font-size: 1rem;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.3s;
-        box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        margin-top: 1rem;
-    }
-    .logout-button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 15px rgba(255, 107, 107, 0.4);
     }
     .footer {
         text-align: center;
@@ -226,7 +170,7 @@ st.sidebar.markdown("""
     }
     /* Estilos para los botones de Streamlit */
     .stButton button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%) !important;
         color: white !important;
         border: none !important;
         border-radius: 10px !important;
@@ -234,18 +178,23 @@ st.sidebar.markdown("""
         font-size: 1rem !important;
         font-weight: 500 !important;
         transition: all 0.3s !important;
-        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3) !important;
+        box-shadow: 0 2px 8px rgba(46, 204, 113, 0.3) !important;
     }
     .stButton button:hover {
         transform: translateY(-2px) !important;
-        box-shadow: 0 6px 15px rgba(102, 126, 234, 0.4) !important;
+        box-shadow: 0 6px 15px rgba(46, 204, 113, 0.4) !important;
+        background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%) !important;
     }
     .stButton button:active {
         transform: translateY(0) !important;
     }
     /* Botón de cerrar sesión */
     .stButton button[kind="secondary"] {
-        background: linear-gradient(135deg, #ff6b6b 0%, #ee5253 100%) !important;
+        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%) !important;
+        box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3) !important;
+    }
+    .stButton button[kind="secondary"]:hover {
+        box-shadow: 0 6px 15px rgba(231, 76, 60, 0.4) !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -313,17 +262,20 @@ if user.rol == "empleado":
         </div>
     """, unsafe_allow_html=True)
     
+    # Usar columnas para organizar los botones
     col1, col2 = st.sidebar.columns(2)
     
     with col1:
         if st.button("📅 Calendario", use_container_width=True, key="btn_calendario"):
             cambiar_pagina("Calendario")
-        if st.button("👤 Mi perfil", use_container_width=True, key="btn_perfil"):
-            cambiar_pagina("Mi perfil")
     
     with col2:
         if st.button("📊 Mis turnos", use_container_width=True, key="btn_turnos"):
             cambiar_pagina("Mis turnos")
+    
+    # Botón de Mi perfil ocupa el ancho completo
+    if st.button("👤 Mi perfil", use_container_width=True, key="btn_perfil"):
+        cambiar_pagina("Mi perfil")
     
     st.sidebar.markdown("</div>", unsafe_allow_html=True)
 
@@ -343,14 +295,19 @@ elif user.rol == "supervisor":
             cambiar_pagina("Mi equipo")
         if st.button("📊 Matriz área", use_container_width=True, key="btn_matriz_area"):
             cambiar_pagina("Matriz area")
-        if st.button("👤 Mi perfil", use_container_width=True, key="btn_perfil_sup"):
-            cambiar_pagina("Mi perfil")
     
     with col2:
         if st.button("✏️ Asignar turnos", use_container_width=True, key="btn_asignar"):
             cambiar_pagina("Asignar area")
         if st.button("📈 Reportes área", use_container_width=True, key="btn_reportes_area"):
             cambiar_pagina("Reportes area")
+    
+    # Botones de ancho completo
+    col1, col2 = st.sidebar.columns(2)
+    with col1:
+        if st.button("👤 Mi perfil", use_container_width=True, key="btn_perfil_sup"):
+            cambiar_pagina("Mi perfil")
+    with col2:
         if st.button("📅 Mi calendario", use_container_width=True, key="btn_calendario_sup"):
             cambiar_pagina("Calendario")
     
@@ -365,23 +322,27 @@ elif user.rol == "admin":
         </div>
     """, unsafe_allow_html=True)
     
+    # Primera fila
     col1, col2 = st.sidebar.columns(2)
-    
     with col1:
         if st.button("👥 Empleados", use_container_width=True, key="btn_empleados"):
             cambiar_pagina("Empleados")
         if st.button("⏰ Turnos", use_container_width=True, key="btn_turnos_admin"):
             cambiar_pagina("Turnos")
+    with col2:
         if st.button("📊 Matriz general", use_container_width=True, key="btn_matriz"):
             cambiar_pagina("Matriz turnos")
         if st.button("👤 Mi perfil", use_container_width=True, key="btn_perfil_admin"):
             cambiar_pagina("Mi perfil")
     
-    with col2:
+    # Segunda fila
+    col1, col2 = st.sidebar.columns(2)
+    with col1:
         if st.button("✏️ Asignar manual", use_container_width=True, key="btn_asignar_admin"):
             cambiar_pagina("Asignacion manual")
         if st.button("🤖 Generar malla", use_container_width=True, key="btn_generar"):
             cambiar_pagina("Generar malla")
+    with col2:
         if st.button("📊 Reportes", use_container_width=True, key="btn_reportes"):
             cambiar_pagina("Reportes")
         if st.button("🛡 Backup", use_container_width=True, key="btn_backup"):
@@ -397,7 +358,7 @@ st.sidebar.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# Botón de cerrar sesión
+# Botón de cerrar sesión (mantiene el rojo para destacar)
 if st.sidebar.button("🚪 Cerrar sesión", use_container_width=True, key="btn_logout"):
     st.session_state.clear()
     st.rerun()
