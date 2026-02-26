@@ -877,50 +877,58 @@ elif op == "Calendario":
     import json
     eventos_json = json.dumps(eventos)
     
-    html_code = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
-        <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
-        <style>
-            body {{ margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; }}
-            #calendar {{ max-width: 1100px; margin: 20px auto; padding: 0 10px; }}
-            .fc-event {{ cursor: pointer; border-radius: 4px; padding: 2px 4px; font-size: 0.85em; }}
-            .fc-event:hover {{ opacity: 0.9; }}
-            .fc-day-today {{ background-color: rgba(52, 152, 219, 0.1) !important; }}
-        </style>
-    </head>
-    <body>
-        <div id='calendar'></div>
-        <script>
-            document.addEventListener('DOMContentLoaded', function() {{
-                var calendarEl = document.getElementById('calendar');
-                var calendar = new FullCalendar.Calendar(calendarEl, {{
-                    initialView: 'dayGridMonth',
-                    headerToolbar: {{
-                        left: 'today prev,next',
-                        center: 'title',
-                        right: 'dayGridMonth,timeGridWeek,timeGridDay'
-                    }},
-                    height: 600,
-                    events: {eventos_json},
-                    eventClick: function(info) {{
-                        alert(
-                            'Empleado: ' + info.event.extendedProps.empleado + '\\n' +
-                            'Área: ' + info.event.extendedProps.area + '\\n' +
-                            'Turno: ' + info.event.extendedProps.turno + '\\n' +
-                            'Horario: ' + info.event.extendedProps.hora_inicio + ' - ' + info.event.extendedProps.hora_fin
-                        );
-                    }}
-                }});
-                calendar.render();
+html_code = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales-all.min.js'></script>  <!-- IMPORTANTE: agregar esto -->
+    <style>
+        body {{ margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; }}
+        #calendar {{ max-width: 1100px; margin: 20px auto; padding: 0 10px; }}
+        .fc-event {{ cursor: pointer; border-radius: 4px; padding: 2px 4px; font-size: 0.85em; }}
+        .fc-event:hover {{ opacity: 0.9; }}
+        .fc-day-today {{ background-color: rgba(52, 152, 219, 0.1) !important; }}
+    </style>
+</head>
+<body>
+    <div id='calendar'></div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {{
+            var calendarEl = document.getElementById('calendar');
+            var calendar = new FullCalendar.Calendar(calendarEl, {{
+                locale: 'es',  // IMPORTANTE: establecer idioma español
+                initialView: 'dayGridMonth',
+                headerToolbar: {{
+                    left: 'today prev,next',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                }},
+                buttonText: {{  // Texto personalizado para botones
+                    today: 'Hoy',
+                    month: 'Mes',
+                    week: 'Semana',
+                    day: 'Día'
+                }},
+                height: 600,
+                events: {eventos_json},
+                eventClick: function(info) {{
+                    alert(
+                        'Empleado: ' + info.event.extendedProps.empleado + '\\n' +
+                        'Área: ' + info.event.extendedProps.area + '\\n' +
+                        'Turno: ' + info.event.extendedProps.turno + '\\n' +
+                        'Horario: ' + info.event.extendedProps.hora_inicio + ' - ' + info.event.extendedProps.hora_fin
+                    );
+                }}
             }});
-        </script>
-    </body>
-    </html>
-    """
+            calendar.render();
+        }});
+    </script>
+</body>
+</html>
+"""
     
     # Mostrar el calendario HTML
     st.components.v1.html(html_code, height=650)
