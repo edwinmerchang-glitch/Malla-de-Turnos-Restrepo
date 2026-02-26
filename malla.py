@@ -907,8 +907,11 @@ elif op == "Matriz turnos":
                         # Mostrar muestra de valores de turnos del Excel
                         st.write("**Muestra de valores de turnos del Excel (primeros 20):**")
                         valores_muestra = []
-                        for dia in columnas_dias[:3]:  # Primeros 3 días
-                            valores = df_carga[int(dia)].dropna().unique()[:5]
+                                                for dia in columnas_dias[:3]:  # Primeros 3 días
+                            # dia ya es string, no necesitas convertirlo a int
+                            valores = df_carga[dia].dropna().unique()[:5]
+                            for v in valores:
+                                valores_muestra.append(f"Día {dia}: {v} (tipo: {type(v)})")
                             for v in valores:
                                 valores_muestra.append(f"Día {dia}: {v} (tipo: {type(v)})")
                         for v in valores_muestra[:10]:
@@ -996,7 +999,8 @@ elif op == "Matriz turnos":
                                 for dia_str in columnas_dias:
                                     dia = int(dia_str)
                                     if 1 <= dia <= dias_mes:
-                                        valor_turno = row[int(dia_str)] if int(dia_str) in row else None
+                                                                                # dia_str ya es string, úsalo directamente
+                                        valor_turno = row[dia_str] if dia_str in row else None
                                         
                                         # Verificar si es descanso
                                         if pd.isna(valor_turno) or str(valor_turno).strip() in ['', 'None', '—', '-']:
