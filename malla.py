@@ -809,10 +809,450 @@ if "user" in st.session_state:
                         </div>
                         """, unsafe_allow_html=True)
 
-    # ---------- MI PERFIL MODERNO ----------
-    elif op == "Mi perfil":
-        # Aquí iría el código de Mi perfil...
-        st.subheader("👤 Mi Perfil")
+# ---------- MI PERFIL MODERNO ----------
+elif op == "Mi perfil":
+    # Estilos CSS personalizados para el perfil
+    st.markdown("""
+    <style>
+    .perfil-container {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 2rem;
+        border-radius: 25px;
+        margin-bottom: 2rem;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+        position: relative;
+        overflow: hidden;
+    }
+    .perfil-container::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        animation: rotate 20s linear infinite;
+    }
+    @keyframes rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    .perfil-titulo {
+        color: white;
+        font-size: 2.5rem;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 0.5rem;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        position: relative;
+        z-index: 1;
+    }
+    .perfil-subtitulo {
+        color: rgba(255,255,255,0.9);
+        font-size: 1.2rem;
+        text-align: center;
+        margin-bottom: 2rem;
+        position: relative;
+        z-index: 1;
+    }
+    .avatar-container {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 2rem;
+        position: relative;
+        z-index: 1;
+    }
+    .avatar {
+        width: 150px;
+        height: 150px;
+        background: linear-gradient(135deg, #ff6b6b, #feca57);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 4rem;
+        color: white;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        border: 4px solid white;
+        transition: transform 0.3s;
+    }
+    .avatar:hover {
+        transform: scale(1.05) rotate(5deg);
+    }
+    .info-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        height: 100%;
+        transition: transform 0.3s;
+        position: relative;
+        overflow: hidden;
+    }
+    .info-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 40px rgba(102, 126, 234, 0.2);
+    }
+    .info-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 5px;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+    }
+    .info-titulo {
+        color: #333;
+        font-size: 1.3rem;
+        font-weight: bold;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .info-item {
+        display: flex;
+        align-items: center;
+        padding: 0.8rem;
+        margin: 0.5rem 0;
+        background: #f8f9fa;
+        border-radius: 12px;
+        transition: all 0.3s;
+    }
+    .info-item:hover {
+        background: #e9ecef;
+        transform: translateX(5px);
+    }
+    .info-icon {
+        font-size: 1.5rem;
+        margin-right: 1rem;
+        min-width: 40px;
+        text-align: center;
+    }
+    .info-label {
+        color: #666;
+        font-size: 0.9rem;
+        margin-bottom: 0.2rem;
+    }
+    .info-value {
+        color: #333;
+        font-weight: bold;
+        font-size: 1.1rem;
+    }
+    .stats-card {
+        background: white;
+        padding: 2rem;
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        text-align: center;
+        height: 100%;
+        transition: all 0.3s;
+        position: relative;
+        overflow: hidden;
+    }
+    .stats-card:hover {
+        transform: scale(1.02);
+        box-shadow: 0 15px 40px rgba(102, 126, 234, 0.2);
+    }
+    .stats-card::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+    }
+    .stats-numero {
+        font-size: 3.5rem;
+        font-weight: bold;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin: 0.5rem 0;
+        line-height: 1.2;
+    }
+    .stats-label {
+        color: #666;
+        font-size: 1.1rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 0.5rem;
+    }
+    .stats-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+    }
+    .badge {
+        display: inline-block;
+        padding: 0.3rem 1rem;
+        border-radius: 50px;
+        font-size: 0.9rem;
+        font-weight: bold;
+        margin-top: 0.5rem;
+    }
+    .badge-admin {
+        background: linear-gradient(135deg, #ff6b6b, #ee5253);
+        color: white;
+    }
+    .badge-supervisor {
+        background: linear-gradient(135deg, #feca57, #ff9f43);
+        color: white;
+    }
+    .badge-empleado {
+        background: linear-gradient(135deg, #48dbfb, #0abde3);
+        color: white;
+    }
+    .separador {
+        height: 2px;
+        background: linear-gradient(90deg, transparent, #667eea, #764ba2, transparent);
+        margin: 2rem 0;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Cabecera moderna del perfil
+    st.markdown("""
+    <div class="perfil-container">
+        <div class="perfil-titulo">👤 Mi Perfil Profesional</div>
+        <div class="perfil-subtitulo">Información personal y estadísticas laborales</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Avatar y nombre
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        # Obtener iniciales para el avatar
+        iniciales = ''.join([p[0] for p in user.nombre.split()[:2]]).upper()
+        st.markdown(f"""
+        <div class="avatar-container">
+            <div class="avatar">
+                {iniciales}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Badge según el rol
+        badge_class = f"badge-{user.rol}"
+        st.markdown(f"""
+        <div style="text-align: center; margin-bottom: 2rem;">
+            <span class="badge {badge_class}">{user.rol.upper()}</span>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown('<div class="separador"></div>', unsafe_allow_html=True)
+    
+    # Información personal en tarjetas
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+        <div class="info-card">
+            <div class="info-titulo">
+                <span>📋</span> Información Personal
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # Nombre completo
+        st.markdown(f"""
+        <div class="info-item">
+            <div class="info-icon">👤</div>
+            <div style="flex: 1;">
+                <div class="info-label">Nombre completo</div>
+                <div class="info-value">{user.nombre}</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Usuario/ID
+        st.markdown(f"""
+        <div class="info-item">
+            <div class="info-icon">🆔</div>
+            <div style="flex: 1;">
+                <div class="info-label">Usuario / ID</div>
+                <div class="info-value">{user.usuario}</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("""
+        <div class="info-card">
+            <div class="info-titulo">
+                <span>🏢</span> Información Laboral
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # Área
+        st.markdown(f"""
+        <div class="info-item">
+            <div class="info-icon">📍</div>
+            <div style="flex: 1;">
+                <div class="info-label">Área / Departamento</div>
+                <div class="info-value">{user.area if user.area else 'No asignada'}</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Cargo
+        st.markdown(f"""
+        <div class="info-item">
+            <div class="info-icon">📌</div>
+            <div style="flex: 1;">
+                <div class="info-label">Cargo / Puesto</div>
+                <div class="info-value">{user.cargo if user.cargo else 'No asignado'}</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    st.markdown('<div class="separador"></div>', unsafe_allow_html=True)
+    
+    # Estadísticas en tarjetas modernas
+    st.markdown("""
+    <div style="text-align: center; margin-bottom: 2rem;">
+        <h2 style="color: #333; font-size: 2rem;">📊 Mis Estadísticas</h2>
+        <p style="color: #666;">Resumen de tu actividad laboral</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Calcular estadísticas
+    total_turnos = session.query(Asignacion).filter_by(empleado_id=user.id).count()
+    
+    # Turnos este mes
+    hoy = date.today()
+    turnos_mes = session.query(Asignacion).filter(
+        Asignacion.empleado_id == user.id,
+        Asignacion.fecha >= date(hoy.year, hoy.month, 1)
+    ).count()
+    
+    # Turnos este año
+    turnos_año = session.query(Asignacion).filter(
+        Asignacion.empleado_id == user.id,
+        Asignacion.fecha >= date(hoy.year, 1, 1)
+    ).count()
+    
+    # Días trabajados (únicos)
+    dias_trabajados = session.query(Asignacion.fecha).filter_by(empleado_id=user.id).distinct().count()
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.markdown(f"""
+        <div class="stats-card">
+            <div class="stats-icon">📅</div>
+            <div class="stats-label">Total Turnos</div>
+            <div class="stats-numero">{total_turnos}</div>
+            <div style="color: #999; font-size: 0.9rem;">desde inicio</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown(f"""
+        <div class="stats-card">
+            <div class="stats-icon">📆</div>
+            <div class="stats-label">Este Mes</div>
+            <div class="stats-numero">{turnos_mes}</div>
+            <div style="color: #999; font-size: 0.9rem;">{hoy.strftime('%B %Y')}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col3:
+        st.markdown(f"""
+        <div class="stats-card">
+            <div class="stats-icon">📊</div>
+            <div class="stats-label">Este Año</div>
+            <div class="stats-numero">{turnos_año}</div>
+            <div style="color: #999; font-size: 0.9rem;">{hoy.year}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col4:
+        st.markdown(f"""
+        <div class="stats-card">
+            <div class="stats-icon">🗓️</div>
+            <div class="stats-label">Días Trabajados</div>
+            <div class="stats-numero">{dias_trabajados}</div>
+            <div style="color: #999; font-size: 0.9rem;">días únicos</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown('<div class="separador"></div>', unsafe_allow_html=True)
+    
+    # Gráfico de actividad reciente (últimos 6 meses)
+    st.markdown("""
+    <div style="text-align: center; margin-bottom: 2rem;">
+        <h2 style="color: #333; font-size: 1.8rem;">📈 Actividad Reciente</h2>
+        <p style="color: #666;">Turnos por mes en los últimos 6 meses</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Calcular turnos por mes (últimos 6 meses)
+    from calendar import month_name
+    meses_data = []
+    turnos_data = []
+    
+    for i in range(5, -1, -1):
+        fecha = date(hoy.year, hoy.month, 1) - timedelta(days=30*i)
+        mes = fecha.month
+        año = fecha.year
+        dias_mes = monthrange(año, mes)[1]
+        
+        turnos = session.query(Asignacion).filter(
+            Asignacion.empleado_id == user.id,
+            Asignacion.fecha >= date(año, mes, 1),
+            Asignacion.fecha <= date(año, mes, dias_mes)
+        ).count()
+        
+        meses_data.append(month_name[mes][:3])
+        turnos_data.append(turnos)
+    
+    # Crear gráfico de barras
+    df_meses = pd.DataFrame({
+        'Mes': meses_data,
+        'Turnos': turnos_data
+    })
+    
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        st.bar_chart(df_meses.set_index('Mes'))
+    
+    with col2:
+        st.markdown("""
+        <div class="info-card" style="padding: 1.5rem;">
+            <div class="info-titulo" style="margin-bottom: 1rem;">
+                <span>📊</span> Resumen Rápido
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # Promedio de turnos
+        if turnos_data:
+            promedio = sum(turnos_data) / len(turnos_data)
+            st.markdown(f"""
+            <div style="text-align: center; margin: 1rem 0;">
+                <div style="color: #666;">Promedio mensual</div>
+                <div style="font-size: 2rem; font-weight: bold; color: #667eea;">{promedio:.1f}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Mes con más turnos
+        if turnos_data:
+            max_turnos = max(turnos_data)
+            max_mes = meses_data[turnos_data.index(max_turnos)]
+            st.markdown(f"""
+            <div style="text-align: center; margin: 1rem 0;">
+                <div style="color: #666;">Mejor mes</div>
+                <div style="font-size: 1.5rem; font-weight: bold; color: #28a745;">{max_mes}</div>
+                <div>{max_turnos} turnos</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
         
     # ---------- MIS TURNOS ----------
     elif op == "Mis turnos":
