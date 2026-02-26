@@ -245,11 +245,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ... (resto del código)
-# -------- FUNCIÓN PARA LIMPIAR TURNOS --------
-def limpiar_turnos_empleado(empleado_id, fecha_inicio, fecha_fin, tipo_limpieza="todos"):
-    # ... (tu función)
-
 # -------- MENÚ FLOTANTE (AHORA SÍ PUEDE USAR user) --------
 st.markdown("""
 <style>
