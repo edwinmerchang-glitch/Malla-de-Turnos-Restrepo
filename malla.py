@@ -292,15 +292,25 @@ elif op == "Generar malla":
 elif op == "Calendario":
     st.subheader("📆 Calendario de turnos")
     
+    # Obtener todas las áreas únicas
     empleados = session.query(Empleado).all()
-    empleado_filtro = st.selectbox("Filtrar por empleado", 
-                                  ["Todos"] + [e.nombre for e in empleados])
+    areas = list(set([e.area for e in empleados if e.area]))  # Áreas que no son None
+    areas.sort()  # Ordenar alfabéticamente
+    areas_opciones = ["Todas las áreas"] + areas
+    
+    # Si no hay áreas, mostrar mensaje
+    if not areas:
+        st.info("ℹ️ No hay áreas registradas. Agrega áreas a los empleados primero.")
+        area_filtro = "Todas las áreas"
+    else:
+        area_filtro = st.selectbox("Filtrar por área", areas_opciones)
     
     asignaciones = session.query(Asignacion).all()
     
     data = []
     for a in asignaciones:
-        if empleado_filtro == "Todos" or (a.empleado and a.empleado.nombre == empleado_filtro):
+        # Aplicar filtro por área
+        if area_filtro == "Todas las áreas" or (a.empleado and a.empleado.area == area_filtro):
             data.append({
                 "Fecha": a.fecha,
                 "Empleado": a.empleado.nombre if a.empleado else "N/A",
@@ -316,31 +326,55 @@ elif op == "Calendario":
         df = df.sort_values("Fecha")
         st.dataframe(df, use_container_width=True)
         
-        col1, col2, col3 = st.columns(3)
+        # Estadísticas por área
+        col1, col2, col3, col4 = st.columns(4)
         col1.metric("Total turnos", len(df))
         col2.metric("Empleados", df["Empleado"].nunique())
-        col3.metric("Turnos únicos", df["Turno"].nunique())
+        col3.metric("Áreas", df["Área"].nunique())
+        col4.metric("Turnos únicos", df["Turno"].nunique())
+        
+        # Mostrar resumen por área
+        if area_filtro == "Todas las áreas":
+            st.markdown("### 📊 Resumen por área")
+            resumen_area = df.groupby("Área").agg({
+                "Empleado": "nunique",
+                "Turno": "count"
+            }).rename(columns={"Empleado": "Empleados", "Turno": "Total turnos"})
+            st.dataframe(resumen_area, use_container_width=True)
     else:
-        st.info("ℹ️ No hay asignaciones registradas")
+        st.info("ℹ️ No hay asignaciones registradas para el área seleccionada")
 
 # ========== REPORTES ==========
 elif op == "Reportes":
     st.subheader("📊 Reportes")
     
-    tipo_reporte = st.radio("Tipo de reporte", 
-                           ["General", "Por empleado", "Por área"], 
-                           horizontal=True)
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        tipo_reporte = st.radio("Tipo de reporte", 
+                               ["General", "Por empleado", "Por área"], 
+                               horizontal=True)
+    
+    with col2:
+        # Filtro de área para reportes
+        empleados = session.query(Empleado).all()
+        areas = list(set([e.area for e in empleados if e.area]))
+        areas.sort()
+        areas_opciones = ["Todas las áreas"] + areas
+        area_reporte = st.selectbox("Filtrar por área", areas_opciones)
     
     asignaciones = session.query(Asignacion).all()
     data = []
     for a in asignaciones:
-        data.append({
-            "Fecha": a.fecha,
-            "Empleado": a.empleado.nombre if a.empleado else "N/A",
-            "Área": a.empleado.area if a.empleado and a.empleado.area else "N/A",
-            "Cargo": a.empleado.cargo if a.empleado and a.empleado.cargo else "N/A",
-            "Turno": a.turno.nombre if a.turno else "N/A"
-        })
+        # Aplicar filtro de área
+        if area_reporte == "Todas las áreas" or (a.empleado and a.empleado.area == area_reporte):
+            data.append({
+                "Fecha": a.fecha,
+                "Empleado": a.empleado.nombre if a.empleado else "N/A",
+                "Área": a.empleado.area if a.empleado and a.empleado.area else "N/A",
+                "Cargo": a.empleado.cargo if a.empleado and a.empleado.cargo else "N/A",
+                "Turno": a.turno.nombre if a.turno else "N/A"
+            })
     
     df = pd.DataFrame(data)
     
@@ -350,12 +384,19 @@ elif op == "Reportes":
             reporte = reporte.sort_values("Total turnos", ascending=False)
             st.dataframe(reporte, use_container_width=True)
             
+            # Gráfico de turnos por empleado
+            st.bar_chart(reporte.set_index("Empleado")["Total turnos"])
+            
         elif tipo_reporte == "Por área":
             reporte = df.groupby("Área").agg({
                 "Empleado": "nunique",
                 "Turno": "count"
             }).rename(columns={"Empleado": "Empleados", "Turno": "Total turnos"})
+            reporte = reporte.sort_values("Total turnos", ascending=False)
             st.dataframe(reporte, use_container_width=True)
+            
+            # Gráfico de turnos por área
+            st.bar_chart(reporte["Total turnos"])
             
         else:  # General
             st.dataframe(df, use_container_width=True)
