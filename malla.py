@@ -40,26 +40,178 @@ def limpiar_turnos_empleado(empleado_id, fecha_inicio, fecha_fin, tipo_limpieza=
     session.commit()
     return count
 
-# -------- LOGIN --------
+# -------- LOGIN MODERNO --------
 def login():
-    st.title("🔐 Ingreso al sistema")
-    user = st.text_input("Usuario")
-    pwd = st.text_input("Contraseña", type="password")
-    if st.button("Ingresar"):
-        session_db = Session()
-        emp = session_db.query(Empleado).filter_by(usuario=user, password=pwd).first()
-        if emp:
-            st.session_state["user"] = emp
-            st.rerun()
-        else:
-            st.error("Credenciales incorrectas")
-
-if "user" not in st.session_state:
-    login()
-    st.stop()
-
-user = st.session_state["user"]
-session = Session()
+    # Estilos CSS para el login
+    st.markdown("""
+    <style>
+        .login-container {
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 2rem;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            animation: slideUp 0.5s ease;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .login-header h1 {
+            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        
+        .login-header p {
+            color: #666;
+            font-size: 1rem;
+        }
+        
+        .login-icon {
+            font-size: 4rem;
+            text-align: center;
+            margin-bottom: 1rem;
+            animation: bounce 2s infinite;
+        }
+        
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .input-field {
+            margin-bottom: 1.5rem;
+        }
+        
+        .input-field label {
+            display: block;
+            color: #333;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stTextInput input {
+            border: 2px solid #e0e0e0 !important;
+            border-radius: 12px !important;
+            padding: 0.8rem 1rem !important;
+            font-size: 1rem !important;
+            transition: all 0.3s !important;
+        }
+        
+        .stTextInput input:focus {
+            border-color: #2ecc71 !important;
+            box-shadow: 0 0 0 3px rgba(46, 204, 113, 0.1) !important;
+        }
+        
+        .login-button {
+            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%) !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 12px !important;
+            padding: 0.8rem !important;
+            font-size: 1.1rem !important;
+            font-weight: 600 !important;
+            width: 100% !important;
+            transition: all 0.3s !important;
+            margin-top: 1rem !important;
+        }
+        
+        .login-button:hover {
+            transform: translateY(-2px) !important;
+            box-shadow: 0 5px 20px rgba(46, 204, 113, 0.4) !important;
+        }
+        
+        .login-footer {
+            text-align: center;
+            margin-top: 2rem;
+            color: #999;
+            font-size: 0.9rem;
+        }
+        
+        .login-footer a {
+            color: #2ecc71;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .login-footer a:hover {
+            text-decoration: underline;
+        }
+        
+        /* Centrar el contenido en la página */
+        .stApp {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+        
+        .main > div {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Contenedor principal
+    with st.container():
+        st.markdown("""
+        <div class="login-container">
+            <div class="login-header">
+                <div class="login-icon">📅</div>
+                <h1>Malla de Turnos</h1>
+                <p>Sistema de Gestión de Horarios</p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # Campos de entrada con diseño mejorado
+        st.markdown('<div class="input-field">', unsafe_allow_html=True)
+        user = st.text_input("👤 Usuario", placeholder="Ingresa tu usuario", key="login_user")
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        st.markdown('<div class="input-field">', unsafe_allow_html=True)
+        pwd = st.text_input("🔒 Contraseña", type="password", placeholder="Ingresa tu contraseña", key="login_pwd")
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Botón de ingreso
+        if st.button("🚀 Ingresar", use_container_width=True, key="login_btn"):
+            if user and pwd:
+                session_db = Session()
+                emp = session_db.query(Empleado).filter_by(usuario=user, password=pwd).first()
+                if emp:
+                    st.session_state["user"] = emp
+                    st.rerun()
+                else:
+                    st.error("❌ Credenciales incorrectas")
+            else:
+                st.warning("⚠️ Por favor ingresa usuario y contraseña")
+        
+        # Footer
+        st.markdown("""
+            <div class="login-footer">
+                <p>¿Olvidaste tu contraseña? Contacta al administrador</p>
+                <p>© 2026 Malla de Turnos - Versión 2.0</p>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
 # -------- MENÚ MODERNO CON BOTONES SEGÚN EL ROL --------
 st.sidebar.markdown("""
