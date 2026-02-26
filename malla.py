@@ -238,22 +238,15 @@ def limpiar_turnos_empleado(empleado_id, fecha_inicio, fecha_fin, tipo_limpieza=
     session.commit()
     return count
 
-# -------- MENÚ FLOTANTE (AHORA SÍ PUEDE USAR user) --------
+# -------- MENÚ FLOTANTE SIMPLIFICADO --------
 st.markdown("""
 <style>
-    /* Todo el CSS del menú flotante que ya tienes */
-</style>
-""", unsafe_allow_html=True)
-
-# -------- MENÚ FLOTANTE (AHORA SÍ PUEDE USAR user) --------
-st.markdown("""
-<style>
-    /* Botón hamburguesa flotante */
-    .floating-hamburger {
+    /* Botón hamburguesa */
+    .hamburger-btn {
         position: fixed;
         top: 20px;
         left: 20px;
-        z-index: 1000;
+        z-index: 999;
         background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
         color: white;
         width: 50px;
@@ -265,33 +258,32 @@ st.markdown("""
         font-size: 1.8rem;
         cursor: pointer;
         box-shadow: 0 4px 15px rgba(46, 204, 113, 0.4);
-        transition: all 0.3s;
         border: none;
+        transition: all 0.3s;
     }
-    .floating-hamburger:hover {
-        transform: scale(1.1) rotate(90deg);
-        box-shadow: 0 6px 20px rgba(46, 204, 113, 0.6);
+    .hamburger-btn:hover {
+        transform: scale(1.1);
     }
     
-    /* Menú lateral flotante */
-    .floating-menu {
+    /* Menú lateral */
+    .side-menu {
         position: fixed;
         top: 0;
-        left: -350px;
-        width: 320px;
+        left: -320px;
+        width: 300px;
         height: 100vh;
         background: white;
-        box-shadow: 2px 0 20px rgba(0,0,0,0.2);
+        box-shadow: 2px 0 10px rgba(0,0,0,0.1);
         transition: left 0.3s ease;
-        z-index: 1001;
+        z-index: 1000;
         overflow-y: auto;
         padding: 20px;
     }
-    .floating-menu.open {
+    .side-menu.open {
         left: 0;
     }
     
-    /* Overlay cuando el menú está abierto */
+    /* Overlay */
     .menu-overlay {
         position: fixed;
         top: 0;
@@ -299,49 +291,25 @@ st.markdown("""
         right: 0;
         bottom: 0;
         background: rgba(0,0,0,0.5);
-        z-index: 1000;
+        z-index: 998;
         display: none;
     }
     .menu-overlay.open {
         display: block;
     }
     
-    /* Botón de cerrar dentro del menú */
-    .close-menu {
-        position: absolute;
-        top: 15px;
-        right: 15px;
-        background: #f0f0f0;
-        border: none;
-        width: 35px;
-        height: 35px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.2rem;
-        cursor: pointer;
-        transition: all 0.3s;
-    }
-    .close-menu:hover {
-        background: #e0e0e0;
-        transform: rotate(90deg);
-    }
-    
     /* Cabecera del menú */
     .menu-header {
         background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
-        padding: 2rem 1rem;
-        border-radius: 15px;
+        padding: 1.5rem;
+        border-radius: 10px;
         margin-bottom: 1.5rem;
         text-align: center;
         color: white;
-        box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3);
     }
-    .menu-header h1 {
-        font-size: 1.8rem;
+    .menu-header h2 {
         margin: 0;
-        font-weight: bold;
+        font-size: 1.5rem;
     }
     .menu-header p {
         margin: 0.5rem 0 0;
@@ -349,38 +317,20 @@ st.markdown("""
         font-size: 0.9rem;
     }
     
-    /* Tarjeta de usuario */
-    .user-info-card {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        border-radius: 15px;
-        padding: 1.2rem;
+    /* Información del usuario */
+    .user-info {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 1rem;
         margin-bottom: 1.5rem;
-        border: 2px solid #2ecc71;
+        border-left: 4px solid #2ecc71;
     }
     .user-info-item {
-        display: flex;
-        align-items: center;
-        padding: 0.8rem;
         margin: 0.5rem 0;
-        background: white;
-        border-radius: 10px;
-        transition: all 0.3s;
-    }
-    .user-info-item:hover {
-        background: #f0f0f0;
-        transform: translateX(5px);
-    }
-    .user-info-icon {
-        font-size: 1.3rem;
-        margin-right: 1rem;
-        min-width: 35px;
-        text-align: center;
-        color: #2ecc71;
     }
     .user-info-label {
         color: #666;
         font-size: 0.8rem;
-        margin-bottom: 0.2rem;
     }
     .user-info-value {
         color: #333;
@@ -388,210 +338,160 @@ st.markdown("""
         font-size: 1rem;
     }
     
-    /* Secciones del menú */
-    .menu-section {
-        background: white;
-        border-radius: 15px;
-        padding: 1rem;
-        margin-bottom: 1.5rem;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        border: 1px solid #f0f0f0;
-    }
-    .menu-title {
-        font-size: 1.1rem;
-        font-weight: bold;
-        color: #2ecc71;
-        margin-bottom: 1rem;
-        padding-bottom: 0.5rem;
-        border-bottom: 2px solid #f0f0f0;
+    /* Botones del menú */
+    .menu-buttons {
         display: flex;
-        align-items: center;
+        flex-direction: column;
         gap: 0.5rem;
     }
-    
-    /* Botones del menú */
-    .stButton button {
+    .menu-buttons .stButton button {
         background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%) !important;
         color: white !important;
         border: none !important;
-        border-radius: 10px !important;
+        border-radius: 8px !important;
         padding: 0.8rem !important;
         font-size: 1rem !important;
         font-weight: 500 !important;
+        width: 100% !important;
         transition: all 0.3s !important;
-        box-shadow: 0 2px 8px rgba(46, 204, 113, 0.3) !important;
-        margin: 0.3rem 0 !important;
     }
-    .stButton button:hover {
+    .menu-buttons .stButton button:hover {
         transform: translateY(-2px) !important;
-        box-shadow: 0 4px 12px rgba(46, 204, 113, 0.4) !important;
+        box-shadow: 0 4px 10px rgba(46, 204, 113, 0.3) !important;
     }
     
-    /* Botón de cerrar sesión */
-    .logout-btn {
+    /* Botón cerrar sesión */
+    .logout-btn .stButton button {
         background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%) !important;
     }
     
     /* Página actual */
     .current-page {
-        background: linear-gradient(135deg, #f6f9fc 0%, #e6f0f7 100%);
-        border-radius: 10px;
+        background: #e8f5e9;
+        border-radius: 8px;
         padding: 0.8rem;
         margin-top: 1rem;
-        border: 1px solid #2ecc71;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    .current-page-icon {
-        color: #2ecc71;
-        font-size: 1.1rem;
-    }
-    .current-page-text {
+        text-align: center;
         color: #2ecc71;
         font-weight: bold;
-    }
-    
-    /* Footer */
-    .footer {
-        text-align: center;
-        margin-top: 2rem;
-        padding: 1rem;
-        color: #999;
-        font-size: 0.8rem;
-        border-top: 1px solid #f0f0f0;
+        border: 1px solid #2ecc71;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Inicializar página actual
-if "pagina_actual" not in st.session_state:
-    if user.rol == "empleado":
-        st.session_state.pagina_actual = "Calendario"
-    elif user.rol == "supervisor":
-        st.session_state.pagina_actual = "Mi equipo"
-    else:
-        st.session_state.pagina_actual = "Empleados"
+# Estado del menú
+if "menu_open" not in st.session_state:
+    st.session_state.menu_open = False
 
-def cambiar_pagina(pagina):
-    st.session_state.pagina_actual = pagina
-    st.session_state.menu_abierto = False
+# Botón hamburguesa
+col1, col2, col3 = st.columns([1, 1, 10])
+with col1:
+    if st.button("☰", key="hamburger"):
+        st.session_state.menu_open = not st.session_state.menu_open
+        st.rerun()
 
-# -------- MENÚ PARA EMPLEADOS --------
-if user.rol == "empleado":
-    st.markdown("""
-    <div class="menu-section">
-        <div class="menu-title">
-            <span>📋</span> Mi Espacio
-        </div>
-    """, unsafe_allow_html=True)
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        if st.button("📅 Calendario", use_container_width=True, key="btn_calendario"):
-            cambiar_pagina("Calendario")
-    
-    with col2:
-        if st.button("📊 Mis turnos", use_container_width=True, key="btn_turnos"):
-            cambiar_pagina("Mis turnos")
-    
-    if st.button("👤 Mi perfil", use_container_width=True, key="btn_perfil"):
-        cambiar_pagina("Mi perfil")
-    
-    st.markdown("</div>", unsafe_allow_html=True)
+# Overlay
+if st.session_state.menu_open:
+    st.markdown('<div class="menu-overlay open" onclick="document.querySelector(\'button[data-testid=baseButton-header]\').click()"></div>', unsafe_allow_html=True)
 
-# -------- MENÚ PARA SUPERVISORES --------
-elif user.rol == "supervisor":
-    st.markdown("""
-    <div class="menu-section">
-        <div class="menu-title">
-            <span>👥</span> Mi Área
-        </div>
-    """, unsafe_allow_html=True)
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        if st.button("👥 Mi equipo", use_container_width=True, key="btn_equipo"):
-            cambiar_pagina("Mi equipo")
-        if st.button("📊 Matriz área", use_container_width=True, key="btn_matriz_area"):
-            cambiar_pagina("Matriz area")
-    
-    with col2:
-        if st.button("✏️ Asignar turnos", use_container_width=True, key="btn_asignar"):
-            cambiar_pagina("Asignar area")
-        if st.button("📈 Reportes área", use_container_width=True, key="btn_reportes_area"):
-            cambiar_pagina("Reportes area")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("👤 Mi perfil", use_container_width=True, key="btn_perfil_sup"):
-            cambiar_pagina("Mi perfil")
-    with col2:
-        if st.button("📅 Mi calendario", use_container_width=True, key="btn_calendario_sup"):
-            cambiar_pagina("Calendario")
-    
-    st.markdown("</div>", unsafe_allow_html=True)
-
-# -------- MENÚ PARA ADMINISTRADORES --------
-elif user.rol == "admin":
-    st.markdown("""
-    <div class="menu-section">
-        <div class="menu-title">
-            <span>⚙️</span> Administración
-        </div>
-    """, unsafe_allow_html=True)
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("👥 Empleados", use_container_width=True, key="btn_empleados"):
-            cambiar_pagina("Empleados")
-        if st.button("⏰ Turnos", use_container_width=True, key="btn_turnos_admin"):
-            cambiar_pagina("Turnos")
-    with col2:
-        if st.button("📊 Matriz general", use_container_width=True, key="btn_matriz"):
-            cambiar_pagina("Matriz turnos")
-        if st.button("👤 Mi perfil", use_container_width=True, key="btn_perfil_admin"):
-            cambiar_pagina("Mi perfil")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("✏️ Asignar manual", use_container_width=True, key="btn_asignar_admin"):
-            cambiar_pagina("Asignacion manual")
-        if st.button("🤖 Generar malla", use_container_width=True, key="btn_generar"):
-            cambiar_pagina("Generar malla")
-    with col2:
-        if st.button("📊 Reportes", use_container_width=True, key="btn_reportes"):
-            cambiar_pagina("Reportes")
-        if st.button("🛡 Backup", use_container_width=True, key="btn_backup"):
-            cambiar_pagina("Backup")
-    
-    st.markdown("</div>", unsafe_allow_html=True)
-
-# Indicador de página actual
-st.markdown(f"""
-<div class="current-page">
-    <span class="current-page-icon">📍</span>
-    <span class="current-page-text">Página actual: {st.session_state.pagina_actual}</span>
-</div>
-""", unsafe_allow_html=True)
-
-# Botón de cerrar sesión
-if st.button("🚪 Cerrar sesión", use_container_width=True, key="btn_logout"):
-    st.session_state.clear()
-    st.rerun()
-
-# Footer
-st.markdown("""
-<div class="footer">
-    © Creado por Edwin Merchán 2026 <br>
-    Versión 2.0
-</div>
-""", unsafe_allow_html=True)
-
-# Cerrar el div del menú flotante
-st.markdown("</div>", unsafe_allow_html=True)
+# Menú lateral
+if st.session_state.menu_open:
+    with st.container():
+        st.markdown(f"""
+        <div class="side-menu open">
+            <div class="menu-header">
+                <h2>📅 Malla de Turnos</h2>
+                <p>Sistema de Gestión de Horarios</p>
+            </div>
+            
+            <div class="user-info">
+                <div class="user-info-item">
+                    <div class="user-info-label">Usuario</div>
+                    <div class="user-info-value">{user.nombre}</div>
+                </div>
+                <div class="user-info-item">
+                    <div class="user-info-label">Rol</div>
+                    <div class="user-info-value">{user.rol.upper()}</div>
+                </div>
+                <div class="user-info-item">
+                    <div class="user-info-label">Área</div>
+                    <div class="user-info-value">{user.area if user.area else 'No asignada'}</div>
+                </div>
+                <div class="user-info-item">
+                    <div class="user-info-label">Cargo</div>
+                    <div class="user-info-value">{user.cargo if user.cargo else 'No asignado'}</div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # Inicializar página actual
+        if "pagina_actual" not in st.session_state:
+            if user.rol == "empleado":
+                st.session_state.pagina_actual = "Calendario"
+            elif user.rol == "supervisor":
+                st.session_state.pagina_actual = "Mi equipo"
+            else:
+                st.session_state.pagina_actual = "Empleados"
+        
+        def cambiar_pagina(pagina):
+            st.session_state.pagina_actual = pagina
+            st.session_state.menu_open = False
+        
+        # Botones según el rol
+        st.markdown('<div class="menu-buttons">', unsafe_allow_html=True)
+        
+        if user.rol == "empleado":
+            if st.button("📅 Calendario", use_container_width=True, key="btn_calendario"):
+                cambiar_pagina("Calendario")
+            if st.button("📊 Mis turnos", use_container_width=True, key="btn_turnos"):
+                cambiar_pagina("Mis turnos")
+            if st.button("👤 Mi perfil", use_container_width=True, key="btn_perfil"):
+                cambiar_pagina("Mi perfil")
+        
+        elif user.rol == "supervisor":
+            if st.button("👥 Mi equipo", use_container_width=True, key="btn_equipo"):
+                cambiar_pagina("Mi equipo")
+            if st.button("📊 Matriz área", use_container_width=True, key="btn_matriz_area"):
+                cambiar_pagina("Matriz area")
+            if st.button("✏️ Asignar turnos", use_container_width=True, key="btn_asignar"):
+                cambiar_pagina("Asignar area")
+            if st.button("📈 Reportes área", use_container_width=True, key="btn_reportes_area"):
+                cambiar_pagina("Reportes area")
+            if st.button("👤 Mi perfil", use_container_width=True, key="btn_perfil_sup"):
+                cambiar_pagina("Mi perfil")
+            if st.button("📅 Mi calendario", use_container_width=True, key="btn_calendario_sup"):
+                cambiar_pagina("Calendario")
+        
+        elif user.rol == "admin":
+            if st.button("👥 Empleados", use_container_width=True, key="btn_empleados"):
+                cambiar_pagina("Empleados")
+            if st.button("⏰ Turnos", use_container_width=True, key="btn_turnos_admin"):
+                cambiar_pagina("Turnos")
+            if st.button("✏️ Asignar manual", use_container_width=True, key="btn_asignar_admin"):
+                cambiar_pagina("Asignacion manual")
+            if st.button("🤖 Generar malla", use_container_width=True, key="btn_generar"):
+                cambiar_pagina("Generar malla")
+            if st.button("📊 Matriz general", use_container_width=True, key="btn_matriz"):
+                cambiar_pagina("Matriz turnos")
+            if st.button("👤 Mi perfil", use_container_width=True, key="btn_perfil_admin"):
+                cambiar_pagina("Mi perfil")
+            if st.button("📊 Reportes", use_container_width=True, key="btn_reportes"):
+                cambiar_pagina("Reportes")
+            if st.button("🛡 Backup", use_container_width=True, key="btn_backup"):
+                cambiar_pagina("Backup")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Página actual y cerrar sesión
+        st.markdown(f'<div class="current-page">📍 Página actual: {st.session_state.pagina_actual}</div>', unsafe_allow_html=True)
+        
+        st.markdown('<div class="logout-btn">', unsafe_allow_html=True)
+        if st.button("🚪 Cerrar sesión", use_container_width=True, key="btn_logout"):
+            st.session_state.clear()
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        st.markdown('</div>', unsafe_allow_html=True)  # Cerrar side-menu
 
 # -------- CONTENIDO --------
 op = st.session_state.pagina_actual
