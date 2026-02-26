@@ -1502,14 +1502,39 @@ if "user" in st.session_state:
                         rol = st.selectbox("Rol", ["empleado", "supervisor", "admin"], 
                                          index=["empleado", "supervisor", "admin"].index(emp.rol))
                         
+                        st.markdown("---")
+                        st.markdown("#### 🔐 Cambiar contraseña (opcional)")
+                        nueva_pass = st.text_input("Nueva contraseña", type="password", placeholder="Dejar vacío para no cambiar")
+                        
                         if st.form_submit_button("💾 Guardar"):
-                            emp.nombre = nombre
-                            emp.area = area or None
-                            emp.cargo = cargo or None
-                            emp.rol = rol
-                            session.commit()
-                            st.success("✅ Guardado")
-                            st.rerun()
+                            cambios = False
+                            
+                            if emp.nombre != nombre:
+                                emp.nombre = nombre
+                                cambios = True
+                            if emp.area != (area or None):
+                                emp.area = area or None
+                                cambios = True
+                            if emp.cargo != (cargo or None):
+                                emp.cargo = cargo or None
+                                cambios = True
+                            if emp.rol != rol:
+                                emp.rol = rol
+                                cambios = True
+                            if nueva_pass:
+                                if len(nueva_pass) >= 4:
+                                    emp.password = nueva_pass
+                                    cambios = True
+                                    st.success("✅ Contraseña actualizada")
+                                else:
+                                    st.error("❌ La contraseña debe tener al menos 4 caracteres")
+                            
+                            if cambios:
+                                session.commit()
+                                st.success("✅ Empleado actualizado")
+                                st.rerun()
+                            else:
+                                st.info("ℹ️ No se realizaron cambios")
 
     elif op == "Turnos":
         if user.rol != "admin":
