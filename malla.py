@@ -520,25 +520,135 @@ elif op == "Turnos":
         st.error("❌ No tienes permiso")
         st.stop()
     
-    st.subheader("⏰ Turnos")
+    st.subheader("⏰ Gestión de Turnos")
     
-    tab1, tab2 = st.tabs(["📋 Lista", "➕ Nuevo"])
+    tab1, tab2, tab3 = st.tabs(["📋 Lista de turnos", "➕ Nuevo turno", "✏️ Editar/Eliminar"])
     
-    with tab1:
+    with tab1:  # LISTA DE TURNOS
         turnos = session.query(Turno).all()
-        data = [{"ID": t.id, "Nombre": t.nombre, "Inicio": t.inicio, "Fin": t.fin} for t in turnos]
-        st.dataframe(pd.DataFrame(data), use_container_width=True)
+        if turnos:
+            data = []
+            for t in turnos:
+                data.append({
+                    "ID": t.id,
+                    "Nombre": t.nombre,
+                    "Inicio": t.inicio,
+                    "Fin": t.fin
+                })
+            df = pd.DataFrame(data)
+            st.dataframe(df, use_container_width=True)
+            st.metric("Total turnos", len(turnos))
+        else:
+            st.info("No hay turnos registrados")
     
-    with tab2:
+    with tab2:  # NUEVO TURNO
+        st.markdown("### Crear nuevo turno")
+        
         with st.form("nuevo_turno"):
-            n = st.text_input("Nombre")
-            hi = st.text_input("Hora inicio")
-            hf = st.text_input("Hora fin")
-            if st.form_submit_button("Crear"):
-                session.add(Turno(nombre=n, inicio=hi, fin=hf))
-                session.commit()
-                st.success("✅ Creado")
-                st.rerun()
+            col1, col2 = st.columns(2)
+            with col1:
+                n = st.text_input("Nombre del turno *", placeholder="Ej: 151, 155, 70...")
+            with col2:
+                pass
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                hi = st.text_input("Hora inicio *", placeholder="Ej: 08:00")
+            with col2:
+                hf = st.text_input("Hora fin *", placeholder="Ej: 16:00")
+            
+            submitted = st.form_submit_button("✅ Crear turno", use_container_width=True)
+            
+            if submitted:
+                if n and hi and hf:
+                    # Verificar si ya existe
+                    existe = session.query(Turno).filter_by(nombre=n).first()
+                    if existe:
+                        st.error(f"❌ El turno '{n}' ya existe")
+                    else:
+                        session.add(Turno(nombre=n, inicio=hi, fin=hf))
+                        session.commit()
+                        st.success(f"✅ Turno '{n}' creado correctamente")
+                        st.rerun()
+                else:
+                    st.error("❌ Todos los campos son obligatorios")
+    
+    with tab3:  # EDITAR/ELIMINAR TURNOS
+        st.markdown("### Editar o eliminar turnos")
+        
+        turnos = session.query(Turno).all()
+        
+        if not turnos:
+            st.info("No hay turnos para editar")
+        else:
+            # Selector de turno
+            opciones = {f"{t.nombre} ({t.inicio} - {t.fin})": t.id for t in turnos}
+            seleccion = st.selectbox("Seleccionar turno", list(opciones.keys()))
+            turno_id = opciones[seleccion]
+            turno = session.get(Turno, turno_id)
+            
+            if turno:
+                col1, col2 = st.columns([2, 1])
+                
+                with col1:
+                    with st.form("editar_turno"):
+                        st.markdown("#### Editar turno")
+                        
+                        nombre_edit = st.text_input("Nombre", value=turno.nombre)
+                        
+                        col_a, col_b = st.columns(2)
+                        with col_a:
+                            inicio_edit = st.text_input("Hora inicio", value=turno.inicio)
+                        with col_b:
+                            fin_edit = st.text_input("Hora fin", value=turno.fin)
+                        
+                        col_guardar, col_eliminar = st.columns(2)
+                        with col_guardar:
+                            guardar = st.form_submit_button("💾 Guardar cambios", use_container_width=True)
+                        with col_eliminar:
+                            eliminar = st.form_submit_button("🗑️ Eliminar", use_container_width=True)
+                        
+                        if guardar:
+                            # Verificar si el nuevo nombre ya existe (excepto el mismo turno)
+                            existe = session.query(Turno).filter(
+                                Turno.nombre == nombre_edit,
+                                Turno.id != turno.id
+                            ).first()
+                            
+                            if existe:
+                                st.error(f"❌ Ya existe un turno con el nombre '{nombre_edit}'")
+                            else:
+                                turno.nombre = nombre_edit
+                                turno.inicio = inicio_edit
+                                turno.fin = fin_edit
+                                session.commit()
+                                st.success("✅ Turno actualizado correctamente")
+                                st.rerun()
+                        
+                        if eliminar:
+                            # Verificar si el turno está siendo usado
+                            asignaciones = session.query(Asignacion).filter_by(turno_id=turno.id).first()
+                            if asignaciones:
+                                st.warning("⚠️ Este turno tiene asignaciones. No se puede eliminar.")
+                                st.info("Primero elimina las asignaciones de este turno.")
+                            else:
+                                session.delete(turno)
+                                session.commit()
+                                st.success("✅ Turno eliminado correctamente")
+                                st.rerun()
+                
+                with col2:
+                    # Mostrar estadísticas del turno
+                    st.markdown("#### 📊 Estadísticas")
+                    
+                    # Contar asignaciones de este turno
+                    total_asignaciones = session.query(Asignacion).filter_by(turno_id=turno.id).count()
+                    st.metric("Asignaciones", total_asignaciones)
+                    
+                    # Última vez usado
+                    ultima_asignacion = session.query(Asignacion).filter_by(turno_id=turno.id).order_by(Asignacion.fecha.desc()).first()
+                    if ultima_asignacion:
+                        st.caption(f"Último uso: {ultima_asignacion.fecha.strftime('%d/%m/%Y')}")
 
 # ---------- MATRIZ TURNOS (ADMIN) ----------
 elif op == "Matriz turnos":
