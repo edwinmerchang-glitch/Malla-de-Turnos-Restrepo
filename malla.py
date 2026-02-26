@@ -888,6 +888,64 @@ elif op == "Matriz turnos":
                 if 'Empleado' not in df_carga.columns:
                     st.error("❌ El archivo debe tener una columna llamada 'Empleado'")
                 else:
+                    # ===== DEPURACIÓN =====
+                    with st.expander("🔍 Ver información de depuración"):
+                        st.write("**Primeras 3 filas del Excel:**")
+                        st.dataframe(df_carga.head(3))
+                        
+                        # Mostrar tipos de datos
+                        st.write("**Tipos de datos en Excel:**")
+                        for col in df_carga.columns[:5]:  # Primeras 5 columnas
+                            st.write(f"- {col}: {df_carga[col].dtype}")
+                        
+                        # Mostrar turnos disponibles en BD
+                        st.write("**Turnos en Base de Datos:**")
+                        todos_turnos = session.query(Turno).all()
+                        turnos_bd = [t.nombre for t in todos_turnos]
+                        st.write(turnos_bd)
+                        
+                        # Mostrar muestra de valores de turnos del Excel
+                        st.write("**Muestra de valores de turnos del Excel (primeros 20):**")
+                        valores_muestra = []
+                        for dia in columnas_dias[:3]:  # Primeros 3 días
+                            valores = df_carga[int(dia)].dropna().unique()[:5]
+                            for v in valores:
+                                valores_muestra.append(f"Día {dia}: {v} (tipo: {type(v)})")
+                        for v in valores_muestra[:10]:
+                            st.write(f"  - {v}")
+                        
+                        # Botón para probar una fila específica
+                        st.write("**Prueba manual:**")
+                        fila_prueba = st.selectbox("Seleccionar empleado para probar", df_carga['Empleado'].tolist())
+                        if fila_prueba:
+                            row_prueba = df_carga[df_carga['Empleado'] == fila_prueba].iloc[0]
+                            st.write("Datos de la fila:")
+                            st.write(row_prueba)
+                            
+                            # Buscar empleado
+                            emp_test = session.query(Empleado).filter(Empleado.nombre.ilike(f"%{fila_prueba}%")).first()
+                            if emp_test:
+                                st.success(f"✅ Empleado encontrado: {emp_test.nombre}")
+                                
+                                # Probar un día
+                                dia_test = st.number_input("Día a probar", 1, dias_mes, 1)
+                                valor_test = row_prueba[dia_test]
+                                st.write(f"Valor en Excel para día {dia_test}: '{valor_test}' (tipo: {type(valor_test)})")
+                                
+                                if pd.notna(valor_test):
+                                    # Buscar turno
+                                    turno_test = session.query(Turno).filter(Turno.nombre == str(valor_test)).first()
+                                    if turno_test:
+                                        st.success(f"✅ Turno encontrado: {turno_test.nombre}")
+                                    else:
+                                        st.error(f"❌ Turno no encontrado: '{valor_test}'")
+                                        
+                                        # Buscar flexible
+                                        turno_test2 = session.query(Turno).filter(Turno.nombre.ilike(f"%{str(valor_test)}%")).first()
+                                        if turno_test2:
+                                            st.info(f"  Pero se encontró por coincidencia parcial: {turno_test2.nombre}")
+                            else:
+                                st.error(f"❌ Empleado no encontrado: {fila_prueba}")
                     if st.button("📤 Procesar carga masiva", use_container_width=True, type="primary"):
                         count_total = 0
                         empleados_no_encontrados = []
@@ -953,6 +1011,18 @@ elif op == "Matriz turnos":
                                         else:
                                             # Buscar turno de manera flexible
                                             turno_nombre = str(valor_turno).strip()
+                                            turno = None
+
+                                            # Buscar turno de manera flexible
+                                            turno_nombre = str(valor_turno).strip()
+                                            
+                                            # Si es número (float/int), convertir a string sin decimales
+                                            if isinstance(valor_turno, (int, float)):
+                                                if valor_turno == int(valor_turno):  # Si es número entero
+                                                    turno_nombre = str(int(valor_turno))
+                                                else:
+                                                    turno_nombre = str(valor_turno)
+                                            
                                             turno = None
                                             
                                             # Intentar búsqueda exacta
