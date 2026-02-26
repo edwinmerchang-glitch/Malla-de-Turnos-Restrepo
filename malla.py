@@ -771,9 +771,9 @@ elif op == "Calendario":
         with col1:
             meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
                      "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
-            año = st.number_input("Año", min_value=2024, max_value=2030, value=2026)
+            año = st.number_input("Año", min_value=2024, max_value=2030, value=2026, key="cal_ano_emp")
         with col2:
-            mes = st.selectbox("Mes", meses, index=1)
+            mes = st.selectbox("Mes", meses, index=1, key="cal_mes_emp")
         
         # Calcular fechas del mes
         mes_num = meses.index(mes) + 1
@@ -788,11 +788,6 @@ elif op == "Calendario":
             Asignacion.fecha.between(fecha_inicio_mes, fecha_fin_mes)
         ).all()
         
-        # Si no hay asignaciones, mostrar mensaje
-        if not asignaciones:
-            st.info(f"ℹ️ No tienes turnos asignados en {mes} {año}")
-            st.stop()
-    
     else:  # ADMIN - ve todos los turnos
         # Obtener todas las áreas únicas
         empleados = session.query(Empleado).all()
@@ -807,13 +802,13 @@ elif op == "Calendario":
                 st.info("ℹ️ No hay áreas registradas")
                 area_filtro = "Todas las áreas"
             else:
-                area_filtro = st.selectbox("Filtrar por área", areas_opciones)
+                area_filtro = st.selectbox("Filtrar por área", areas_opciones, key="cal_area_admin")
         
         with col2:
             meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
                      "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
-            año = st.number_input("Año", min_value=2024, max_value=2030, value=2026)
-            mes = st.selectbox("Mes", meses, index=1)
+            año = st.number_input("Año", min_value=2024, max_value=2030, value=2026, key="cal_ano_admin")
+            mes = st.selectbox("Mes", meses, index=1, key="cal_mes_admin")
         
         # Calcular fechas del mes
         mes_num = meses.index(mes) + 1
@@ -846,8 +841,8 @@ elif op == "Calendario":
     for a in asignaciones:
         if a.empleado and a.turno:
             # Para admin: aplicar filtro de área
-            if user.rol == "admin":
-                if area_filtro != "Todas las áreas" and a.empleado.area != area_filtro:
+            if user.rol == "admin" and 'area_filtro' in locals() and area_filtro != "Todas las áreas":
+                if a.empleado.area != area_filtro:
                     continue
             
             area = a.empleado.area if a.empleado.area else "Sin área"
@@ -877,60 +872,60 @@ elif op == "Calendario":
     import json
     eventos_json = json.dumps(eventos)
     
-html_code = f"""
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
-    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
-    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales-all.min.js'></script>  <!-- IMPORTANTE: agregar esto -->
-    <style>
-        body {{ margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; }}
-        #calendar {{ max-width: 1100px; margin: 20px auto; padding: 0 10px; }}
-        .fc-event {{ cursor: pointer; border-radius: 4px; padding: 2px 4px; font-size: 0.85em; }}
-        .fc-event:hover {{ opacity: 0.9; }}
-        .fc-day-today {{ background-color: rgba(52, 152, 219, 0.1) !important; }}
-    </style>
-</head>
-<body>
-    <div id='calendar'></div>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {{
-            var calendarEl = document.getElementById('calendar');
-            var calendar = new FullCalendar.Calendar(calendarEl, {{
-                locale: 'es',  // IMPORTANTE: establecer idioma español
-                initialView: 'dayGridMonth',
-                headerToolbar: {{
-                    left: 'today prev,next',
-                    center: 'title',
-                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
-                }},
-                buttonText: {{  // Texto personalizado para botones
-                    today: 'Hoy',
-                    month: 'Mes',
-                    week: 'Semana',
-                    day: 'Día'
-                }},
-                height: 600,
-                events: {eventos_json},
-                eventClick: function(info) {{
-                    alert(
-                        'Empleado: ' + info.event.extendedProps.empleado + '\\n' +
-                        'Área: ' + info.event.extendedProps.area + '\\n' +
-                        'Turno: ' + info.event.extendedProps.turno + '\\n' +
-                        'Horario: ' + info.event.extendedProps.hora_inicio + ' - ' + info.event.extendedProps.hora_fin
-                    );
-                }}
+    html_code = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
+        <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
+        <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales-all.min.js'></script>
+        <style>
+            body {{ margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; }}
+            #calendar {{ max-width: 1100px; margin: 20px auto; padding: 0 10px; }}
+            .fc-event {{ cursor: pointer; border-radius: 4px; padding: 2px 4px; font-size: 0.85em; }}
+            .fc-event:hover {{ opacity: 0.9; }}
+            .fc-day-today {{ background-color: rgba(52, 152, 219, 0.1) !important; }}
+        </style>
+    </head>
+    <body>
+        <div id='calendar'></div>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {{
+                var calendarEl = document.getElementById('calendar');
+                var calendar = new FullCalendar.Calendar(calendarEl, {{
+                    locale: 'es',
+                    initialView: 'dayGridMonth',
+                    headerToolbar: {{
+                        left: 'today prev,next',
+                        center: 'title',
+                        right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                    }},
+                    buttonText: {{
+                        today: 'Hoy',
+                        month: 'Mes',
+                        week: 'Semana',
+                        day: 'Día'
+                    }},
+                    height: 600,
+                    events: {eventos_json},
+                    eventClick: function(info) {{
+                        alert(
+                            'Empleado: ' + info.event.extendedProps.empleado + '\\n' +
+                            'Área: ' + info.event.extendedProps.area + '\\n' +
+                            'Turno: ' + info.event.extendedProps.turno + '\\n' +
+                            'Horario: ' + info.event.extendedProps.hora_inicio + ' - ' + info.event.extendedProps.hora_fin
+                        );
+                    }}
+                }});
+                calendar.render();
             }});
-            calendar.render();
-        }});
-    </script>
-</body>
-</html>
-"""
+        </script>
+    </body>
+    </html>
+    """
     
-    # Mostrar el calendario HTML
+    # Mostrar el calendario HTML - ESTA LÍNEA DEBE ESTAR A ESTE NIVEL DE INDENTACIÓN
     st.components.v1.html(html_code, height=650)
     
     # Estadísticas (adaptadas por rol)
@@ -947,8 +942,8 @@ html_code = f"""
             col1.metric("Tus turnos", len(eventos))
             col2.metric("Días trabajados", len(set([e["start"] for e in eventos])))
     
-    # Leyenda de colores
-    if eventos:
+    # Leyenda de colores (solo para admin)
+    if eventos and user.rol == "admin":
         st.markdown("### 🎨 Leyenda de colores por área")
         
         areas_en_eventos = set()
@@ -971,9 +966,9 @@ html_code = f"""
                         unsafe_allow_html=True
                     )
     
-    # Botón para ver tabla
-    with st.expander("📋 Ver vista de tabla detallada"):
-        if eventos:
+    # Botón para ver tabla (solo para admin)
+    if eventos and user.rol == "admin":
+        with st.expander("📋 Ver vista de tabla detallada"):
             data_tabla = []
             for e in eventos:
                 data_tabla.append({
