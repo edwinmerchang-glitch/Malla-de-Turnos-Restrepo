@@ -858,9 +858,16 @@ elif op == "Matriz turnos":
             try:
                 df_carga = pd.read_excel(archivo)
                 
-                # Mostrar vista previa
+                                # Mostrar vista previa completa
                 st.success("✅ Archivo cargado correctamente")
-                st.dataframe(df_carga.head(10), use_container_width=True)
+                
+                # Opción para mostrar todas o solo vista previa
+                mostrar_todas = st.checkbox("Mostrar todas las filas", value=False)
+                if mostrar_todas:
+                    st.dataframe(df_carga, use_container_width=True)
+                else:
+                    st.dataframe(df_carga.head(10), use_container_width=True)
+                    st.caption(f"Mostrando 10 de {len(df_carga)} filas. Marca la casilla para ver todas.")
                 
                 # Identificar columnas de días (las que son números)
                 columnas_dias = []
