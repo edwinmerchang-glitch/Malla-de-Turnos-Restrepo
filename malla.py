@@ -1491,11 +1491,14 @@ if "user" in st.session_state:
             empleados = session.query(Empleado).all()
             if empleados:
                 opciones = {f"{e.nombre} ({e.usuario})": e.id for e in empleados}
-                seleccion = st.selectbox("Seleccionar", list(opciones.keys()))
-                emp = session.get(Empleado, opciones[seleccion])
+                seleccion = st.selectbox("Seleccionar empleado", list(opciones.keys()))
+                emp_id = opciones[seleccion]
+                emp = session.get(Empleado, emp_id)
                 
                 if emp:
                     with st.form("editar"):
+                        st.markdown("#### Información básica")
+                        
                         nombre = st.text_input("Nombre", emp.nombre)
                         area = st.text_input("Área", emp.area or "")
                         cargo = st.text_input("Cargo", emp.cargo or "")
@@ -1506,7 +1509,14 @@ if "user" in st.session_state:
                         st.markdown("#### 🔐 Cambiar contraseña (opcional)")
                         nueva_pass = st.text_input("Nueva contraseña", type="password", placeholder="Dejar vacío para no cambiar")
                         
-                        if st.form_submit_button("💾 Guardar"):
+                        st.markdown("---")
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            guardar = st.form_submit_button("💾 Guardar cambios", use_container_width=True)
+                        with col2:
+                            eliminar = st.form_submit_button("🗑️ Eliminar empleado", use_container_width=True)
+                        
+                        if guardar:
                             cambios = False
                             
                             if emp.nombre != nombre:
@@ -1535,6 +1545,20 @@ if "user" in st.session_state:
                                 st.rerun()
                             else:
                                 st.info("ℹ️ No se realizaron cambios")
+                        
+                        if eliminar:
+                            if emp.id == user.id:
+                                st.error("❌ No puedes eliminarte a ti mismo")
+                            else:
+                                # Verificar si tiene asignaciones
+                                asignaciones = session.query(Asignacion).filter_by(empleado_id=emp.id).first()
+                                if asignaciones:
+                                    st.warning("⚠️ Este empleado tiene turnos asignados. No se puede eliminar.")
+                                else:
+                                    session.delete(emp)
+                                    session.commit()
+                                    st.success("✅ Empleado eliminado correctamente")
+                                    st.rerun()
 
     elif op == "Turnos":
         if user.rol != "admin":
