@@ -858,7 +858,7 @@ elif op == "Matriz turnos":
             try:
                 df_carga = pd.read_excel(archivo)
                 
-                                # Mostrar vista previa completa
+                # Mostrar vista previa
                 st.success("✅ Archivo cargado correctamente")
                 
                 # Opción para mostrar todas o solo vista previa
@@ -891,18 +891,47 @@ elif op == "Matriz turnos":
                     if st.button("📤 Procesar carga masiva", use_container_width=True, type="primary"):
                         count_total = 0
                         empleados_no_encontrados = []
+                        turnos_no_encontrados = []
                         
                         # Barra de progreso
                         progress_bar = st.progress(0)
+                        status_text = st.empty()
+                        
+                        # Obtener todos los turnos para búsqueda flexible
+                        todos_turnos = session.query(Turno).all()
                         
                         for idx, row in df_carga.iterrows():
                             # Actualizar progreso
-                            progress_bar.progress((idx + 1) / len(df_carga))
+                            progress = (idx + 1) / len(df_carga)
+                            progress_bar.progress(progress)
+                            status_text.text(f"Procesando fila {idx + 1} de {len(df_carga)}...")
                             
                             nombre_emp = str(row['Empleado']).strip()
                             
-                            # Buscar empleado
-                            empleado = session.query(Empleado).filter_by(nombre=nombre_emp).first()
+                            # Buscar empleado de manera flexible
+                            empleado = None
+                            
+                            # Búsqueda 1: Exacta ignorando mayúsculas
+                            empleado = session.query(Empleado).filter(
+                                Empleado.nombre.ilike(nombre_emp)
+                            ).first()
+                            
+                            # Búsqueda 2: Contiene el nombre
+                            if not empleado:
+                                empleado = session.query(Empleado).filter(
+                                    Empleado.nombre.ilike(f"%{nombre_emp}%")
+                                ).first()
+                            
+                            # Búsqueda 3: Por partes del nombre
+                            if not empleado:
+                                partes = nombre_emp.split()
+                                for parte in partes:
+                                    if len(parte) > 2:
+                                        empleado = session.query(Empleado).filter(
+                                            Empleado.nombre.ilike(f"%{parte}%")
+                                        ).first()
+                                        if empleado:
+                                            break
                             
                             if empleado:
                                 # Procesar cada día
@@ -922,9 +951,25 @@ elif op == "Matriz turnos":
                                                 session.delete(existe)
                                                 count_total += 1
                                         else:
-                                            # Buscar turno
+                                            # Buscar turno de manera flexible
                                             turno_nombre = str(valor_turno).strip()
+                                            turno = None
+                                            
+                                            # Intentar búsqueda exacta
                                             turno = session.query(Turno).filter_by(nombre=turno_nombre).first()
+                                            
+                                            # Si no encuentra, intentar como string sin espacios
+                                            if not turno:
+                                                turno = session.query(Turno).filter(
+                                                    Turno.nombre.ilike(f"%{turno_nombre}%")
+                                                ).first()
+                                            
+                                            # Si aún no encuentra, intentar convertir a string y comparar
+                                            if not turno:
+                                                for t in todos_turnos:
+                                                    if str(t.nombre).strip() == turno_nombre:
+                                                        turno = t
+                                                        break
                                             
                                             if turno:
                                                 existe = session.query(Asignacion).filter_by(
@@ -941,6 +986,9 @@ elif op == "Matriz turnos":
                                                         turno_id=turno.id
                                                     ))
                                                 count_total += 1
+                                            else:
+                                                if turno_nombre not in turnos_no_encontrados:
+                                                    turnos_no_encontrados.append(turno_nombre)
                             else:
                                 if nombre_emp not in empleados_no_encontrados:
                                     empleados_no_encontrados.append(nombre_emp)
@@ -952,22 +1000,31 @@ elif op == "Matriz turnos":
                         # Commit final
                         session.commit()
                         progress_bar.empty()
+                        status_text.empty()
                         
                         # Mostrar resultados
                         st.success(f"✅ Procesamiento completado: {count_total} turnos actualizados")
                         
                         if empleados_no_encontrados:
-                            st.warning(f"⚠️ No se encontraron estos empleados:")
+                            st.warning(f"⚠️ No se encontraron {len(empleados_no_encontrados)} empleados:")
                             for emp in empleados_no_encontrados[:10]:
                                 st.write(f"  - {emp}")
                         
-                        st.balloons()
+                        if turnos_no_encontrados:
+                            st.warning(f"⚠️ No se encontraron {len(turnos_no_encontrados)} turnos:")
+                            for turno in turnos_no_encontrados[:10]:
+                                st.write(f"  - '{turno}'")
+                        
+                        if count_total > 0:
+                            st.balloons()
                         
                         if st.button("🔄 Recargar matriz"):
                             st.rerun()
                             
             except Exception as e:
                 st.error(f"❌ Error al procesar el archivo: {str(e)}")
+                import traceback
+                st.code(traceback.format_exc())
     
     # Botón de exportar
     st.markdown("---")
