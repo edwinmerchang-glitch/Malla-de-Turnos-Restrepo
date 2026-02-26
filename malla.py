@@ -528,13 +528,13 @@ elif op == "Calendario":
         "Producción": "#4ECDC4",       # Turquesa
         "Calidad": "#45B7D1",          # Azul claro
         "Mantenimiento": "#96CEB4",    # Verde menta
-        "Logística": "#FFEAA7",         # Amarillo claro
-        "Ventas": "#D4A5A5",            # Rosa
-        "RRHH": "#9B59B6",              # Púrpura
-        "Sistemas": "#3498DB",          # Azul
-        "Pasillos": "#F39C12",          # Naranja
-        "Cajas": "#27AE60",             # Verde
-        "Equipos médicos": "#E74C3C",   # Rojo
+        "Logística": "#FFEAA7",        # Amarillo claro
+        "Ventas": "#D4A5A5",           # Rosa
+        "RRHH": "#9B59B6",             # Púrpura
+        "Sistemas": "#3498DB",         # Azul
+        "PASILLOS": "#F39C12",         # Naranja
+        "CAJAS": "#27AE60",            # Verde
+        "EQUIPOS MÉDICOS": "#E74C3C",  # Rojo
     }
     
     for a in asignaciones:
@@ -543,22 +543,13 @@ elif op == "Calendario":
             if area_filtro == "Todas las áreas" or (a.empleado.area == area_filtro):
                 # Determinar color basado en el área
                 area = a.empleado.area if a.empleado.area else "Sin área"
-                color = colores_area.get(area, "#3788d8")  # Color por defecto azul
+                color = colores_area.get(area.upper(), "#3788d8")  # Color por defecto azul
                 
                 # Formatear fecha
                 fecha_str = a.fecha.strftime("%Y-%m-%d")
                 
                 # Crear título del evento
                 titulo = f"{a.empleado.nombre} - {a.turno.nombre}"
-                
-                # Crear descripción detallada
-                descripcion = f"""
-                **Empleado:** {a.empleado.nombre}
-                **Área:** {a.empleado.area if a.empleado.area else 'No asignada'}
-                **Cargo:** {a.empleado.cargo if a.empleado.cargo else 'No asignado'}
-                **Turno:** {a.turno.nombre}
-                **Horario:** {a.turno.inicio} - {a.turno.fin}
-                """
                 
                 # Crear evento
                 evento = {
@@ -567,16 +558,15 @@ elif op == "Calendario":
                     "end": fecha_str,
                     "color": color,
                     "backgroundColor": color,
-                    "borderColor": "darken",
+                    "borderColor": "white",
                     "textColor": "white",
                     "extendedProps": {
                         "empleado": a.empleado.nombre,
-                        "area": a.empleado.area,
-                        "cargo": a.empleado.cargo,
+                        "area": a.empleado.area if a.empleado.area else "Sin área",
+                        "cargo": a.empleado.cargo if a.empleado.cargo else "No asignado",
                         "turno": a.turno.nombre,
                         "hora_inicio": a.turno.inicio,
-                        "hora_fin": a.turno.fin,
-                        "descripcion": descripcion
+                        "hora_fin": a.turno.fin
                     }
                 }
                 eventos.append(evento)
@@ -592,64 +582,31 @@ elif op == "Calendario":
         },
         "initialView": "dayGridMonth",
         "navLinks": True,
-        "height": "auto",
-        "contentHeight": 600,
+        "height": 600,
+        "contentHeight": 500,
         "slotMinTime": "06:00:00",
         "slotMaxTime": "22:00:00",
         "expandRows": True,
-        "stickyHeaderScroll": False,
         "nowIndicator": True,
-        "selectMirror": True,
         "eventDisplay": "block",
-        "displayEventTime": False,  # No mostrar hora en el evento (ya está en el turno)
-        "eventTimeFormat": {
-            "hour": "2-digit",
-            "minute": "2-digit",
-            "hour12": True
-        }
+        "displayEventTime": False,
     }
     
     # Mostrar calendario
+    st.markdown("### 📅 Vista de calendario")
+    
     if eventos:
-        calendar_widget = calendar(
+        # Crear el calendario
+        calendar_component = calendar(
             events=eventos,
             options=calendar_options,
-            custom_css="""
-                .fc-event {
-                    cursor: pointer;
-                    border-radius: 4px;
-                    margin: 2px 0;
-                    padding: 2px 4px;
-                    font-size: 0.85em;
-                    border: none !important;
-                }
-                .fc-event:hover {
-                    opacity: 0.9;
-                    transform: scale(1.02);
-                    transition: all 0.2s;
-                }
-                .fc-day-today {
-                    background-color: rgba(52, 152, 219, 0.1) !important;
-                }
-                .fc-toolbar-title {
-                    font-size: 1.5em !important;
-                    font-weight: bold;
-                }
-                .fc-button-primary {
-                    background-color: #4F46E5 !important;
-                    border-color: #4F46E5 !important;
-                }
-                .fc-button-primary:hover {
-                    background-color: #6366F1 !important;
-                    border-color: #6366F1 !important;
-                }
-            """
+            key="calendario_turnos"  # Key única para el componente
         )
         
-        st.markdown("### 📅 Vista de calendario")
-        st.write(calendar_widget)
+        # Mostrar el calendario
+        st.write(calendar_component)
         
-        # Mostrar estadísticas
+        # Mostrar estadísticas debajo del calendario
         st.markdown("---")
         col1, col2, col3, col4 = st.columns(4)
         
@@ -676,48 +633,48 @@ elif op == "Calendario":
             st.rerun()
     
     # Leyenda de colores por área
-    st.markdown("### 🎨 Leyenda de colores por área")
-    
-    # Obtener áreas únicas de los eventos
-    areas_en_eventos = set()
-    for e in eventos:
-        area = e["extendedProps"]["area"]
-        if area and area != "No asignada":
-            areas_en_eventos.add(area)
-    
-    if areas_en_eventos:
-        cols = st.columns(4)
-        for i, area in enumerate(sorted(areas_en_eventos)):
-            color = colores_area.get(area, "#3788d8")
-            with cols[i % 4]:
-                st.markdown(
-                    f"""
-                    <div style="display: flex; align-items: center; margin: 5px 0;">
-                        <div style="width: 20px; height: 20px; background-color: {color}; border-radius: 4px; margin-right: 8px;"></div>
-                        <span>{area}</span>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
-    else:
-        st.info("No hay áreas con turnos asignados")
-    
-    # Botón para volver a la tabla (opcional)
-    with st.expander("📋 Ver vista de tabla"):
-        # Mostrar tabla tradicional
-        data_tabla = []
-        for e in eventos:
-            data_tabla.append({
-                "Fecha": e["start"],
-                "Empleado": e["extendedProps"]["empleado"],
-                "Área": e["extendedProps"]["area"],
-                "Turno": e["extendedProps"]["turno"],
-                "Horario": f"{e['extendedProps']['hora_inicio']} - {e['extendedProps']['hora_fin']}"
-            })
+    if eventos:
+        st.markdown("### 🎨 Leyenda de colores por área")
         
-        if data_tabla:
-            df_tabla = pd.DataFrame(data_tabla)
-            st.dataframe(df_tabla, use_container_width=True)
+        # Obtener áreas únicas de los eventos
+        areas_en_eventos = set()
+        for e in eventos:
+            area = e["extendedProps"]["area"]
+            if area and area != "Sin área":
+                areas_en_eventos.add(area)
+        
+        if areas_en_eventos:
+            # Crear columnas para la leyenda
+            cols = st.columns(4)
+            for i, area in enumerate(sorted(areas_en_eventos)):
+                color = colores_area.get(area.upper(), "#3788d8")
+                with cols[i % 4]:
+                    st.markdown(
+                        f"""
+                        <div style="display: flex; align-items: center; margin: 5px 0;">
+                            <div style="width: 20px; height: 20px; background-color: {color}; border-radius: 4px; margin-right: 8px;"></div>
+                            <span style="font-size: 0.9em;">{area}</span>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+    
+    # Botón para ver tabla (opcional)
+    with st.expander("📋 Ver vista de tabla detallada"):
+        if eventos:
+            data_tabla = []
+            for e in eventos:
+                data_tabla.append({
+                    "Fecha": e["start"],
+                    "Empleado": e["extendedProps"]["empleado"],
+                    "Área": e["extendedProps"]["area"],
+                    "Turno": e["extendedProps"]["turno"],
+                    "Horario": f"{e['extendedProps']['hora_inicio']} - {e['extendedProps']['hora_fin']}"
+                })
+            
+            if data_tabla:
+                df_tabla = pd.DataFrame(data_tabla)
+                st.dataframe(df_tabla, use_container_width=True)
 
 # ========== REPORTES ==========
 elif op == "Reportes":
