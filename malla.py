@@ -219,7 +219,7 @@ if op == "Calendario":
         text-transform: uppercase;
         letter-spacing: 1px;
     }
-    .evento-card {
+        .evento-card {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
         padding: 0.8rem;
@@ -228,6 +228,11 @@ if op == "Calendario":
         font-size: 0.9rem;
         box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         transition: all 0.3s;
+        text-align: center;  /* <--- CENTRAR TEXTO */
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
     }
     .evento-card:hover {
         transform: scale(1.02);
@@ -237,6 +242,7 @@ if op == "Calendario":
         font-size: 0.8rem;
         opacity: 0.9;
         margin-top: 0.2rem;
+        text-align: center;  /* <--- CENTRAR HORA */
     }
     .dia-card {
         background: white;
@@ -246,6 +252,10 @@ if op == "Calendario":
         box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         border: 1px solid #f0f0f0;
         transition: all 0.3s;
+        display: flex;
+        flex-direction: column;
+        align-items: center;  /* <--- CENTRAR CONTENIDO */
+        text-align: center;
     }
     .dia-card:hover {
         box-shadow: 0 5px 15px rgba(0,0,0,0.1);
@@ -258,11 +268,23 @@ if op == "Calendario":
         margin-bottom: 0.5rem;
         border-bottom: 2px solid #667eea;
         padding-bottom: 0.3rem;
+        width: 100%;  /* <--- ANCHO COMPLETO */
+        text-align: center;
     }
     .dia-semana {
         color: #666;
         font-size: 0.9rem;
         margin-bottom: 0.5rem;
+        text-align: center;
+    }
+    .descanso-texto {
+        color: #28a745;
+        font-weight: bold;
+        text-align: center;
+        padding: 10px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        width: 100%;
     }
     </style>
     """, unsafe_allow_html=True)
