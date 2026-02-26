@@ -585,7 +585,7 @@ if st.button("🚪 Cerrar sesión", use_container_width=True, key="btn_logout"):
 # Footer
 st.markdown("""
 <div class="footer">
-    © 2026 Malla de Turnos<br>
+    © Creado por Edwin Merchán 2026 <br>
     Versión 2.0
 </div>
 """, unsafe_allow_html=True)
@@ -2388,46 +2388,6 @@ elif op == "Backup":
                     os.remove(nombre_archivo)
                 else:
                     st.warning("⚠️ Ingresa un nombre para el archivo")
-        
-        st.markdown("---")
-        st.markdown("### 📁 Backups recientes")
-        
-        # Mostrar backups de la carpeta local
-        if os.path.exists("data/backups"):
-            backups = os.listdir("data/backups")
-            if backups:
-                # Ordenar por fecha (más reciente primero)
-                backups.sort(reverse=True)
-                
-                for i, b in enumerate(backups[:5]):
-                    ruta_completa = f"data/backups/{b}"
-                    tamaño = os.path.getsize(ruta_completa)
-                    
-                    # Formatear tamaño
-                    if tamaño < 1024:
-                        tamaño_str = f"{tamaño} B"
-                    elif tamaño < 1024 * 1024:
-                        tamaño_str = f"{tamaño/1024:.1f} KB"
-                    else:
-                        tamaño_str = f"{tamaño/(1024*1024):.1f} MB"
-                    
-                    fecha_mod = os.path.getmtime(ruta_completa)
-                    fecha_str = datetime.fromtimestamp(fecha_mod).strftime("%d/%m/%Y %H:%M")
-                    
-                    col1, col2 = st.columns([3, 1])
-                    with col1:
-                        st.text(f"{i+1}. {b} ({tamaño_str}) - {fecha_str}")
-                    with col2:
-                        with open(ruta_completa, "rb") as f:
-                            st.download_button(
-                                "📥",
-                                f,
-                                b,
-                                "application/octet-stream",
-                                key=f"download_{b}"
-                            )
-            else:
-                st.info("No hay backups en la carpeta local")
     
     with tab2:
         st.markdown("### Importar base de datos")
@@ -2456,6 +2416,9 @@ elif op == "Backup":
                 
                 if st.button("♻️ Restaurar backup", use_container_width=True, type="primary", disabled=not confirmar):
                     try:
+                        # Crear carpeta de backups si no existe
+                        os.makedirs("data/backups", exist_ok=True)
+                        
                         # Crear backup de seguridad antes de restaurar
                         fecha_ahora = datetime.now().strftime("%Y%m%d_%H%M%S")
                         backup_seguridad = f"data/backups/ANTES_RESTAURAR_{fecha_ahora}.db"
@@ -2463,8 +2426,10 @@ elif op == "Backup":
                         if os.path.exists("data.db"):
                             shutil.copy("data.db", backup_seguridad)
                             st.info(f"✅ Backup de seguridad creado: {os.path.basename(backup_seguridad)}")
+                        else:
+                            st.warning("⚠️ No se encontró base de datos actual para respaldar")
                         
-                        # Guardar el archivo subido
+                        # Guardar el archivo subido como nueva base de datos
                         with open("data.db", "wb") as f:
                             f.write(archivo_subido.getbuffer())
                         
@@ -2475,3 +2440,5 @@ elif op == "Backup":
                         
                     except Exception as e:
                         st.error(f"❌ Error al restaurar: {str(e)}")
+                        import traceback
+                        st.code(traceback.format_exc())
