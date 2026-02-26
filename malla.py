@@ -160,7 +160,7 @@ op = st.session_state.pagina_actual
 # ========== PÁGINAS PARA EMPLEADOS ==========
 
 # ---------- CALENDARIO MODERNO ----------
-elif op == "Calendario":
+if op == "Calendario":
     if user.rol not in ["empleado", "supervisor"]:
         st.error("❌ No tienes permiso para acceder a esta sección")
         st.stop()
