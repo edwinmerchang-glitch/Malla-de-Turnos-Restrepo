@@ -5,11 +5,27 @@ from database import Session, Empleado, Turno, Asignacion
 from scheduler import generar_malla_inteligente
 from backup import backup_sqlite
 import os
-import shutil  # IMPORTANTE: para copiar archivos
+import shutil
 from calendar import monthrange
-from datetime import datetime  # Agrega esto junto con los otros imports
 
 st.set_page_config("Malla de Turnos", layout="wide")
+
+# ===== OCULTAR EL SIDEBAR DE STREAMLIT =====
+st.markdown("""
+<style>
+    [data-testid="stSidebar"] {
+        display: none;
+    }
+    
+    /* Opcional: ajustar el padding del contenido principal */
+    .main .block-container {
+        padding-top: 1rem;
+        padding-left: 2rem;
+        padding-right: 2rem;
+    }
+</style>
+""", unsafe_allow_html=True)
+# ===== FIN DE OCULTAR SIDEBAR =====
 
 # Función para limpiar turnos de un empleado
 def limpiar_turnos_empleado(empleado_id, fecha_inicio, fecha_fin, tipo_limpieza="todos"):
