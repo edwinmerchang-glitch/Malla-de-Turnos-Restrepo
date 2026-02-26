@@ -56,7 +56,9 @@ with col1:
         cambiar_pagina("Empleados")
     if st.button("⏰ Turnos", use_container_width=True):
         cambiar_pagina("Turnos")
-    if st.button("✏️ Asignar manual", use_container_width=True):  # NUEVO BOTÓN
+    if st.button("📊 Matriz turnos", use_container_width=True):  # NUEVO
+        cambiar_pagina("Matriz turnos")
+    if st.button("✏️ Asignar manual", use_container_width=True):
         cambiar_pagina("Asignacion manual")
 
 with col2:
@@ -431,6 +433,237 @@ elif op == "Asignacion manual":
                             st.rerun()
         else:
             st.info("ℹ️ No hay asignaciones para eliminar")
+
+# ========== MATRIZ DE TURNOS (VISTA HORIZONTAL) ==========
+elif op == "Matriz turnos":
+    st.subheader("📊 Matriz de turnos - Vista horizontal")
+    
+    # Solo administradores pueden acceder
+    if user.rol != "admin":
+        st.error("❌ Solo los administradores pueden acceder a esta vista")
+        st.stop()
+    
+    # Selección de mes y año
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
+                 "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+        mes = st.selectbox("Mes", meses, index=1)  # Febrero por defecto
+    with col2:
+        año = st.number_input("Año", min_value=2024, max_value=2030, value=2026)
+    with col3:
+        areas = list(set([e.area for e in session.query(Empleado).all() if e.area]))
+        areas.sort()
+        area_filtro = st.selectbox("Filtrar por área", ["Todas"] + areas)
+    
+    # Calcular días del mes
+    mes_num = meses.index(mes) + 1
+    from calendar import monthrange
+    dias_mes = monthrange(año, mes_num)[1]
+    
+    # Obtener empleados
+    empleados = session.query(Empleado).all()
+    if area_filtro != "Todas":
+        empleados = [e for e in empleados if e.area == area_filtro]
+    
+    # Obtener turnos disponibles
+    turnos = session.query(Turno).all()
+    turnos_dict = {t.id: t.nombre for t in turnos}
+    
+    # Obtener asignaciones existentes
+    fecha_inicio = date(año, mes_num, 1)
+    fecha_fin = date(año, mes_num, dias_mes)
+    
+    asignaciones = session.query(Asignacion).filter(
+        Asignacion.fecha.between(fecha_inicio, fecha_fin)
+    ).all()
+    
+    # Crear matriz de asignaciones
+    matriz = {}
+    for a in asignaciones:
+        if a.empleado_id not in matriz:
+            matriz[a.empleado_id] = {}
+        dia = a.fecha.day
+        matriz[a.empleado_id][dia] = a.turno_id
+    
+    # Tabs para diferentes vistas
+    tab1, tab2, tab3 = st.tabs(["📋 Vista matriz", "✏️ Edición rápida", "📥 Carga masiva"])
+    
+    with tab1:  # VISTA MATRIZ
+        st.markdown("### Vista de matriz de turnos")
+        
+        # Preparar datos
+        data = []
+        for emp in empleados:
+            fila = {
+                "Empleado": emp.nombre,
+                "Área": emp.area if emp.area else "N/A",
+                "Cargo": emp.cargo if emp.cargo else "N/A",
+            }
+            for dia in range(1, dias_mes + 1):
+                turno_id = matriz.get(emp.id, {}).get(dia)
+                if turno_id:
+                    fila[f"D{dia}"] = turnos_dict.get(turno_id, "?")
+                else:
+                    fila[f"D{dia}"] = "—"
+            data.append(fila)
+        
+        df = pd.DataFrame(data)
+        st.dataframe(df, use_container_width=True, height=600)
+        
+        # Leyenda de turnos
+        with st.expander("📖 Leyenda de turnos"):
+            cols = st.columns(4)
+            for i, turno in enumerate(turnos):
+                with cols[i % 4]:
+                    st.markdown(f"**{turno.nombre}**: {turno.inicio} - {turno.fin}")
+    
+    with tab2:  # EDICIÓN RÁPIDA
+        st.markdown("### Edición rápida de turnos")
+        st.info("Selecciona un empleado y rango de fechas para asignar turnos masivamente")
+        
+        if not empleados:
+            st.warning("No hay empleados disponibles")
+        else:
+            col1, col2 = st.columns(2)
+            with col1:
+                empleado_sel = st.selectbox("Empleado", [e.nombre for e in empleados])
+                empleado = next(e for e in empleados if e.nombre == empleado_sel)
+            
+            with col2:
+                turno_opciones = ["Descanso"] + [t.nombre for t in turnos]
+                turno_sel = st.selectbox("Turno a asignar", turno_opciones)
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                dia_inicio = st.number_input("Día inicio", min_value=1, max_value=dias_mes, value=1)
+            with col2:
+                dia_fin = st.number_input("Día fin", min_value=dia_inicio, max_value=dias_mes, value=dia_inicio)
+            
+            if st.button("🔄 Aplicar asignación masiva", use_container_width=True):
+                # Mapear nombre de turno a ID
+                turno_id = None
+                if turno_sel != "Descanso":
+                    turno = session.query(Turno).filter_by(nombre=turno_sel).first()
+                    if turno:
+                        turno_id = turno.id
+                
+                count = 0
+                for dia in range(dia_inicio, dia_fin + 1):
+                    fecha = date(año, mes_num, dia)
+                    
+                    # Buscar si ya existe asignación
+                    existe = session.query(Asignacion).filter_by(
+                        empleado_id=empleado.id,
+                        fecha=fecha
+                    ).first()
+                    
+                    if turno_id is None:  # Descanso - eliminar asignación
+                        if existe:
+                            session.delete(existe)
+                            count += 1
+                    else:  # Asignar turno
+                        if existe:
+                            existe.turno_id = turno_id
+                        else:
+                            nueva = Asignacion(
+                                empleado_id=empleado.id,
+                                fecha=fecha,
+                                turno_id=turno_id
+                            )
+                            session.add(nueva)
+                        count += 1
+                
+                session.commit()
+                st.success(f"✅ {count} turnos actualizados correctamente")
+                st.rerun()
+    
+    with tab3:  # CARGA MASIVA
+        st.markdown("### Carga masiva desde Excel")
+        st.markdown("""
+        **Formato del archivo Excel:**
+        - Columna A: Empleado
+        - Columna B: Área  
+        - Columnas C en adelante: Días del mes (D1, D2, D3...)
+        
+        Los valores deben ser los nombres de los turnos (ej: 151, 155, 70) o dejar vacío para descanso.
+        """)
+        
+        archivo = st.file_uploader("Seleccionar archivo Excel", type=['xlsx', 'xls'])
+        
+        if archivo:
+            try:
+                df_carga = pd.read_excel(archivo)
+                st.dataframe(df_carga.head())
+                
+                if st.button("📤 Procesar carga masiva"):
+                    count = 0
+                    for _, row in df_carga.iterrows():
+                        nombre_emp = row['Empleado']
+                        empleado = session.query(Empleado).filter_by(nombre=nombre_emp).first()
+                        
+                        if empleado:
+                            for col in df_carga.columns:
+                                if col.startswith('D') and col[1:].isdigit():
+                                    dia = int(col[1:])
+                                    if 1 <= dia <= dias_mes:
+                                        turno_nombre = row[col]
+                                        fecha = date(año, mes_num, dia)
+                                        
+                                        if pd.notna(turno_nombre) and str(turno_nombre).strip():
+                                            turno = session.query(Turno).filter_by(nombre=str(turno_nombre)).first()
+                                            if turno:
+                                                existe = session.query(Asignacion).filter_by(
+                                                    empleado_id=empleado.id,
+                                                    fecha=fecha
+                                                ).first()
+                                                
+                                                if existe:
+                                                    existe.turno_id = turno.id
+                                                else:
+                                                    nueva = Asignacion(
+                                                        empleado_id=empleado.id,
+                                                        fecha=fecha,
+                                                        turno_id=turno.id
+                                                    )
+                                                    session.add(nueva)
+                                                count += 1
+                    
+                    session.commit()
+                    st.success(f"✅ {count} turnos cargados/actualizados")
+                    st.rerun()
+                    
+            except Exception as e:
+                st.error(f"Error al procesar archivo: {str(e)}")
+    
+    # Botón de exportar
+    st.markdown("---")
+    if st.button("📥 Exportar matriz actual a Excel"):
+        # Preparar datos para exportar
+        data_export = []
+        for emp in empleados:
+            fila = {
+                "Empleado": emp.nombre,
+                "Área": emp.area if emp.area else "N/A",
+                "Cargo": emp.cargo if emp.cargo else "N/A",
+            }
+            for dia in range(1, dias_mes + 1):
+                turno_id = matriz.get(emp.id, {}).get(dia)
+                fila[f"D{dia}"] = turnos_dict.get(turno_id, "") if turno_id else ""
+            data_export.append(fila)
+        
+        df_export = pd.DataFrame(data_export)
+        output = pd.ExcelWriter('matriz_turnos.xlsx', engine='xlsxwriter')
+        df_export.to_excel(output, index=False, sheet_name=f'Turnos_{mes}_{año}')
+        output.close()
+        
+        with open('matriz_turnos.xlsx', 'rb') as f:
+            st.download_button(
+                "📥 Confirmar descarga",
+                f,
+                f"matriz_turnos_{mes}_{año}.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
 
 # ========== GENERAR MALLA ==========
 elif op == "Generar malla":
