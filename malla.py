@@ -51,16 +51,16 @@ st.sidebar.markdown("### 📋 Menú principal")
 
 col1, col2 = st.sidebar.columns(2)
 
-# Botones visibles para TODOS los usuarios
-with col1:
-    if st.button("📅 Calendario", use_container_width=True):
-        cambiar_pagina("Calendario")
-    if st.button("👤 Mi perfil", use_container_width=True):  # NUEVO
-        cambiar_pagina("Mi perfil")
-
-with col2:
-    if st.button("📊 Mis turnos", use_container_width=True):  # NUEVO
-        cambiar_pagina("Mis turnos")
+# Botones visibles para EMPLEADOS
+if user.rol == "empleado":
+    with col1:
+        if st.button("📅 Calendario", use_container_width=True):
+            cambiar_pagina("Calendario")
+        if st.button("👤 Mi perfil", use_container_width=True):
+            cambiar_pagina("Mi perfil")
+    with col2:
+        if st.button("📊 Mis turnos", use_container_width=True):
+            cambiar_pagina("Mis turnos")
 
 # Botones solo para ADMINISTRADORES
 if user.rol == "admin":
@@ -758,111 +758,54 @@ elif op == "Generar malla":
                 backup_sqlite()
                 st.success(f"✅ Malla generada para {len(asignaciones)} turnos")
 
-# ========== CALENDARIO CON FULLCALENDAR (HTML/JS) ==========
+# ========== CALENDARIO (SOLO PARA EMPLEADOS) ==========
 elif op == "Calendario":
-    st.subheader("📆 Calendario de turnos")
+    # Verificar que sea empleado
+    if user.rol != "empleado":
+        st.error("❌ El calendario solo está disponible para empleados")
+        st.stop()
     
-    # Si es empleado, solo ve sus turnos
-    if user.rol == "empleado":
-        st.info(f"👤 Mostrando solo tus turnos: **{user.nombre}**")
-        
-        # Filtros básicos para empleados
-        col1, col2 = st.columns(2)
-        with col1:
-            meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
-                     "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
-            año = st.number_input("Año", min_value=2024, max_value=2030, value=2026, key="cal_ano_emp")
-        with col2:
-            mes = st.selectbox("Mes", meses, index=1, key="cal_mes_emp")
-        
-        # Calcular fechas del mes
-        mes_num = meses.index(mes) + 1
-        from calendar import monthrange
-        dias_mes = monthrange(año, mes_num)[1]
-        fecha_inicio_mes = date(año, mes_num, 1)
-        fecha_fin_mes = date(año, mes_num, dias_mes)
-        
-        # Obtener SOLO las asignaciones del usuario actual
-        asignaciones = session.query(Asignacion).filter(
-            Asignacion.empleado_id == user.id,
-            Asignacion.fecha.between(fecha_inicio_mes, fecha_fin_mes)
-        ).all()
-        
-    else:  # ADMIN - ve todos los turnos
-        # Obtener todas las áreas únicas
-        empleados = session.query(Empleado).all()
-        areas = list(set([e.area for e in empleados if e.area]))
-        areas.sort()
-        areas_opciones = ["Todas las áreas"] + areas
-        
-        # Filtros para admin
-        col1, col2 = st.columns(2)
-        with col1:
-            if not areas:
-                st.info("ℹ️ No hay áreas registradas")
-                area_filtro = "Todas las áreas"
-            else:
-                area_filtro = st.selectbox("Filtrar por área", areas_opciones, key="cal_area_admin")
-        
-        with col2:
-            meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
-                     "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
-            año = st.number_input("Año", min_value=2024, max_value=2030, value=2026, key="cal_ano_admin")
-            mes = st.selectbox("Mes", meses, index=1, key="cal_mes_admin")
-        
-        # Calcular fechas del mes
-        mes_num = meses.index(mes) + 1
-        from calendar import monthrange
-        dias_mes = monthrange(año, mes_num)[1]
-        fecha_inicio_mes = date(año, mes_num, 1)
-        fecha_fin_mes = date(año, mes_num, dias_mes)
-        
-        # Obtener TODAS las asignaciones del mes
-        asignaciones = session.query(Asignacion).filter(
-            Asignacion.fecha.between(fecha_inicio_mes, fecha_fin_mes)
-        ).all()
+    st.subheader("📆 Mi calendario de turnos")
+    st.info(f"👤 Mostrando tus turnos: **{user.nombre}**")
+    
+    # Filtros básicos
+    col1, col2 = st.columns(2)
+    with col1:
+        meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
+                 "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+        año = st.number_input("Año", min_value=2024, max_value=2030, value=2026, key="cal_ano")
+    with col2:
+        mes = st.selectbox("Mes", meses, index=1, key="cal_mes")
+    
+    # Calcular fechas del mes
+    mes_num = meses.index(mes) + 1
+    from calendar import monthrange
+    dias_mes = monthrange(año, mes_num)[1]
+    fecha_inicio_mes = date(año, mes_num, 1)
+    fecha_fin_mes = date(año, mes_num, dias_mes)
+    
+    # Obtener SOLO las asignaciones del usuario actual
+    asignaciones = session.query(Asignacion).filter(
+        Asignacion.empleado_id == user.id,
+        Asignacion.fecha.between(fecha_inicio_mes, fecha_fin_mes)
+    ).all()
+    
+    if not asignaciones:
+        st.info(f"ℹ️ No tienes turnos asignados en {mes} {año}")
+        st.stop()
     
     # Preparar eventos para el calendario
     eventos = []
-    colores_area = {
-        "Administración": "#FF6B6B",
-        "Producción": "#4ECDC4",
-        "Calidad": "#45B7D1",
-        "Mantenimiento": "#96CEB4",
-        "Logística": "#FFEAA7",
-        "Ventas": "#D4A5A5",
-        "RRHH": "#9B59B6",
-        "Sistemas": "#3498DB",
-        "PASILLOS": "#F39C12",
-        "CAJAS": "#27AE60",
-        "EQUIPOS MÉDICOS": "#E74C3C",
-    }
-    
     for a in asignaciones:
-        if a.empleado and a.turno:
-            # Para admin: aplicar filtro de área
-            if user.rol == "admin" and 'area_filtro' in locals() and area_filtro != "Todas las áreas":
-                if a.empleado.area != area_filtro:
-                    continue
-            
-            area = a.empleado.area if a.empleado.area else "Sin área"
-            color = colores_area.get(area.upper(), "#3788d8")
-            
+        if a.turno:
             fecha_str = a.fecha.strftime("%Y-%m-%d")
-            
-            # Para empleado: mostrar solo "Mi turno" para privacidad
-            if user.rol == "empleado":
-                titulo = f"Mi turno: {a.turno.nombre}"
-            else:
-                titulo = f"{a.empleado.nombre} - {a.turno.nombre}"
+            titulo = f"{a.turno.nombre}"
             
             eventos.append({
                 "title": titulo,
                 "start": fecha_str,
-                "color": color,
+                "color": "#4F46E5",  # Color único para todos los eventos del empleado
                 "textColor": "white",
-                "empleado": a.empleado.nombre,
-                "area": area,
                 "turno": a.turno.nombre,
                 "hora_inicio": a.turno.inicio,
                 "hora_fin": a.turno.fin
@@ -885,7 +828,7 @@ elif op == "Calendario":
             #calendar {{ max-width: 1100px; margin: 20px auto; padding: 0 10px; }}
             .fc-event {{ cursor: pointer; border-radius: 4px; padding: 2px 4px; font-size: 0.85em; }}
             .fc-event:hover {{ opacity: 0.9; }}
-            .fc-day-today {{ background-color: rgba(52, 152, 219, 0.1) !important; }}
+            .fc-day-today {{ background-color: rgba(79, 70, 229, 0.1) !important; }}
         </style>
     </head>
     <body>
@@ -911,8 +854,6 @@ elif op == "Calendario":
                     events: {eventos_json},
                     eventClick: function(info) {{
                         alert(
-                            'Empleado: ' + info.event.extendedProps.empleado + '\\n' +
-                            'Área: ' + info.event.extendedProps.area + '\\n' +
                             'Turno: ' + info.event.extendedProps.turno + '\\n' +
                             'Horario: ' + info.event.extendedProps.hora_inicio + ' - ' + info.event.extendedProps.hora_fin
                         );
@@ -925,63 +866,40 @@ elif op == "Calendario":
     </html>
     """
     
-    # Mostrar el calendario HTML - ESTA LÍNEA DEBE ESTAR A ESTE NIVEL DE INDENTACIÓN
+    # Mostrar el calendario
     st.components.v1.html(html_code, height=650)
     
-    # Estadísticas (adaptadas por rol)
+    # Estadísticas personales
     if eventos:
         st.markdown("---")
-        if user.rol == "admin":
-            col1, col2, col3, col4 = st.columns(4)
-            col1.metric("Total turnos", len(eventos))
-            col2.metric("Empleados", len(set([e["empleado"] for e in eventos])))
-            col3.metric("Áreas", len(set([e["area"] for e in eventos if e["area"]])))
-            col4.metric("Turnos", len(set([e["turno"] for e in eventos])))
-        else:
-            col1, col2 = st.columns(2)
-            col1.metric("Tus turnos", len(eventos))
-            col2.metric("Días trabajados", len(set([e["start"] for e in eventos])))
-    
-    # Leyenda de colores (solo para admin)
-    if eventos and user.rol == "admin":
-        st.markdown("### 🎨 Leyenda de colores por área")
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Tus turnos", len(eventos))
+        col2.metric("Días trabajados", len(set([e["start"] for e in eventos])))
         
-        areas_en_eventos = set()
+        # Turnos por tipo
+        tipos_turno = {}
         for e in eventos:
-            if e["area"] and e["area"] != "Sin área":
-                areas_en_eventos.add(e["area"])
+            turno = e["turno"]
+            tipos_turno[turno] = tipos_turno.get(turno, 0) + 1
         
-        if areas_en_eventos:
-            cols = st.columns(4)
-            for i, area in enumerate(sorted(areas_en_eventos)):
-                color = colores_area.get(area.upper(), "#3788d8")
-                with cols[i % 4]:
-                    st.markdown(
-                        f"""
-                        <div style="display: flex; align-items: center; margin: 5px 0;">
-                            <div style="width: 20px; height: 20px; background-color: {color}; border-radius: 4px; margin-right: 8px;"></div>
-                            <span style="font-size: 0.9em;">{area}</span>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
+        if tipos_turno:
+            st.subheader("📊 Distribución de turnos")
+            df_tipos = pd.DataFrame(list(tipos_turno.items()), columns=["Turno", "Cantidad"])
+            st.bar_chart(df_tipos.set_index("Turno"))
     
-    # Botón para ver tabla (solo para admin)
-    if eventos and user.rol == "admin":
-        with st.expander("📋 Ver vista de tabla detallada"):
-            data_tabla = []
-            for e in eventos:
-                data_tabla.append({
-                    "Fecha": e["start"],
-                    "Empleado": e["empleado"],
-                    "Área": e["area"],
-                    "Turno": e["turno"],
-                    "Horario": f"{e['hora_inicio']} - {e['hora_fin']}"
-                })
-            
-            if data_tabla:
-                df_tabla = pd.DataFrame(data_tabla)
-                st.dataframe(df_tabla, use_container_width=True)
+    # Vista de tabla detallada
+    with st.expander("📋 Ver mis turnos en tabla"):
+        data_tabla = []
+        for e in eventos:
+            data_tabla.append({
+                "Fecha": e["start"],
+                "Turno": e["turno"],
+                "Horario": f"{e['hora_inicio']} - {e['hora_fin']}"
+            })
+        
+        if data_tabla:
+            df_tabla = pd.DataFrame(data_tabla)
+            st.dataframe(df_tabla, use_container_width=True)
 
 # ========== MI PERFIL (SOLO EMPLEADOS) ==========
 elif op == "Mi perfil":
