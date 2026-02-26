@@ -474,16 +474,9 @@ elif op == "Generar malla":
                 backup_sqlite()
                 st.success(f"✅ Malla generada para {len(asignaciones)} turnos")
 
-# ========== CALENDARIO TIPO GOOGLE CALENDAR ==========
+# ========== CALENDARIO CON FULLCALENDAR (HTML/JS) ==========
 elif op == "Calendario":
     st.subheader("📆 Calendario de turnos")
-    
-    # Intentar importar streamlit-calendar
-    try:
-        from streamlit_calendar import calendar
-    except ImportError:
-        st.error("❌ Necesitas instalar streamlit-calendar: pip install streamlit-calendar")
-        st.stop()
     
     # Obtener todas las áreas únicas
     empleados = session.query(Empleado).all()
@@ -491,21 +484,20 @@ elif op == "Calendario":
     areas.sort()
     areas_opciones = ["Todas las áreas"] + areas
     
-    # Filtros en el sidebar del calendario
-    with st.sidebar:
-        st.markdown("### 🎯 Filtros del calendario")
-        
+    # Filtros
+    col1, col2 = st.columns(2)
+    with col1:
         if not areas:
             st.info("ℹ️ No hay áreas registradas")
             area_filtro = "Todas las áreas"
         else:
-            area_filtro = st.selectbox("Filtrar por área", areas_opciones, key="cal_area")
-        
-        # Selector de mes
+            area_filtro = st.selectbox("Filtrar por área", areas_opciones)
+    
+    with col2:
         meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
                  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
-        año = st.number_input("Año", min_value=2024, max_value=2030, value=2026, key="cal_año")
-        mes = st.selectbox("Mes", meses, index=1, key="cal_mes")  # Febrero por defecto
+        año = st.number_input("Año", min_value=2024, max_value=2030, value=2026)
+        mes = st.selectbox("Mes", meses, index=1)
     
     # Calcular fechas del mes
     mes_num = meses.index(mes) + 1
@@ -521,130 +513,144 @@ elif op == "Calendario":
     
     # Preparar eventos para el calendario
     eventos = []
-    
-    # Colores para diferentes áreas
     colores_area = {
-        "Administración": "#FF6B6B",  # Rojo claro
-        "Producción": "#4ECDC4",       # Turquesa
-        "Calidad": "#45B7D1",          # Azul claro
-        "Mantenimiento": "#96CEB4",    # Verde menta
-        "Logística": "#FFEAA7",        # Amarillo claro
-        "Ventas": "#D4A5A5",           # Rosa
-        "RRHH": "#9B59B6",             # Púrpura
-        "Sistemas": "#3498DB",         # Azul
-        "PASILLOS": "#F39C12",         # Naranja
-        "CAJAS": "#27AE60",            # Verde
-        "EQUIPOS MÉDICOS": "#E74C3C",  # Rojo
+        "Administración": "#FF6B6B",
+        "Producción": "#4ECDC4",
+        "Calidad": "#45B7D1",
+        "Mantenimiento": "#96CEB4",
+        "Logística": "#FFEAA7",
+        "Ventas": "#D4A5A5",
+        "RRHH": "#9B59B6",
+        "Sistemas": "#3498DB",
+        "PASILLOS": "#F39C12",
+        "CAJAS": "#27AE60",
+        "EQUIPOS MÉDICOS": "#E74C3C",
     }
     
     for a in asignaciones:
         if a.empleado and a.turno:
-            # Aplicar filtro de área
             if area_filtro == "Todas las áreas" or (a.empleado.area == area_filtro):
-                # Determinar color basado en el área
                 area = a.empleado.area if a.empleado.area else "Sin área"
-                color = colores_area.get(area.upper(), "#3788d8")  # Color por defecto azul
+                color = colores_area.get(area.upper(), "#3788d8")
                 
-                # Formatear fecha
                 fecha_str = a.fecha.strftime("%Y-%m-%d")
-                
-                # Crear título del evento
                 titulo = f"{a.empleado.nombre} - {a.turno.nombre}"
                 
-                # Crear evento
-                evento = {
+                eventos.append({
                     "title": titulo,
                     "start": fecha_str,
-                    "end": fecha_str,
                     "color": color,
-                    "backgroundColor": color,
-                    "borderColor": "white",
                     "textColor": "white",
-                    "extendedProps": {
-                        "empleado": a.empleado.nombre,
-                        "area": a.empleado.area if a.empleado.area else "Sin área",
-                        "cargo": a.empleado.cargo if a.empleado.cargo else "No asignado",
-                        "turno": a.turno.nombre,
-                        "hora_inicio": a.turno.inicio,
-                        "hora_fin": a.turno.fin
-                    }
-                }
-                eventos.append(evento)
+                    "empleado": a.empleado.nombre,
+                    "area": area,
+                    "turno": a.turno.nombre,
+                    "hora_inicio": a.turno.inicio,
+                    "hora_fin": a.turno.fin
+                })
     
-    # Configuración del calendario
-    calendar_options = {
-        "editable": False,
-        "selectable": True,
-        "headerToolbar": {
-            "left": "today prev,next",
-            "center": "title",
-            "right": "dayGridMonth,timeGridWeek,timeGridDay"
-        },
-        "initialView": "dayGridMonth",
-        "navLinks": True,
-        "height": 600,
-        "contentHeight": 500,
-        "slotMinTime": "06:00:00",
-        "slotMaxTime": "22:00:00",
-        "expandRows": True,
-        "nowIndicator": True,
-        "eventDisplay": "block",
-        "displayEventTime": False,
-    }
+    # Crear HTML con FullCalendar
+    import json
     
-    # Mostrar calendario
-    st.markdown("### 📅 Vista de calendario")
+    eventos_json = json.dumps(eventos)
     
+    html_code = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
+        <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
+        <style>
+            body {{
+                margin: 0;
+                padding: 0;
+                font-family: Arial, Helvetica, sans-serif;
+            }}
+            #calendar {{
+                max-width: 1100px;
+                margin: 20px auto;
+                padding: 0 10px;
+            }}
+            .fc-event {{
+                cursor: pointer;
+                border-radius: 4px;
+                padding: 2px 4px;
+                font-size: 0.85em;
+            }}
+            .fc-event:hover {{
+                opacity: 0.9;
+            }}
+            .fc-day-today {{
+                background-color: rgba(52, 152, 219, 0.1) !important;
+            }}
+        </style>
+    </head>
+    <body>
+        <div id='calendar'></div>
+        
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {{
+                var calendarEl = document.getElementById('calendar');
+                var calendar = new FullCalendar.Calendar(calendarEl, {{
+                    initialView: 'dayGridMonth',
+                    headerToolbar: {{
+                        left: 'today prev,next',
+                        center: 'title',
+                        right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                    }},
+                    height: 600,
+                    events: {eventos_json},
+                    eventClick: function(info) {{
+                        alert(
+                            'Empleado: ' + info.event.extendedProps.empleado + '\\n' +
+                            'Área: ' + info.event.extendedProps.area + '\\n' +
+                            'Turno: ' + info.event.extendedProps.turno + '\\n' +
+                            'Horario: ' + info.event.extendedProps.hora_inicio + ' - ' + info.event.extendedProps.hora_fin
+                        );
+                    }},
+                    eventDidMount: function(info) {{
+                        info.el.style.backgroundColor = info.event.backgroundColor;
+                        info.el.style.borderColor = info.event.borderColor;
+                    }}
+                }});
+                calendar.render();
+            }});
+        </script>
+    </body>
+    </html>
+    """
+    
+    # Mostrar el calendario HTML
+    st.components.v1.html(html_code, height=650)
+    
+    # Estadísticas
     if eventos:
-        # Crear el calendario
-        calendar_component = calendar(
-            events=eventos,
-            options=calendar_options,
-            key="calendario_turnos"  # Key única para el componente
-        )
-        
-        # Mostrar el calendario
-        st.write(calendar_component)
-        
-        # Mostrar estadísticas debajo del calendario
         st.markdown("---")
         col1, col2, col3, col4 = st.columns(4)
         
-        # Filtrar eventos para estadísticas
-        eventos_filtrados = [e for e in eventos if area_filtro == "Todas las áreas" or e["extendedProps"]["area"] == area_filtro]
+        eventos_filtrados = [e for e in eventos]
         
         col1.metric("Total turnos", len(eventos_filtrados))
         
-        empleados_unicos = len(set([e["extendedProps"]["empleado"] for e in eventos_filtrados]))
+        empleados_unicos = len(set([e["empleado"] for e in eventos_filtrados]))
         col2.metric("Empleados", empleados_unicos)
         
-        areas_unicas = len(set([e["extendedProps"]["area"] for e in eventos_filtrados if e["extendedProps"]["area"]]))
+        areas_unicas = len(set([e["area"] for e in eventos_filtrados if e["area"]]))
         col3.metric("Áreas", areas_unicas)
         
-        turnos_unicos = len(set([e["extendedProps"]["turno"] for e in eventos_filtrados]))
+        turnos_unicos = len(set([e["turno"] for e in eventos_filtrados]))
         col4.metric("Turnos", turnos_unicos)
-        
-    else:
-        st.info(f"ℹ️ No hay turnos asignados para {mes} {año}")
-        
-        # Botón para ir a asignación manual
-        if st.button("➕ Asignar turnos manualmente", use_container_width=True):
-            cambiar_pagina("Asignacion manual")
-            st.rerun()
     
-    # Leyenda de colores por área
+    # Leyenda de colores
     if eventos:
         st.markdown("### 🎨 Leyenda de colores por área")
         
-        # Obtener áreas únicas de los eventos
         areas_en_eventos = set()
         for e in eventos:
-            area = e["extendedProps"]["area"]
-            if area and area != "Sin área":
-                areas_en_eventos.add(area)
+            if e["area"] and e["area"] != "Sin área":
+                areas_en_eventos.add(e["area"])
         
         if areas_en_eventos:
-            # Crear columnas para la leyenda
             cols = st.columns(4)
             for i, area in enumerate(sorted(areas_en_eventos)):
                 color = colores_area.get(area.upper(), "#3788d8")
@@ -659,17 +665,17 @@ elif op == "Calendario":
                         unsafe_allow_html=True
                     )
     
-    # Botón para ver tabla (opcional)
+    # Botón para ver tabla
     with st.expander("📋 Ver vista de tabla detallada"):
         if eventos:
             data_tabla = []
             for e in eventos:
                 data_tabla.append({
                     "Fecha": e["start"],
-                    "Empleado": e["extendedProps"]["empleado"],
-                    "Área": e["extendedProps"]["area"],
-                    "Turno": e["extendedProps"]["turno"],
-                    "Horario": f"{e['extendedProps']['hora_inicio']} - {e['extendedProps']['hora_fin']}"
+                    "Empleado": e["empleado"],
+                    "Área": e["area"],
+                    "Turno": e["turno"],
+                    "Horario": f"{e['hora_inicio']} - {e['hora_fin']}"
                 })
             
             if data_tabla:
