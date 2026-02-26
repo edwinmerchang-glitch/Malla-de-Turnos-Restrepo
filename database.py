@@ -12,11 +12,10 @@ class Empleado(Base):
     nombre = Column(String)
     usuario = Column(String, unique=True)
     password = Column(String)
-    rol = Column(String)  # admin / empleado
-    area = Column(String)  # Área del empleado
-    cargo = Column(String)  # Cargo del empleado
+    rol = Column(String)  # admin / supervisor / empleado
+    area = Column(String)
+    cargo = Column(String)
     
-    # Relación con asignaciones
     asignaciones = relationship("Asignacion", back_populates="empleado")
 
 class Turno(Base):
@@ -26,7 +25,6 @@ class Turno(Base):
     inicio = Column(String)
     fin = Column(String)
     
-    # Relación con asignaciones
     asignaciones = relationship("Asignacion", back_populates="turno")
 
 class Asignacion(Base):
@@ -36,7 +34,6 @@ class Asignacion(Base):
     fecha = Column(Date)
     turno_id = Column(Integer, ForeignKey("turnos.id"))
     
-    # Relaciones
     empleado = relationship("Empleado", back_populates="asignaciones")
     turno = relationship("Turno", back_populates="asignaciones")
 
