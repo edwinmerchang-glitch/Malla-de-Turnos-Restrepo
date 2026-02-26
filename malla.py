@@ -159,28 +159,172 @@ op = st.session_state.pagina_actual
 
 # ========== PÁGINAS PARA EMPLEADOS ==========
 
-# ---------- CALENDARIO ----------
-if op == "Calendario":
+# ---------- CALENDARIO MODERNO ----------
+elif op == "Calendario":
     if user.rol not in ["empleado", "supervisor"]:
         st.error("❌ No tienes permiso para acceder a esta sección")
         st.stop()
     
-    st.subheader("📆 Mi calendario de turnos")
-    st.info(f"👤 Mostrando turnos de: **{user.nombre}**")
+    # Estilos CSS personalizados
+    st.markdown("""
+    <style>
+    .calendario-container {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 2rem;
+        border-radius: 20px;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    .calendario-titulo {
+        color: white;
+        font-size: 2rem;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 1rem;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    .calendario-subtitulo {
+        color: rgba(255,255,255,0.9);
+        font-size: 1.2rem;
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    .filtros-container {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 15px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+    }
+    .stats-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 15px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        text-align: center;
+        transition: transform 0.3s;
+    }
+    .stats-card:hover {
+        transform: translateY(-5px);
+    }
+    .stats-numero {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #667eea;
+        margin: 0.5rem 0;
+    }
+    .stats-label {
+        color: #666;
+        font-size: 1rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    .evento-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 0.8rem;
+        border-radius: 10px;
+        margin: 0.3rem 0;
+        font-size: 0.9rem;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        transition: all 0.3s;
+    }
+    .evento-card:hover {
+        transform: scale(1.02);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+    .evento-hora {
+        font-size: 0.8rem;
+        opacity: 0.9;
+        margin-top: 0.2rem;
+    }
+    .dia-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1rem;
+        min-height: 120px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        border: 1px solid #f0f0f0;
+        transition: all 0.3s;
+    }
+    .dia-card:hover {
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        border-color: #667eea;
+    }
+    .dia-numero {
+        font-size: 1.2rem;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 0.5rem;
+        border-bottom: 2px solid #667eea;
+        padding-bottom: 0.3rem;
+    }
+    .dia-semana {
+        color: #666;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+    }
+    </style>
+    """, unsafe_allow_html=True)
     
-    col1, col2 = st.columns(2)
-    with col1:
-        meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
-                 "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
-        año = st.number_input("Año", min_value=2024, max_value=2030, value=2026, key="cal_ano")
-    with col2:
-        mes = st.selectbox("Mes", meses, index=1, key="cal_mes")
+    # Cabecera moderna
+    st.markdown("""
+    <div class="calendario-container">
+        <div class="calendario-titulo">📅 Mi Calendario de Turnos</div>
+        <div class="calendario-subtitulo">Visualiza y gestiona tus horarios de trabajo</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Información del usuario en tarjeta moderna
+    with st.container():
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.markdown(f"""
+            <div class="stats-card">
+                <div style="font-size: 2rem;">👤</div>
+                <div class="stats-numero">{user.nombre}</div>
+                <div class="stats-label">Empleado</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown(f"""
+            <div class="stats-card">
+                <div style="font-size: 2rem;">🏢</div>
+                <div class="stats-numero">{user.area if user.area else 'General'}</div>
+                <div class="stats-label">Área</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col3:
+            st.markdown(f"""
+            <div class="stats-card">
+                <div style="font-size: 2rem;">📌</div>
+                <div class="stats-numero">{user.cargo if user.cargo else 'Colaborador'}</div>
+                <div class="stats-label">Cargo</div>
+            </div>
+            """, unsafe_allow_html=True)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # Filtros modernos
+    with st.container():
+        st.markdown('<div class="filtros-container">', unsafe_allow_html=True)
+        col1, col2 = st.columns(2)
+        with col1:
+            meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
+                     "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+            mes = st.selectbox("📆 Selecciona el mes", meses, index=1, key="cal_mes_moderno")
+        with col2:
+            año = st.number_input("📅 Año", min_value=2024, max_value=2030, value=2026, key="cal_ano_moderno")
+        st.markdown('</div>', unsafe_allow_html=True)
     
     mes_num = meses.index(mes) + 1
     dias_mes = monthrange(año, mes_num)[1]
     fecha_inicio_mes = date(año, mes_num, 1)
     fecha_fin_mes = date(año, mes_num, dias_mes)
     
+    # Obtener asignaciones
     asignaciones = session.query(Asignacion).filter(
         Asignacion.empleado_id == user.id,
         Asignacion.fecha.between(fecha_inicio_mes, fecha_fin_mes)
@@ -190,61 +334,199 @@ if op == "Calendario":
         st.info(f"ℹ️ No tienes turnos asignados en {mes} {año}")
         st.stop()
     
-    eventos = []
+    # Estadísticas rápidas
+    total_turnos = len(asignaciones)
+    turnos_por_tipo = {}
     for a in asignaciones:
         if a.turno:
-            fecha_str = a.fecha.strftime("%Y-%m-%d")
-            eventos.append({
-                "title": a.turno.nombre,
-                "start": fecha_str,
-                "color": "#4F46E5",
-                "textColor": "white",
+            turnos_por_tipo[a.turno.nombre] = turnos_por_tipo.get(a.turno.nombre, 0) + 1
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.markdown(f"""
+        <div class="stats-card">
+            <div class="stats-numero">{total_turnos}</div>
+            <div class="stats-label">Turnos en el mes</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown(f"""
+        <div class="stats-card">
+            <div class="stats-numero">{len(turnos_por_tipo)}</div>
+            <div class="stats-label">Tipos de turno</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col3:
+        dias_trabajados = len(set([a.fecha.day for a in asignaciones]))
+        st.markdown(f"""
+        <div class="stats-card">
+            <div class="stats-numero">{dias_trabajados}</div>
+            <div class="stats-label">Días trabajados</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col4:
+        st.markdown(f"""
+        <div class="stats-card">
+            <div class="stats-numero">{dias_mes - dias_trabajados}</div>
+            <div class="stats-label">Días de descanso</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # Crear diccionario de asignaciones por día
+    turnos_por_dia = {}
+    for a in asignaciones:
+        dia = a.fecha.day
+        turnos_por_dia[dia] = a
+    
+    # Crear vista de calendario en grid
+    dias_semana = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"]
+    
+    # Calcular primer día del mes
+    primer_dia = date(año, mes_num, 1).weekday()  # 0 = lunes, 6 = domingo
+    
+    # Ajustar para que empiece en lunes (en Python weekday() 0 = lunes)
+    
+    st.markdown(f"### 📅 {mes} {año}")
+    
+    # Cabecera de días de la semana
+    cols = st.columns(7)
+    for i, dia in enumerate(dias_semana):
+        with cols[i]:
+            st.markdown(f"""
+            <div style="text-align: center; font-weight: bold; color: #667eea; padding: 10px;">
+                {dia}
+            </div>
+            """, unsafe_allow_html=True)
+    
+    # Grid del calendario
+    dia_actual = 1
+    semanas = []
+    
+    # Crear matriz de semanas
+    for semana in range(6):  # Máximo 6 semanas
+        fila = []
+        for dia_semana in range(7):
+            if semana == 0 and dia_semana < primer_dia:
+                fila.append(None)  # Días vacíos antes del inicio del mes
+            elif dia_actual <= dias_mes:
+                fila.append(dia_actual)
+                dia_actual += 1
+            else:
+                fila.append(None)  # Días vacíos después del fin del mes
+        semanas.append(fila)
+    
+    # Mostrar el calendario
+    for semana in semanas:
+        cols = st.columns(7)
+        for i, dia in enumerate(semana):
+            with cols[i]:
+                if dia is not None:
+                    # Verificar si hay turno este día
+                    if dia in turnos_por_dia:
+                        turno = turnos_por_dia[dia].turno
+                        st.markdown(f"""
+                        <div class="dia-card">
+                            <div class="dia-numero">{dia}</div>
+                            <div class="evento-card">
+                                <div style="font-weight: bold;">{turno.nombre}</div>
+                                <div class="evento-hora">{turno.inicio} - {turno.fin}</div>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"""
+                        <div class="dia-card">
+                            <div class="dia-numero">{dia}</div>
+                            <div style="color: #999; text-align: center; padding: 10px;">
+                                🟢 Descanso
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                else:
+                    # Día vacío (fuera del mes)
+                    st.markdown(f"""
+                    <div class="dia-card" style="background: #f9f9f9; opacity: 0.5;">
+                        <div style="text-align: center; color: #ccc;">-</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # Leyenda de colores
+    with st.expander("📖 Ver detalles de turnos", expanded=False):
+        st.markdown("### 📊 Distribución de turnos")
+        
+        # Gráfico de barras con pandas
+        df_turnos = pd.DataFrame(list(turnos_por_tipo.items()), columns=["Turno", "Cantidad"])
+        df_turnos = df_turnos.sort_values("Cantidad", ascending=False)
+        
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            st.bar_chart(df_turnos.set_index("Turno"))
+        
+        with col2:
+            st.markdown("### 📋 Detalle por turno")
+            for turno, cantidad in turnos_por_tipo.items():
+                porcentaje = (cantidad / total_turnos) * 100
+                st.markdown(f"""
+                <div style="margin: 10px 0;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <span><strong>{turno}</strong></span>
+                        <span>{cantidad} turnos ({porcentaje:.1f}%)</span>
+                    </div>
+                    <div style="background: #f0f0f0; height: 8px; border-radius: 4px;">
+                        <div style="background: linear-gradient(90deg, #667eea, #764ba2); width: {porcentaje}%; height: 8px; border-radius: 4px;"></div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+    
+    # Vista de tabla detallada
+    with st.expander("📋 Ver todos los turnos en tabla"):
+        data_tabla = []
+        for a in asignaciones:
+            data_tabla.append({
+                "Fecha": a.fecha.strftime("%d/%m/%Y"),
+                "Día": a.fecha.strftime("%A").capitalize(),
+                "Turno": a.turno.nombre if a.turno else "N/A",
+                "Hora inicio": a.turno.inicio if a.turno else "N/A",
+                "Hora fin": a.turno.fin if a.turno else "N/A"
             })
-    
-    import json
-    eventos_json = json.dumps(eventos)
-    
-    html_code = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
-        <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
-        <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales-all.min.js'></script>
-        <style>
-            #calendar {{ max-width: 1100px; margin: 20px auto; }}
-        </style>
-    </head>
-    <body>
-        <div id='calendar'></div>
-        <script>
-            document.addEventListener('DOMContentLoaded', function() {{
-                var calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {{
-                    locale: 'es',
-                    initialView: 'dayGridMonth',
-                    headerToolbar: {{
-                        left: 'today prev,next',
-                        center: 'title',
-                        right: 'dayGridMonth,timeGridWeek,timeGridDay'
-                    }},
-                    buttonText: {{
-                        today: 'Hoy',
-                        month: 'Mes',
-                        week: 'Semana',
-                        day: 'Día'
-                    }},
-                    height: 600,
-                    events: {eventos_json}
-                }});
-                calendar.render();
-            }});
-        </script>
-    </body>
-    </html>
-    """
-    
-    st.components.v1.html(html_code, height=650)
-    st.metric("Total turnos en el mes", len(eventos))
+        
+        df_tabla = pd.DataFrame(data_tabla)
+        df_tabla = df_tabla.sort_values("Fecha")
+        st.dataframe(
+            df_tabla,
+            use_container_width=True,
+            column_config={
+                "Fecha": st.column_config.DateColumn("Fecha", format="DD/MM/YYYY"),
+                "Día": "Día",
+                "Turno": "Turno",
+                "Hora inicio": "Inicio",
+                "Hora fin": "Fin"
+            }
+        )
+        
+        # Botón para exportar
+        if st.button("📥 Exportar a Excel", use_container_width=True):
+            output = pd.ExcelWriter('mis_turnos.xlsx', engine='xlsxwriter')
+            df_tabla.to_excel(output, index=False, sheet_name=f'Turnos_{mes}_{año}')
+            output.close()
+            
+            with open('mis_turnos.xlsx', 'rb') as f:
+                st.download_button(
+                    "📥 Descargar Excel",
+                    f,
+                    f"mis_turnos_{mes}_{año}.xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
 
 # ---------- MI PERFIL ----------
 elif op == "Mi perfil":
