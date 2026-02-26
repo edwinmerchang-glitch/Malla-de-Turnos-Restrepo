@@ -61,15 +61,236 @@ if "user" not in st.session_state:
 user = st.session_state["user"]
 session = Session()
 
-# -------- MENÚ CON BOTONES SEGÚN EL ROL --------
-st.sidebar.title("📅 Malla de Turnos")
-st.sidebar.markdown(f"**Usuario:** {user.nombre}")
-st.sidebar.markdown(f"**Rol:** {user.rol}")
-if user.area:
-    st.sidebar.markdown(f"**Área:** {user.area}")
-if user.cargo:
-    st.sidebar.markdown(f"**Cargo:** {user.cargo}")
-st.sidebar.markdown("---")
+# -------- MENÚ MODERNO CON BOTONES SEGÚN EL ROL --------
+st.sidebar.markdown("""
+<style>
+    /* Estilos generales del sidebar */
+    .sidebar-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 2rem 1rem;
+        border-radius: 0 0 20px 20px;
+        margin-bottom: 1.5rem;
+        text-align: center;
+        color: white;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+    .sidebar-header h1 {
+        font-size: 1.8rem;
+        margin: 0;
+        font-weight: bold;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    .sidebar-header p {
+        margin: 0.5rem 0 0;
+        opacity: 0.9;
+        font-size: 0.9rem;
+    }
+    .user-info-card {
+        background: white;
+        border-radius: 15px;
+        padding: 1.2rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        border: 1px solid #f0f0f0;
+    }
+    .user-info-item {
+        display: flex;
+        align-items: center;
+        padding: 0.5rem;
+        margin: 0.3rem 0;
+        background: #f8f9fa;
+        border-radius: 10px;
+        transition: all 0.3s;
+    }
+    .user-info-item:hover {
+        background: #e9ecef;
+        transform: translateX(5px);
+    }
+    .user-info-icon {
+        font-size: 1.2rem;
+        margin-right: 0.8rem;
+        min-width: 30px;
+        text-align: center;
+    }
+    .user-info-label {
+        color: #666;
+        font-size: 0.8rem;
+        margin-bottom: 0.1rem;
+    }
+    .user-info-value {
+        color: #333;
+        font-weight: bold;
+        font-size: 0.95rem;
+    }
+    .menu-section {
+        background: white;
+        border-radius: 15px;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .menu-title {
+        font-size: 1.1rem;
+        font-weight: bold;
+        color: #667eea;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #f0f0f0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .menu-button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 0.8rem;
+        margin: 0.3rem 0;
+        width: 100%;
+        font-size: 1rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s;
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+    .menu-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 15px rgba(102, 126, 234, 0.4);
+    }
+    .menu-button:active {
+        transform: translateY(0);
+    }
+    .menu-button-outline {
+        background: white;
+        color: #667eea;
+        border: 2px solid #667eea;
+        box-shadow: none;
+    }
+    .menu-button-outline:hover {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-color: transparent;
+    }
+    .current-page {
+        background: linear-gradient(135deg, #f6f9fc 0%, #e6f0f7 100%);
+        border-radius: 10px;
+        padding: 0.8rem;
+        margin-top: 1rem;
+        border: 1px solid #667eea;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .current-page-icon {
+        font-size: 1.2rem;
+    }
+    .current-page-text {
+        color: #667eea;
+        font-weight: bold;
+        font-size: 0.95rem;
+    }
+    .logout-button {
+        background: linear-gradient(135deg, #ff6b6b 0%, #ee5253 100%);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 0.8rem;
+        width: 100%;
+        font-size: 1rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s;
+        box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        margin-top: 1rem;
+    }
+    .logout-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 15px rgba(255, 107, 107, 0.4);
+    }
+    .footer {
+        text-align: center;
+        margin-top: 2rem;
+        padding: 1rem;
+        color: #999;
+        font-size: 0.8rem;
+        border-top: 1px solid #f0f0f0;
+    }
+    /* Estilos para los botones de Streamlit */
+    .stButton button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 10px !important;
+        padding: 0.8rem !important;
+        font-size: 1rem !important;
+        font-weight: 500 !important;
+        transition: all 0.3s !important;
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3) !important;
+    }
+    .stButton button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 15px rgba(102, 126, 234, 0.4) !important;
+    }
+    .stButton button:active {
+        transform: translateY(0) !important;
+    }
+    /* Botón de cerrar sesión */
+    .stButton button[kind="secondary"] {
+        background: linear-gradient(135deg, #ff6b6b 0%, #ee5253 100%) !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# Cabecera del sidebar
+st.sidebar.markdown("""
+<div class="sidebar-header">
+    <h1>📅 Malla de Turnos</h1>
+    <p>Sistema de Gestión de Horarios</p>
+</div>
+""", unsafe_allow_html=True)
+
+# Tarjeta de información del usuario
+st.sidebar.markdown(f"""
+<div class="user-info-card">
+    <div class="user-info-item">
+        <div class="user-info-icon">👤</div>
+        <div>
+            <div class="user-info-label">Usuario</div>
+            <div class="user-info-value">{user.nombre}</div>
+        </div>
+    </div>
+    <div class="user-info-item">
+        <div class="user-info-icon">🔑</div>
+        <div>
+            <div class="user-info-label">Rol</div>
+            <div class="user-info-value">{user.rol.upper()}</div>
+        </div>
+    </div>
+    <div class="user-info-item">
+        <div class="user-info-icon">🏢</div>
+        <div>
+            <div class="user-info-label">Área</div>
+            <div class="user-info-value">{user.area if user.area else 'No asignada'}</div>
+        </div>
+    </div>
+    <div class="user-info-item">
+        <div class="user-info-icon">📌</div>
+        <div>
+            <div class="user-info-label">Cargo</div>
+            <div class="user-info-value">{user.cargo if user.cargo else 'No asignado'}</div>
+        </div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 # Inicializar la página actual
 if "pagina_actual" not in st.session_state:
@@ -85,74 +306,109 @@ def cambiar_pagina(pagina):
 
 # -------- MENÚ PARA EMPLEADOS --------
 if user.rol == "empleado":
-    st.sidebar.markdown("### 📋 Mi espacio")
+    st.sidebar.markdown("""
+    <div class="menu-section">
+        <div class="menu-title">
+            <span>📋</span> Mi Espacio
+        </div>
+    """, unsafe_allow_html=True)
     
     col1, col2 = st.sidebar.columns(2)
     
     with col1:
-        if st.button("📅 Calendario", use_container_width=True):
+        if st.button("📅 Calendario", use_container_width=True, key="btn_calendario"):
             cambiar_pagina("Calendario")
-        if st.button("👤 Mi perfil", use_container_width=True):
+        if st.button("👤 Mi perfil", use_container_width=True, key="btn_perfil"):
             cambiar_pagina("Mi perfil")
     
     with col2:
-        if st.button("📊 Mis turnos", use_container_width=True):
+        if st.button("📊 Mis turnos", use_container_width=True, key="btn_turnos"):
             cambiar_pagina("Mis turnos")
+    
+    st.sidebar.markdown("</div>", unsafe_allow_html=True)
 
 # -------- MENÚ PARA SUPERVISORES --------
 elif user.rol == "supervisor":
-    st.sidebar.markdown("### 📋 Mi área")
+    st.sidebar.markdown("""
+    <div class="menu-section">
+        <div class="menu-title">
+            <span>👥</span> Mi Área
+        </div>
+    """, unsafe_allow_html=True)
     
     col1, col2 = st.sidebar.columns(2)
     
     with col1:
-        if st.button("👥 Mi equipo", use_container_width=True):
+        if st.button("👥 Mi equipo", use_container_width=True, key="btn_equipo"):
             cambiar_pagina("Mi equipo")
-        if st.button("📊 Matriz área", use_container_width=True):
+        if st.button("📊 Matriz área", use_container_width=True, key="btn_matriz_area"):
             cambiar_pagina("Matriz area")
-        if st.button("👤 Mi perfil", use_container_width=True):
+        if st.button("👤 Mi perfil", use_container_width=True, key="btn_perfil_sup"):
             cambiar_pagina("Mi perfil")
     
     with col2:
-        if st.button("✏️ Asignar turnos", use_container_width=True):
+        if st.button("✏️ Asignar turnos", use_container_width=True, key="btn_asignar"):
             cambiar_pagina("Asignar area")
-        if st.button("📈 Reportes área", use_container_width=True):
+        if st.button("📈 Reportes área", use_container_width=True, key="btn_reportes_area"):
             cambiar_pagina("Reportes area")
-        if st.button("📅 Mi calendario", use_container_width=True):
+        if st.button("📅 Mi calendario", use_container_width=True, key="btn_calendario_sup"):
             cambiar_pagina("Calendario")
+    
+    st.sidebar.markdown("</div>", unsafe_allow_html=True)
 
 # -------- MENÚ PARA ADMINISTRADORES --------
 elif user.rol == "admin":
-    st.sidebar.markdown("### ⚙️ Administración")
+    st.sidebar.markdown("""
+    <div class="menu-section">
+        <div class="menu-title">
+            <span>⚙️</span> Administración
+        </div>
+    """, unsafe_allow_html=True)
     
     col1, col2 = st.sidebar.columns(2)
     
     with col1:
-        if st.button("👥 Empleados", use_container_width=True):
+        if st.button("👥 Empleados", use_container_width=True, key="btn_empleados"):
             cambiar_pagina("Empleados")
-        if st.button("⏰ Turnos", use_container_width=True):
+        if st.button("⏰ Turnos", use_container_width=True, key="btn_turnos_admin"):
             cambiar_pagina("Turnos")
-        if st.button("📊 Matriz general", use_container_width=True):
+        if st.button("📊 Matriz general", use_container_width=True, key="btn_matriz"):
             cambiar_pagina("Matriz turnos")
-        if st.button("👤 Mi perfil", use_container_width=True):
+        if st.button("👤 Mi perfil", use_container_width=True, key="btn_perfil_admin"):
             cambiar_pagina("Mi perfil")
     
     with col2:
-        if st.button("✏️ Asignar manual", use_container_width=True):
+        if st.button("✏️ Asignar manual", use_container_width=True, key="btn_asignar_admin"):
             cambiar_pagina("Asignacion manual")
-        if st.button("🤖 Generar malla", use_container_width=True):
+        if st.button("🤖 Generar malla", use_container_width=True, key="btn_generar"):
             cambiar_pagina("Generar malla")
-        if st.button("📊 Reportes", use_container_width=True):
+        if st.button("📊 Reportes", use_container_width=True, key="btn_reportes"):
             cambiar_pagina("Reportes")
-        if st.button("🛡 Backup", use_container_width=True):
+        if st.button("🛡 Backup", use_container_width=True, key="btn_backup"):
             cambiar_pagina("Backup")
+    
+    st.sidebar.markdown("</div>", unsafe_allow_html=True)
 
-st.sidebar.markdown("---")
-st.sidebar.info(f"📍 Página actual: **{st.session_state.pagina_actual}**")
+# Indicador de página actual
+st.sidebar.markdown(f"""
+<div class="current-page">
+    <span class="current-page-icon">📍</span>
+    <span class="current-page-text">Página actual: {st.session_state.pagina_actual}</span>
+</div>
+""", unsafe_allow_html=True)
 
-if st.sidebar.button("🚪 Cerrar sesión", use_container_width=True):
+# Botón de cerrar sesión
+if st.sidebar.button("🚪 Cerrar sesión", use_container_width=True, key="btn_logout"):
     st.session_state.clear()
     st.rerun()
+
+# Footer
+st.sidebar.markdown("""
+<div class="footer">
+    © 2026 Malla de Turnos<br>
+    Versión 2.0
+</div>
+""", unsafe_allow_html=True)
 
 # -------- CONTENIDO --------
 op = st.session_state.pagina_actual
