@@ -1154,21 +1154,146 @@ elif op == "Backup":
         st.error("❌ No tienes permiso")
         st.stop()
     
-    st.subheader("🛡 Backup")
+    st.subheader("🛡 Backup y Restauración")
     
-    if st.button("🔄 Crear backup ahora", use_container_width=True):
-        if backup_sqlite():
-            st.success("✅ Backup generado correctamente")
+    tab1, tab2 = st.tabs(["📤 Crear Backup", "📥 Restaurar Backup"])
+    
+    with tab1:
+        st.markdown("### Crear nuevo backup")
+        st.info("Crea una copia de seguridad de la base de datos actual")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🔄 Crear backup ahora", use_container_width=True, type="primary"):
+                if backup_sqlite():
+                    st.success("✅ Backup generado correctamente")
+                    st.balloons()
+                else:
+                    st.error("❌ Error al generar backup")
+        
+        with col2:
+            # Opción para backup con nombre personalizado
+            nombre_backup = st.text_input("Nombre personalizado (opcional)", placeholder="backup_enero")
+            if st.button("📥 Crear backup con nombre", use_container_width=True):
+                if nombre_backup:
+                    import datetime
+                    fecha = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                    nombre_archivo = f"data/backups/{nombre_backup}_{fecha}.db"
+                else:
+                    nombre_archivo = None
+                
+                if backup_sqlite(nombre_archivo):
+                    st.success(f"✅ Backup '{nombre_backup or 'automático'}' generado")
+                else:
+                    st.error("❌ Error al generar backup")
+        
+        st.markdown("---")
+        st.markdown("### 📁 Backups disponibles")
+        
+        if os.path.exists("data/backups"):
+            backups = os.listdir("data/backups")
+            if backups:
+                # Ordenar por fecha (más reciente primero)
+                backups.sort(reverse=True)
+                
+                for i, b in enumerate(backups[:10]):
+                    # Obtener tamaño del archivo
+                    tamaño = os.path.getsize(f"data/backups/{b}")
+                    if tamaño < 1024:
+                        tamaño_str = f"{tamaño} B"
+                    elif tamaño < 1024 * 1024:
+                        tamaño_str = f"{tamaño/1024:.1f} KB"
+                    else:
+                        tamaño_str = f"{tamaño/(1024*1024):.1f} MB"
+                    
+                    st.text(f"{i+1}. {b} ({tamaño_str})")
+                
+                if len(backups) > 10:
+                    st.caption(f"... y {len(backups) - 10} backups más")
+            else:
+                st.info("No hay backups aún")
+    
+    with tab2:
+        st.markdown("### Restaurar backup")
+        st.warning("⚠️ **Importante:** Restaurar un backup sobrescribirá la base de datos actual. Todos los cambios no guardados se perderán.")
+        
+        if os.path.exists("data/backups"):
+            backups = os.listdir("data/backups")
+            if backups:
+                # Ordenar por fecha (más reciente primero)
+                backups.sort(reverse=True)
+                
+                # Selector de backup
+                backup_seleccionado = st.selectbox(
+                    "Seleccionar backup a restaurar",
+                    backups,
+                    format_func=lambda x: f"{x} - {os.path.getsize(f'data/backups/{x}')/1024:.1f} KB"
+                )
+                
+                # Información del backup seleccionado
+                if backup_seleccionado:
+                    ruta_backup = f"data/backups/{backup_seleccionado}"
+                    fecha_mod = os.path.getmtime(ruta_backup)
+                    from datetime import datetime
+                    fecha_str = datetime.fromtimestamp(fecha_mod).strftime("%d/%m/%Y %H:%M:%S")
+                    
+                    st.info(f"**Backup seleccionado:** {backup_seleccionado}")
+                    st.info(f"**Fecha:** {fecha_str}")
+                    st.info(f"**Tamaño:** {os.path.getsize(ruta_backup)/1024:.1f} KB")
+                
+                # Confirmación de restauración
+                st.markdown("---")
+                col1, col2, col3 = st.columns(3)
+                with col2:
+                    confirmar = st.checkbox("Confirmo que quiero restaurar este backup")
+                    
+                    if st.button("♻️ Restaurar backup", use_container_width=True, type="primary", disabled=not confirmar):
+                        try:
+                            # Crear backup automático antes de restaurar
+                            import shutil
+                            import datetime
+                            
+                            # Hacer backup de seguridad antes de restaurar
+                            fecha_ahora = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                            backup_seguridad = f"data/backups/ANTES_RESTAURAR_{fecha_ahora}.db"
+                            
+                            if os.path.exists("data.db"):
+                                shutil.copy("data.db", backup_seguridad)
+                                st.info(f"✅ Backup de seguridad creado: {os.path.basename(backup_seguridad)}")
+                            
+                            # Restaurar el backup seleccionado
+                            shutil.copy(ruta_backup, "data.db")
+                            
+                            st.success("✅ Base de datos restaurada correctamente")
+                            st.balloons()
+                            st.warning("🔄 La aplicación se recargará para aplicar los cambios")
+                            
+                            # Recargar la aplicación
+                            st.rerun()
+                            
+                        except Exception as e:
+                            st.error(f"❌ Error al restaurar: {str(e)}")
+                
+                # Opción de eliminar backups
+                st.markdown("---")
+                with st.expander("🗑️ Eliminar backups"):
+                    st.warning("⚠️ Esta acción no se puede deshacer")
+                    
+                    backups_eliminar = st.multiselect(
+                        "Seleccionar backups a eliminar",
+                        backups
+                    )
+                    
+                    if backups_eliminar and st.button("🗑️ Eliminar seleccionados", use_container_width=True):
+                        for b in backups_eliminar:
+                            try:
+                                os.remove(f"data/backups/{b}")
+                                st.success(f"✅ Eliminado: {b}")
+                            except Exception as e:
+                                st.error(f"❌ Error al eliminar {b}: {str(e)}")
+                        
+                        st.rerun()
+            else:
+                st.info("No hay backups disponibles para restaurar")
         else:
-            st.error("❌ Error al generar backup")
-    
-    st.markdown("---")
-    st.markdown("### 📁 Backups disponibles")
-    
-    if os.path.exists("data/backups"):
-        backups = os.listdir("data/backups")
-        if backups:
-            for i, b in enumerate(sorted(backups, reverse=True)[:10]):
-                st.text(f"{i+1}. {b}")
-        else:
-            st.info("No hay backups aún")
+            st.info("No hay backups disponibles para restaurar")
