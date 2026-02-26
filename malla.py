@@ -1,10 +1,11 @@
 import streamlit as st
 import pandas as pd
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from database import Session, Empleado, Turno, Asignacion
 from scheduler import generar_malla_inteligente
 from backup import backup_sqlite
 import os
+import shutil  # IMPORTANTE: para copiar archivos
 from calendar import monthrange
 from datetime import datetime  # Agrega esto junto con los otros imports
 
