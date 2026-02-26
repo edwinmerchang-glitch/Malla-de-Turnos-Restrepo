@@ -333,7 +333,7 @@ st.sidebar.markdown("""
 st.sidebar.markdown("""
 <div class="sidebar-header">
     <h1>📅 Malla de Turnos</h1>
-    <p>Sistema de Gestión de Horarios</p>
+    <p>Gestión de Horarios Restrepo</p>
 </div>
 """, unsafe_allow_html=True)
 
