@@ -474,9 +474,16 @@ elif op == "Generar malla":
                 backup_sqlite()
                 st.success(f"✅ Malla generada para {len(asignaciones)} turnos")
 
-# ========== CALENDARIO (modificado con opción de edición) ==========
+# ========== CALENDARIO TIPO GOOGLE CALENDAR ==========
 elif op == "Calendario":
     st.subheader("📆 Calendario de turnos")
+    
+    # Intentar importar streamlit-calendar
+    try:
+        from streamlit_calendar import calendar
+    except ImportError:
+        st.error("❌ Necesitas instalar streamlit-calendar: pip install streamlit-calendar")
+        st.stop()
     
     # Obtener todas las áreas únicas
     empleados = session.query(Empleado).all()
@@ -484,17 +491,21 @@ elif op == "Calendario":
     areas.sort()
     areas_opciones = ["Todas las áreas"] + areas
     
-    if not areas:
-        st.info("ℹ️ No hay áreas registradas. Agrega áreas a los empleados primero.")
-        area_filtro = "Todas las áreas"
-    else:
-        area_filtro = st.selectbox("Filtrar por área", areas_opciones)
-    
-    # Selector de mes
-    meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
-             "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
-    año = st.number_input("Año", min_value=2024, max_value=2030, value=2026)
-    mes = st.selectbox("Mes", meses, index=1)  # Febrero por defecto
+    # Filtros en el sidebar del calendario
+    with st.sidebar:
+        st.markdown("### 🎯 Filtros del calendario")
+        
+        if not areas:
+            st.info("ℹ️ No hay áreas registradas")
+            area_filtro = "Todas las áreas"
+        else:
+            area_filtro = st.selectbox("Filtrar por área", areas_opciones, key="cal_area")
+        
+        # Selector de mes
+        meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
+                 "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+        año = st.number_input("Año", min_value=2024, max_value=2030, value=2026, key="cal_año")
+        mes = st.selectbox("Mes", meses, index=1, key="cal_mes")  # Febrero por defecto
     
     # Calcular fechas del mes
     mes_num = meses.index(mes) + 1
@@ -503,47 +514,210 @@ elif op == "Calendario":
     fecha_inicio_mes = date(año, mes_num, 1)
     fecha_fin_mes = date(año, mes_num, dias_mes)
     
+    # Obtener asignaciones del mes
     asignaciones = session.query(Asignacion).filter(
         Asignacion.fecha.between(fecha_inicio_mes, fecha_fin_mes)
     ).all()
     
-    data = []
-    for a in asignaciones:
-        if area_filtro == "Todas las áreas" or (a.empleado and a.empleado.area == area_filtro):
-            data.append({
-                "Fecha": a.fecha.strftime("%d/%m/%Y"),
-                "Día": a.fecha.strftime("%A"),
-                "Empleado": a.empleado.nombre if a.empleado else "N/A",
-                "Área": a.empleado.area if a.empleado and a.empleado.area else "N/A",
-                "Turno": a.turno.nombre if a.turno else "N/A",
-                "Hora inicio": a.turno.inicio if a.turno else "N/A",
-                "Hora fin": a.turno.fin if a.turno else "N/A",
-                "Acciones": "✏️ Editar"  # Columna para acciones
-            })
+    # Preparar eventos para el calendario
+    eventos = []
     
-    df = pd.DataFrame(data)
-    if not df.empty:
-        df = df.sort_values("Fecha")
-        st.dataframe(df, use_container_width=True)
+    # Colores para diferentes áreas
+    colores_area = {
+        "Administración": "#FF6B6B",  # Rojo claro
+        "Producción": "#4ECDC4",       # Turquesa
+        "Calidad": "#45B7D1",          # Azul claro
+        "Mantenimiento": "#96CEB4",    # Verde menta
+        "Logística": "#FFEAA7",         # Amarillo claro
+        "Ventas": "#D4A5A5",            # Rosa
+        "RRHH": "#9B59B6",              # Púrpura
+        "Sistemas": "#3498DB",          # Azul
+        "Pasillos": "#F39C12",          # Naranja
+        "Cajas": "#27AE60",             # Verde
+        "Equipos médicos": "#E74C3C",   # Rojo
+    }
+    
+    for a in asignaciones:
+        if a.empleado and a.turno:
+            # Aplicar filtro de área
+            if area_filtro == "Todas las áreas" or (a.empleado.area == area_filtro):
+                # Determinar color basado en el área
+                area = a.empleado.area if a.empleado.area else "Sin área"
+                color = colores_area.get(area, "#3788d8")  # Color por defecto azul
+                
+                # Formatear fecha
+                fecha_str = a.fecha.strftime("%Y-%m-%d")
+                
+                # Crear título del evento
+                titulo = f"{a.empleado.nombre} - {a.turno.nombre}"
+                
+                # Crear descripción detallada
+                descripcion = f"""
+                **Empleado:** {a.empleado.nombre}
+                **Área:** {a.empleado.area if a.empleado.area else 'No asignada'}
+                **Cargo:** {a.empleado.cargo if a.empleado.cargo else 'No asignado'}
+                **Turno:** {a.turno.nombre}
+                **Horario:** {a.turno.inicio} - {a.turno.fin}
+                """
+                
+                # Crear evento
+                evento = {
+                    "title": titulo,
+                    "start": fecha_str,
+                    "end": fecha_str,
+                    "color": color,
+                    "backgroundColor": color,
+                    "borderColor": "darken",
+                    "textColor": "white",
+                    "extendedProps": {
+                        "empleado": a.empleado.nombre,
+                        "area": a.empleado.area,
+                        "cargo": a.empleado.cargo,
+                        "turno": a.turno.nombre,
+                        "hora_inicio": a.turno.inicio,
+                        "hora_fin": a.turno.fin,
+                        "descripcion": descripcion
+                    }
+                }
+                eventos.append(evento)
+    
+    # Configuración del calendario
+    calendar_options = {
+        "editable": False,
+        "selectable": True,
+        "headerToolbar": {
+            "left": "today prev,next",
+            "center": "title",
+            "right": "dayGridMonth,timeGridWeek,timeGridDay"
+        },
+        "initialView": "dayGridMonth",
+        "navLinks": True,
+        "height": "auto",
+        "contentHeight": 600,
+        "slotMinTime": "06:00:00",
+        "slotMaxTime": "22:00:00",
+        "expandRows": True,
+        "stickyHeaderScroll": False,
+        "nowIndicator": True,
+        "selectMirror": True,
+        "eventDisplay": "block",
+        "displayEventTime": False,  # No mostrar hora en el evento (ya está en el turno)
+        "eventTimeFormat": {
+            "hour": "2-digit",
+            "minute": "2-digit",
+            "hour12": True
+        }
+    }
+    
+    # Mostrar calendario
+    if eventos:
+        calendar_widget = calendar(
+            events=eventos,
+            options=calendar_options,
+            custom_css="""
+                .fc-event {
+                    cursor: pointer;
+                    border-radius: 4px;
+                    margin: 2px 0;
+                    padding: 2px 4px;
+                    font-size: 0.85em;
+                    border: none !important;
+                }
+                .fc-event:hover {
+                    opacity: 0.9;
+                    transform: scale(1.02);
+                    transition: all 0.2s;
+                }
+                .fc-day-today {
+                    background-color: rgba(52, 152, 219, 0.1) !important;
+                }
+                .fc-toolbar-title {
+                    font-size: 1.5em !important;
+                    font-weight: bold;
+                }
+                .fc-button-primary {
+                    background-color: #4F46E5 !important;
+                    border-color: #4F46E5 !important;
+                }
+                .fc-button-primary:hover {
+                    background-color: #6366F1 !important;
+                    border-color: #6366F1 !important;
+                }
+            """
+        )
         
-        # Botón para edición rápida (esto abriría la pestaña de asignación manual)
-        if st.button("✏️ Ir a asignación manual", use_container_width=True):
-            cambiar_pagina("Asignacion manual")
-            st.rerun()
+        st.markdown("### 📅 Vista de calendario")
+        st.write(calendar_widget)
         
-        # Estadísticas
+        # Mostrar estadísticas
+        st.markdown("---")
         col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Total turnos", len(df))
-        col2.metric("Empleados", df["Empleado"].nunique())
-        col3.metric("Áreas", df["Área"].nunique())
-        col4.metric("Turnos únicos", df["Turno"].nunique())
-    else:
-        st.info(f"ℹ️ No hay asignaciones para {mes} {año}")
         
-        # Botón para crear asignaciones
-        if st.button("➕ Crear primera asignación", use_container_width=True):
+        # Filtrar eventos para estadísticas
+        eventos_filtrados = [e for e in eventos if area_filtro == "Todas las áreas" or e["extendedProps"]["area"] == area_filtro]
+        
+        col1.metric("Total turnos", len(eventos_filtrados))
+        
+        empleados_unicos = len(set([e["extendedProps"]["empleado"] for e in eventos_filtrados]))
+        col2.metric("Empleados", empleados_unicos)
+        
+        areas_unicas = len(set([e["extendedProps"]["area"] for e in eventos_filtrados if e["extendedProps"]["area"]]))
+        col3.metric("Áreas", areas_unicas)
+        
+        turnos_unicos = len(set([e["extendedProps"]["turno"] for e in eventos_filtrados]))
+        col4.metric("Turnos", turnos_unicos)
+        
+    else:
+        st.info(f"ℹ️ No hay turnos asignados para {mes} {año}")
+        
+        # Botón para ir a asignación manual
+        if st.button("➕ Asignar turnos manualmente", use_container_width=True):
             cambiar_pagina("Asignacion manual")
             st.rerun()
+    
+    # Leyenda de colores por área
+    st.markdown("### 🎨 Leyenda de colores por área")
+    
+    # Obtener áreas únicas de los eventos
+    areas_en_eventos = set()
+    for e in eventos:
+        area = e["extendedProps"]["area"]
+        if area and area != "No asignada":
+            areas_en_eventos.add(area)
+    
+    if areas_en_eventos:
+        cols = st.columns(4)
+        for i, area in enumerate(sorted(areas_en_eventos)):
+            color = colores_area.get(area, "#3788d8")
+            with cols[i % 4]:
+                st.markdown(
+                    f"""
+                    <div style="display: flex; align-items: center; margin: 5px 0;">
+                        <div style="width: 20px; height: 20px; background-color: {color}; border-radius: 4px; margin-right: 8px;"></div>
+                        <span>{area}</span>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+    else:
+        st.info("No hay áreas con turnos asignados")
+    
+    # Botón para volver a la tabla (opcional)
+    with st.expander("📋 Ver vista de tabla"):
+        # Mostrar tabla tradicional
+        data_tabla = []
+        for e in eventos:
+            data_tabla.append({
+                "Fecha": e["start"],
+                "Empleado": e["extendedProps"]["empleado"],
+                "Área": e["extendedProps"]["area"],
+                "Turno": e["extendedProps"]["turno"],
+                "Horario": f"{e['extendedProps']['hora_inicio']} - {e['extendedProps']['hora_fin']}"
+            })
+        
+        if data_tabla:
+            df_tabla = pd.DataFrame(data_tabla)
+            st.dataframe(df_tabla, use_container_width=True)
 
 # ========== REPORTES ==========
 elif op == "Reportes":
