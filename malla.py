@@ -74,29 +74,26 @@ st.sidebar.markdown("""
         background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
         color: white;
         border: none;
-        border-radius: 50px;
-        padding: 0.8rem 1.5rem;
-        font-size: 1.2rem;
+        border-radius: 10px;
+        padding: 0.8rem;
+        font-size: 1.5rem;
         font-weight: bold;
         cursor: pointer;
         width: 100%;
-        margin-bottom: 1rem;
+        margin-bottom: 0.5rem;
         box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3);
         transition: all 0.3s;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 0.8rem;
+        gap: 0.5rem;
     }
     .hamburger-btn:hover {
         transform: translateY(-2px);
         box-shadow: 0 6px 20px rgba(46, 204, 113, 0.4);
     }
-    .hamburger-btn .icon {
-        font-size: 1.5rem;
-    }
     
-    /* Cabecera del sidebar (siempre visible) */
+    /* Cabecera del sidebar */
     .sidebar-header {
         background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
         padding: 1.5rem 1rem;
@@ -117,13 +114,22 @@ st.sidebar.markdown("""
         font-size: 0.8rem;
     }
     
-    /* Contenedor del menú desplegable */
+    /* Contenedor del menú */
     .menu-content {
         background: white;
         border-radius: 15px;
         padding: 1rem;
         margin-top: 0.5rem;
         box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        transition: all 0.3s ease;
+    }
+    
+    .menu-hidden {
+        display: none;
+    }
+    
+    .menu-visible {
+        display: block;
         animation: slideDown 0.3s ease-out;
     }
     
@@ -136,6 +142,26 @@ st.sidebar.markdown("""
             opacity: 1;
             transform: translateY(0);
         }
+    }
+    
+    /* Mini perfil cuando el menú está oculto */
+    .mini-profile {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 10px;
+        padding: 0.8rem;
+        margin-top: 0.5rem;
+        text-align: center;
+        border: 1px solid #2ecc71;
+    }
+    .mini-profile-name {
+        font-weight: bold;
+        color: #2ecc71;
+        margin: 0;
+    }
+    .mini-profile-role {
+        font-size: 0.8rem;
+        color: #666;
+        margin: 0;
     }
     
     /* Tarjeta de usuario */
@@ -257,22 +283,18 @@ st.sidebar.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Botón hamburguesa para mostrar/ocultar menú
-if "menu_visible" not in st.session_state:
-    st.session_state.menu_visible = True
+# Inicializar el estado del menú
+if "menu_abierto" not in st.session_state:
+    st.session_state.menu_abierto = True
 
-col1, col2 = st.sidebar.columns([1, 4])
-with col1:
-    if st.button("☰", key="hamburger", use_container_width=True):
-        st.session_state.menu_visible = not st.session_state.menu_visible
-        st.rerun()
+# Botón hamburguesa
+if st.sidebar.button("☰", key="hamburger_btn", use_container_width=True):
+    st.session_state.menu_abierto = not st.session_state.menu_abierto
+    st.rerun()
 
-with col2:
-    estado = "🔼 Ocultar menú" if st.session_state.menu_visible else "🔽 Mostrar menú"
-    st.markdown(f"<p style='margin:0; padding:0.5rem; font-weight:bold; color:#2ecc71;'>{estado}</p>", unsafe_allow_html=True)
-
-# Mostrar menú solo si está visible
-if st.session_state.menu_visible:
+# Mostrar contenido según estado del menú
+if st.session_state.menu_abierto:
+    # MENÚ ABIERTO - Mostrar todo
     with st.sidebar:
         st.markdown('<div class="menu-content">', unsafe_allow_html=True)
         
@@ -316,11 +338,13 @@ if st.session_state.menu_visible:
                 st.session_state.pagina_actual = "Calendario"
             elif user.rol == "supervisor":
                 st.session_state.pagina_actual = "Mi equipo"
-            else:  # admin
+            else:
                 st.session_state.pagina_actual = "Empleados"
 
         def cambiar_pagina(pagina):
             st.session_state.pagina_actual = pagina
+            # Opcional: cerrar menú después de seleccionar
+            # st.session_state.menu_abierto = False
 
         # -------- MENÚ PARA EMPLEADOS --------
         if user.rol == "empleado":
@@ -331,7 +355,6 @@ if st.session_state.menu_visible:
                 </div>
             """, unsafe_allow_html=True)
             
-            # Botones en dos columnas
             col1, col2 = st.columns(2)
             
             with col1:
@@ -342,7 +365,6 @@ if st.session_state.menu_visible:
                 if st.button("📊 Mis turnos", use_container_width=True, key="btn_turnos"):
                     cambiar_pagina("Mis turnos")
             
-            # Botón de Mi perfil ocupa ancho completo
             if st.button("👤 Mi perfil", use_container_width=True, key="btn_perfil"):
                 cambiar_pagina("Mi perfil")
             
@@ -438,12 +460,17 @@ if st.session_state.menu_visible:
         """, unsafe_allow_html=True)
         
         st.markdown('</div>', unsafe_allow_html=True)
+
 else:
-    # Mostrar solo información mínima cuando el menú está oculto
+    # MENÚ CERRADO - Mostrar solo información mínima
     st.sidebar.markdown(f"""
-    <div style="text-align: center; padding: 0.5rem; background: white; border-radius: 10px; margin-top: 0.5rem;">
-        <p style="margin:0; color:#2ecc71; font-weight:bold;">{user.nombre}</p>
-        <p style="margin:0; font-size:0.8rem; color:#666;">{user.rol}</p>
+    <div class="mini-profile">
+        <div style="font-size: 2rem; margin-bottom: 0.3rem;">👤</div>
+        <p class="mini-profile-name">{user.nombre}</p>
+        <p class="mini-profile-role">{user.rol.upper()} | {user.area if user.area else 'Sin área'}</p>
+        <p style="font-size: 0.7rem; color: #999; margin-top: 0.5rem;">
+            Haz clic en ☰ para abrir el menú
+        </p>
     </div>
     """, unsafe_allow_html=True)
 
