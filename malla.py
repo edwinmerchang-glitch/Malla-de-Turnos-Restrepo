@@ -178,7 +178,7 @@ def login():
             <div class="login-header">
                 <div class="login-icon">📅</div>
                 <h1>Malla de Turnos</h1>
-                <p>Sistema de Gestión de Horarios</p>
+                <p>Gestión de Horarios Locatel Restrepo</p>
             </div>
         """, unsafe_allow_html=True)
         
@@ -205,7 +205,7 @@ def login():
         st.markdown("""
             <div class="login-footer">
                 <p>¿Olvidaste tu contraseña? Contacta al administrador</p>
-                <p>© 2026 Malla de Turnos - Versión 2.0</p>
+                <p>© 2026 Edwin Merchán - Versión 2.0</p>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -354,7 +354,7 @@ if "user" in st.session_state:
     st.sidebar.markdown("""
     <div class="sidebar-header">
         <h1>📅 Malla de Turnos</h1>
-        <p>Sistema de Gestión de Horarios</p>
+        <p>Gestión de Horarios Locatel Restrepo</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -505,7 +505,7 @@ if "user" in st.session_state:
     # Footer
     st.sidebar.markdown("""
     <div class="footer">
-        © 2026 Malla de Turnos<br>
+        © 2026 Edwin Merchán<br>
         Versión 2.0
     </div>
     """, unsafe_allow_html=True)
