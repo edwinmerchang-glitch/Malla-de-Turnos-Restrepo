@@ -1157,87 +1157,125 @@ elif op == "Backup":
     
     st.subheader("🛡 Backup y Restauración")
     
-    tab1, tab2, tab3 = st.tabs(["📤 Crear Backup", "📥 Restaurar Backup", "💾 Ruta Externa"])
+    tab1, tab2 = st.tabs(["📤 Exportar Backup", "📥 Importar Backup"])
     
     with tab1:
-        st.markdown("### Crear nuevo backup")
+        st.markdown("### Exportar base de datos")
+        st.markdown("Guarda una copia de seguridad en la ubicación que elijas")
         
         col1, col2 = st.columns(2)
         
         with col1:
-            st.markdown("**Backup rápido**")
-            if st.button("🔄 Crear backup ahora", use_container_width=True, type="primary"):
-                exito, resultado = backup_sqlite()
-                if exito:
-                    st.success(f"✅ Backup guardado en: {resultado['local']}")
-                    st.balloons()
-                else:
-                    st.error("❌ Error al generar backup")
+            st.markdown("**Backup simple**")
+            if st.button("🔄 Generar backup automático", use_container_width=True):
+                # Generar nombre automático
+                fecha = datetime.now().strftime("%Y%m%d_%H%M%S")
+                nombre_archivo = f"backup_{fecha}.db"
+                
+                # Crear archivo temporal
+                shutil.copy("data.db", nombre_archivo)
+                
+                # Ofrecer descarga
+                with open(nombre_archivo, "rb") as f:
+                    st.download_button(
+                        "📥 Descargar backup",
+                        f,
+                        nombre_archivo,
+                        "application/octet-stream",
+                        use_container_width=True
+                    )
+                
+                # Limpiar archivo temporal después de la descarga
+                os.remove(nombre_archivo)
         
         with col2:
             st.markdown("**Backup con nombre**")
-            nombre_backup = st.text_input("Nombre personalizado", placeholder="ej: backup_enero")
-            if st.button("📥 Crear backup con nombre", use_container_width=True):
-                if nombre_backup:
-                    exito, resultado = backup_sqlite(nombre_personalizado=nombre_backup)
-                    if exito:
-                        st.success(f"✅ Backup '{nombre_backup}' creado en: {resultado['local']}")
-                        st.balloons()
-                    else:
-                        st.error("❌ Error al generar backup")
+            nombre_personalizado = st.text_input("Nombre del archivo", placeholder="ej: backup_enero")
+            
+            if st.button("📝 Generar backup personalizado", use_container_width=True):
+                if nombre_personalizado:
+                    # Limpiar nombre (quitar espacios, caracteres especiales)
+                    nombre_limpio = "".join(c for c in nombre_personalizado if c.isalnum() or c in [' ', '-', '_']).strip()
+                    nombre_limpio = nombre_limpio.replace(' ', '_')
+                    fecha = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    nombre_archivo = f"{nombre_limpio}_{fecha}.db"
+                    
+                    # Crear archivo temporal
+                    shutil.copy("data.db", nombre_archivo)
+                    
+                    # Ofrecer descarga
+                    with open(nombre_archivo, "rb") as f:
+                        st.download_button(
+                            "📥 Descargar backup personalizado",
+                            f,
+                            nombre_archivo,
+                            "application/octet-stream",
+                            use_container_width=True
+                        )
+                    
+                    # Limpiar archivo temporal
+                    os.remove(nombre_archivo)
                 else:
-                    st.warning("⚠️ Ingresa un nombre para el backup")
+                    st.warning("⚠️ Ingresa un nombre para el archivo")
         
         st.markdown("---")
-        st.markdown("### 📁 Backups locales disponibles")
+        st.markdown("### 📁 Backups recientes")
         
-        from backup import listar_backups, formatear_tamaño
-        backups = listar_backups()
-        
-        if backups:
-            for i, b in enumerate(backups[:10]):
-                fecha = datetime.fromtimestamp(b["fecha"]).strftime("%d/%m/%Y %H:%M")
-                st.text(f"{i+1}. {b['nombre']} - {formatear_tamaño(b['tamaño'])} - {fecha}")
-            
-            if len(backups) > 10:
-                st.caption(f"... y {len(backups) - 10} backups más")
-        else:
-            st.info("No hay backups locales aún")
+        # Mostrar backups de la carpeta local
+        if os.path.exists("data/backups"):
+            backups = os.listdir("data/backups")
+            if backups:
+                # Ordenar por fecha (más reciente primero)
+                backups.sort(reverse=True)
+                
+                for i, b in enumerate(backups[:5]):
+                    ruta_completa = f"data/backups/{b}"
+                    tamaño = os.path.getsize(ruta_completa)
+                    
+                    # Formatear tamaño
+                    if tamaño < 1024:
+                        tamaño_str = f"{tamaño} B"
+                    elif tamaño < 1024 * 1024:
+                        tamaño_str = f"{tamaño/1024:.1f} KB"
+                    else:
+                        tamaño_str = f"{tamaño/(1024*1024):.1f} MB"
+                    
+                    fecha_mod = os.path.getmtime(ruta_completa)
+                    fecha_str = datetime.fromtimestamp(fecha_mod).strftime("%d/%m/%Y %H:%M")
+                    
+                    col1, col2 = st.columns([3, 1])
+                    with col1:
+                        st.text(f"{i+1}. {b} ({tamaño_str}) - {fecha_str}")
+                    with col2:
+                        with open(ruta_completa, "rb") as f:
+                            st.download_button(
+                                "📥",
+                                f,
+                                b,
+                                "application/octet-stream",
+                                key=f"download_{b}"
+                            )
+            else:
+                st.info("No hay backups en la carpeta local")
     
     with tab2:
-        st.markdown("### Restaurar backup")
-        st.warning("⚠️ **Importante:** Restaurar sobrescribirá la base de datos actual")
+        st.markdown("### Importar base de datos")
+        st.warning("⚠️ **Importante:** Al importar un backup, se sobrescribirá la base de datos actual")
         
-        # Opción de origen
-        origen = st.radio("Origen del backup", ["Local", "Externo"], horizontal=True)
+        archivo_subido = st.file_uploader(
+            "Seleccionar archivo de backup",
+            type=['db'],
+            help="Selecciona un archivo .db para restaurar"
+        )
         
-        if origen == "Local":
-            ruta = None
-            backups = listar_backups()
-        else:
-            # Ruta externa personalizada
-            ruta_externa = st.text_input("Ruta de la carpeta externa", placeholder="ej: D:/backups/ o /media/usb/backups/")
-            if ruta_externa:
-                if os.path.exists(ruta_externa):
-                    backups = listar_backups(ruta=ruta_externa)
-                else:
-                    st.error("❌ La ruta especificada no existe")
-                    backups = []
-            else:
-                backups = []
-        
-        if backups:
-            # Selector de backup
-            backup_seleccionado = st.selectbox(
-                "Seleccionar backup",
-                backups,
-                format_func=lambda x: f"{x['nombre']} - {formatear_tamaño(x['tamaño'])} - {datetime.fromtimestamp(x['fecha']).strftime('%d/%m/%Y %H:%M')}"
-            )
-            
-            if backup_seleccionado:
-                st.info(f"**Backup seleccionado:** {backup_seleccionado['nombre']}")
-                st.info(f"**Ruta:** {backup_seleccionado['ruta']}")
-                st.info(f"**Tamaño:** {formatear_tamaño(backup_seleccionado['tamaño'])}")
+        if archivo_subido is not None:
+            # Mostrar información del archivo
+            col1, col2 = st.columns(2)
+            with col1:
+                st.info(f"**Archivo:** {archivo_subido.name}")
+            with col2:
+                tamaño_kb = len(archivo_subido.getvalue()) / 1024
+                st.info(f"**Tamaño:** {tamaño_kb:.1f} KB")
             
             # Confirmación
             st.markdown("---")
@@ -1246,91 +1284,23 @@ elif op == "Backup":
                 confirmar = st.checkbox("Confirmo que quiero restaurar este backup")
                 
                 if st.button("♻️ Restaurar backup", use_container_width=True, type="primary", disabled=not confirmar):
-                    from backup import restaurar_backup
-                    exito, resultado = restaurar_backup(backup_seleccionado['ruta'])
-                    
-                    if exito:
-                        st.success("✅ Base de datos restaurada correctamente")
-                        st.info(f"📁 Backup de seguridad creado: {os.path.basename(resultado)}")
-                        st.balloons()
-                        st.warning("🔄 La aplicación se recargará")
-                        st.rerun()
-                    else:
-                        st.error(f"❌ Error al restaurar: {resultado}")
-        else:
-            if origen == "Externo" and not ruta_externa:
-                st.info("👆 Ingresa una ruta para ver los backups externos")
-            else:
-                st.info("No hay backups disponibles en esta ubicación")
-    
-    with tab3:
-        st.markdown("### 💾 Gestión de ruta externa")
-        st.markdown("Configura una ruta externa para guardar backups (USB, disco externo, etc.)")
-        
-        # Guardar ruta en session_state
-        if "ruta_externa" not in st.session_state:
-            st.session_state.ruta_externa = ""
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            nueva_ruta = st.text_input(
-                "Ruta externa",
-                value=st.session_state.ruta_externa,
-                placeholder="ej: D:/backups/ o /media/usb/backups/"
-            )
-            
-            if st.button("💾 Guardar ruta", use_container_width=True):
-                if nueva_ruta:
-                    if os.path.exists(nueva_ruta):
-                        st.session_state.ruta_externa = nueva_ruta
-                        st.success(f"✅ Ruta guardada: {nueva_ruta}")
-                    else:
-                        st.error("❌ La ruta no existe")
-                else:
-                    st.warning("⚠️ Ingresa una ruta válida")
-        
-        with col2:
-            if st.session_state.ruta_externa:
-                st.info(f"**Ruta actual:** {st.session_state.ruta_externa}")
-                
-                # Probar conexión
-                if st.button("🔍 Probar ruta", use_container_width=True):
-                    if os.path.exists(st.session_state.ruta_externa):
-                        st.success("✅ Ruta accesible")
+                    try:
+                        # Crear backup de seguridad antes de restaurar
+                        fecha_ahora = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        backup_seguridad = f"data/backups/ANTES_RESTAURAR_{fecha_ahora}.db"
                         
-                        # Mostrar backups en esa ruta
-                        backups_ext = listar_backups(ruta=st.session_state.ruta_externa)
-                        if backups_ext:
-                            st.write("Backups encontrados:")
-                            for b in backups_ext[:5]:
-                                st.text(f"  • {b['nombre']}")
-                        else:
-                            st.info("No hay backups en esta ruta")
-                    else:
-                        st.error("❌ Ruta no accesible")
-        
-        # Copiar backups a ruta externa
-        st.markdown("---")
-        st.markdown("### 📤 Copiar backups a ruta externa")
-        
-        backups_locales = listar_backups()
-        if backups_locales and st.session_state.ruta_externa:
-            backup_a_copiar = st.selectbox(
-                "Seleccionar backup local para copiar",
-                backups_locales,
-                format_func=lambda x: x['nombre']
-            )
-            
-            if st.button("📋 Copiar a ruta externa", use_container_width=True):
-                try:
-                    destino = os.path.join(st.session_state.ruta_externa, backup_a_copiar['nombre'])
-                    shutil.copy(backup_a_copiar['ruta'], destino)
-                    st.success(f"✅ Backup copiado a: {destino}")
-                except Exception as e:
-                    st.error(f"❌ Error al copiar: {str(e)}")
-        else:
-            if not st.session_state.ruta_externa:
-                st.info("👆 Configura una ruta externa primero")
-            elif not backups_locales:
-                st.info("No hay backups locales para copiar")
+                        if os.path.exists("data.db"):
+                            shutil.copy("data.db", backup_seguridad)
+                            st.info(f"✅ Backup de seguridad creado: {os.path.basename(backup_seguridad)}")
+                        
+                        # Guardar el archivo subido
+                        with open("data.db", "wb") as f:
+                            f.write(archivo_subido.getbuffer())
+                        
+                        st.success("✅ Base de datos restaurada correctamente")
+                        st.balloons()
+                        st.warning("🔄 La aplicación se recargará para aplicar los cambios")
+                        st.rerun()
+                        
+                    except Exception as e:
+                        st.error(f"❌ Error al restaurar: {str(e)}")
