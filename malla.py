@@ -193,7 +193,7 @@ def login():
         st.markdown("""
             <div class="login-footer">
                 <p>¿Olvidaste tu contraseña? Contacta al administrador</p>
-                <p>© 2026 Malla de Turnos - Versión 2.0</p>
+                <p>© Creado por Edwin Merchán 2026  - Versión 2.0</p>
             </div>
         </div>
         """, unsafe_allow_html=True)
