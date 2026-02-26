@@ -528,49 +528,35 @@ elif op == "Matriz turnos":
         # Tabs para diferentes vistas
         tab1, tab2, tab3 = st.tabs(["📋 Vista matriz", "✏️ Edición rápida", "📥 Carga masiva"])
         
-with tab1:  # VISTA MATRIZ
-    st.markdown("### Vista de matriz de turnos")
-    
-    # Preparar datos con columnas como números simples
-    data = []
-    for emp in empleados:
-        fila = {
-            "Empleado": emp.nombre,
-            "Área": emp.area if emp.area else "N/A",
-            "Cargo": emp.cargo if emp.cargo else "N/A",
-        }
-        for dia in range(1, dias_mes + 1):
-            turno_id = matriz.get(emp.id, {}).get(dia)
-            columna = str(dia)  # Solo el número
-            if turno_id:
-                fila[columna] = turnos_dict.get(turno_id, "?")
-            else:
-                fila[columna] = "—"
-        data.append(fila)
-    
-    if data:
-        df = pd.DataFrame(data)
-        
-        # Mostrar DataFrame con ajuste de ancho
-        st.dataframe(
-            df, 
-            use_container_width=True, 
-            height=600,
-            column_config={
-                "Empleado": st.column_config.TextColumn("Empleado", width="medium"),
-                "Área": st.column_config.TextColumn("Área", width="small"),
-                "Cargo": st.column_config.TextColumn("Cargo", width="small"),
-                # Las columnas de días se configuran automáticamente
-            }
-        )
-        
-        # Mostrar estadísticas
-        total_asignaciones = sum(1 for emp in matriz for dia in matriz[emp])
-        st.metric("Total turnos asignados", total_asignaciones)
+        with tab1:  # VISTA MATRIZ
+            st.markdown("### Vista de matriz de turnos")
+            
+            # Preparar datos con columnas como números simples
+            data = []
+            for emp in empleados:
+                fila = {
+                    "Empleado": emp.nombre,
+                    "Área": emp.area if emp.area else "N/A",
+                    "Cargo": emp.cargo if emp.cargo else "N/A",
+                }
+                for dia in range(1, dias_mes + 1):
+                    turno_id = matriz.get(emp.id, {}).get(dia)
+                    columna = str(dia)  # Solo el número
+                    if turno_id:
+                        fila[columna] = turnos_dict.get(turno_id, "?")
+                    else:
+                        fila[columna] = "—"
+                data.append(fila)
             
             if data:
                 df = pd.DataFrame(data)
-                st.dataframe(df, use_container_width=True, height=600)
+                
+                # Mostrar DataFrame con ajuste de ancho
+                st.dataframe(
+                    df, 
+                    use_container_width=True, 
+                    height=600
+                )
                 
                 # Mostrar estadísticas
                 total_asignaciones = sum(1 for emp in matriz for dia in matriz[emp])
@@ -703,19 +689,22 @@ with tab1:  # VISTA MATRIZ
                 except Exception as e:
                     st.error(f"Error al procesar archivo: {str(e)}")
         
-# Preparar datos para exportar - con números simples
-data_export = []
-for emp in empleados:
-    fila = {
-        "Empleado": emp.nombre,
-        "Área": emp.area if emp.area else "N/A",
-        "Cargo": emp.cargo if emp.cargo else "N/A",
-    }
-    for dia in range(1, dias_mes + 1):
-        turno_id = matriz.get(emp.id, {}).get(dia)
-        # Usar solo el número como nombre de columna
-        fila[str(dia)] = turnos_dict.get(turno_id, "") if turno_id else ""
-    data_export.append(fila)
+        # Botón de exportar (este está fuera de los tabs pero dentro del else)
+        st.markdown("---")
+        if st.button("📥 Exportar matriz actual a Excel"):
+            # Preparar datos para exportar - con números simples
+            data_export = []
+            for emp in empleados:
+                fila = {
+                    "Empleado": emp.nombre,
+                    "Área": emp.area if emp.area else "N/A",
+                    "Cargo": emp.cargo if emp.cargo else "N/A",
+                }
+                for dia in range(1, dias_mes + 1):
+                    turno_id = matriz.get(emp.id, {}).get(dia)
+                    # Usar solo el número como nombre de columna
+                    fila[str(dia)] = turnos_dict.get(turno_id, "") if turno_id else ""
+                data_export.append(fila)
             
             df_export = pd.DataFrame(data_export)
             output = pd.ExcelWriter('matriz_turnos.xlsx', engine='xlsxwriter')
@@ -729,7 +718,6 @@ for emp in empleados:
                     f"matriz_turnos_{mes}_{año}.xlsx",
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
-
 # ========== GENERAR MALLA ==========
 elif op == "Generar malla":
     if user.rol != "admin":
