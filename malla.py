@@ -56,6 +56,8 @@ with col1:
         cambiar_pagina("Empleados")
     if st.button("⏰ Turnos", use_container_width=True):
         cambiar_pagina("Turnos")
+    if st.button("✏️ Asignar manual", use_container_width=True):  # NUEVO BOTÓN
+        cambiar_pagina("Asignacion manual")
 
 with col2:
     if st.button("🤖 Generar", use_container_width=True):
@@ -246,6 +248,190 @@ elif op == "Turnos":
                 else:
                     st.error("❌ Todos los campos son obligatorios")
 
+# ========== ASIGNACIÓN MANUAL DE TURNOS ==========
+elif op == "Asignacion manual":
+    st.subheader("✏️ Asignación manual de turnos")
+    
+    # Crear pestañas para diferentes vistas
+    tab1, tab2, tab3 = st.tabs(["📅 Asignar turnos", "📋 Ver asignaciones", "🗑️ Eliminar asignaciones"])
+    
+    with tab1:  # PESTAÑA DE ASIGNACIÓN
+        st.markdown("### Asignar turno a empleado")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Seleccionar empleado
+            empleados = session.query(Empleado).all()
+            if empleados:
+                empleado_opciones = {f"{e.nombre} ({e.area if e.area else 'Sin área'})": e.id for e in empleados}
+                empleado_sel = st.selectbox("Seleccionar empleado", list(empleado_opciones.keys()))
+                empleado_id = empleado_opciones[empleado_sel]
+                empleado = session.query(Empleado).get(empleado_id)
+                
+                # Mostrar info del empleado
+                if empleado:
+                    st.info(f"**Área:** {empleado.area if empleado.area else 'No asignada'} | **Cargo:** {empleado.cargo if empleado.cargo else 'No asignado'}")
+            else:
+                st.warning("⚠️ No hay empleados registrados. Crea empleados primero.")
+                empleado = None
+        
+        with col2:
+            # Seleccionar turno
+            turnos = session.query(Turno).all()
+            if turnos:
+                turno_opciones = {f"{t.nombre} ({t.inicio} - {t.fin})": t.id for t in turnos}
+                turno_sel = st.selectbox("Seleccionar turno", list(turno_opciones.keys()))
+                turno_id = turno_opciones[turno_sel]
+            else:
+                st.warning("⚠️ No hay turnos registrados. Crea turnos primero.")
+                turno_id = None
+        
+        # Seleccionar fecha
+        fecha_asignacion = st.date_input("Fecha del turno", date.today())
+        
+        # Botón para asignar
+        if st.button("✅ Asignar turno", use_container_width=True, type="primary"):
+            if not empleado:
+                st.error("❌ No hay empleado seleccionado")
+            elif not turno_id:
+                st.error("❌ No hay turno seleccionado")
+            else:
+                # Verificar si ya existe una asignación para ese empleado en esa fecha
+                existe = session.query(Asignacion).filter_by(
+                    empleado_id=empleado_id, 
+                    fecha=fecha_asignacion
+                ).first()
+                
+                if existe:
+                    st.warning(f"⚠️ El empleado ya tiene un turno asignado para esa fecha")
+                    
+                    # Opción para reemplazar
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.button("🔄 Reemplazar turno"):
+                            existe.turno_id = turno_id
+                            session.commit()
+                            st.success("✅ Turno reemplazado correctamente")
+                            st.rerun()
+                    with col2:
+                        if st.button("❌ Cancelar"):
+                            st.rerun()
+                else:
+                    # Crear nueva asignación
+                    nueva_asignacion = Asignacion(
+                        empleado_id=empleado_id,
+                        fecha=fecha_asignacion,
+                        turno_id=turno_id
+                    )
+                    session.add(nueva_asignacion)
+                    session.commit()
+                    st.success(f"✅ Turno asignado correctamente a {empleado.nombre}")
+                    st.balloons()
+                    st.rerun()
+        
+        # Mostrar asignaciones del día
+        st.markdown("---")
+        st.markdown(f"### 📅 Asignaciones para {fecha_asignacion.strftime('%d/%m/%Y')}")
+        
+        asignaciones_dia = session.query(Asignacion).filter_by(fecha=fecha_asignacion).all()
+        if asignaciones_dia:
+            data_dia = []
+            for a in asignaciones_dia:
+                data_dia.append({
+                    "Empleado": a.empleado.nombre if a.empleado else "N/A",
+                    "Área": a.empleado.area if a.empleado and a.empleado.area else "N/A",
+                    "Turno": a.turno.nombre if a.turno else "N/A",
+                    "Hora": f"{a.turno.inicio} - {a.turno.fin}" if a.turno else "N/A"
+                })
+            st.dataframe(pd.DataFrame(data_dia), use_container_width=True)
+        else:
+            st.info("ℹ️ No hay asignaciones para esta fecha")
+    
+    with tab2:  # PESTAÑA DE VER ASIGNACIONES
+        st.markdown("### Ver asignaciones por período")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            fecha_inicio = st.date_input("Fecha inicio", date.today(), key="ver_inicio")
+        with col2:
+            fecha_fin = st.date_input("Fecha fin", date.today() + timedelta(days=7), key="ver_fin")
+        
+        # Filtro por empleado
+        empleados = session.query(Empleado).all()
+        empleado_opciones = {"Todos los empleados": None}
+        empleado_opciones.update({f"{e.nombre}": e.id for e in empleados})
+        empleado_filtro = st.selectbox("Filtrar por empleado", list(empleado_opciones.keys()))
+        
+        if st.button("🔍 Buscar asignaciones"):
+            query = session.query(Asignacion).filter(
+                Asignacion.fecha.between(fecha_inicio, fecha_fin)
+            )
+            
+            if empleado_filtro != "Todos los empleados" and empleado_opciones[empleado_filtro]:
+                query = query.filter_by(empleado_id=empleado_opciones[empleado_filtro])
+            
+            asignaciones = query.all()
+            
+            if asignaciones:
+                data = []
+                for a in asignaciones:
+                    data.append({
+                        "Fecha": a.fecha.strftime("%d/%m/%Y"),
+                        "Empleado": a.empleado.nombre if a.empleado else "N/A",
+                        "Área": a.empleado.area if a.empleado and a.empleado.area else "N/A",
+                        "Turno": a.turno.nombre if a.turno else "N/A",
+                        "Hora inicio": a.turno.inicio if a.turno else "N/A",
+                        "Hora fin": a.turno.fin if a.turno else "N/A"
+                    })
+                df = pd.DataFrame(data)
+                st.dataframe(df, use_container_width=True)
+                st.metric("Total asignaciones", len(df))
+            else:
+                st.info("ℹ️ No hay asignaciones en el período seleccionado")
+    
+    with tab3:  # PESTAÑA DE ELIMINAR
+        st.markdown("### Eliminar asignaciones")
+        
+        # Seleccionar asignación a eliminar
+        asignaciones = session.query(Asignacion).order_by(Asignacion.fecha.desc()).limit(50).all()
+        
+        if asignaciones:
+            opciones_asignaciones = {}
+            for a in asignaciones:
+                empleado_nombre = a.empleado.nombre if a.empleado else "N/A"
+                turno_nombre = a.turno.nombre if a.turno else "N/A"
+                fecha_str = a.fecha.strftime("%d/%m/%Y")
+                opciones_asignaciones[f"{fecha_str} - {empleado_nombre} - {turno_nombre}"] = a.id
+            
+            asignacion_sel = st.selectbox("Seleccionar asignación a eliminar", list(opciones_asignaciones.keys()))
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("🗑️ Eliminar seleccionada", use_container_width=True):
+                    asignacion_id = opciones_asignaciones[asignacion_sel]
+                    asignacion = session.query(Asignacion).get(asignacion_id)
+                    if asignacion:
+                        session.delete(asignacion)
+                        session.commit()
+                        st.success("✅ Asignación eliminada correctamente")
+                        st.rerun()
+            
+            with col2:
+                if st.button("🗑️ Eliminar todas del período", use_container_width=True):
+                    st.warning("⚠️ Esta acción eliminará todas las asignaciones")
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        fecha_eliminar = st.date_input("Fecha límite", date.today())
+                        if st.button("Confirmar eliminación masiva"):
+                            session.query(Asignacion).filter(Asignacion.fecha <= fecha_eliminar).delete()
+                            session.commit()
+                            st.success("✅ Asignaciones eliminadas")
+                            st.rerun()
+        else:
+            st.info("ℹ️ No hay asignaciones para eliminar")
+
 # ========== GENERAR MALLA ==========
 elif op == "Generar malla":
     st.subheader("🤖 Generación automática de malla")
@@ -288,37 +474,51 @@ elif op == "Generar malla":
                 backup_sqlite()
                 st.success(f"✅ Malla generada para {len(asignaciones)} turnos")
 
-# ========== CALENDARIO ==========
+# ========== CALENDARIO (modificado con opción de edición) ==========
 elif op == "Calendario":
     st.subheader("📆 Calendario de turnos")
     
     # Obtener todas las áreas únicas
     empleados = session.query(Empleado).all()
-    areas = list(set([e.area for e in empleados if e.area]))  # Áreas que no son None
-    areas.sort()  # Ordenar alfabéticamente
+    areas = list(set([e.area for e in empleados if e.area]))
+    areas.sort()
     areas_opciones = ["Todas las áreas"] + areas
     
-    # Si no hay áreas, mostrar mensaje
     if not areas:
         st.info("ℹ️ No hay áreas registradas. Agrega áreas a los empleados primero.")
         area_filtro = "Todas las áreas"
     else:
         area_filtro = st.selectbox("Filtrar por área", areas_opciones)
     
-    asignaciones = session.query(Asignacion).all()
+    # Selector de mes
+    meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
+             "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+    año = st.number_input("Año", min_value=2024, max_value=2030, value=2026)
+    mes = st.selectbox("Mes", meses, index=1)  # Febrero por defecto
+    
+    # Calcular fechas del mes
+    mes_num = meses.index(mes) + 1
+    from calendar import monthrange
+    dias_mes = monthrange(año, mes_num)[1]
+    fecha_inicio_mes = date(año, mes_num, 1)
+    fecha_fin_mes = date(año, mes_num, dias_mes)
+    
+    asignaciones = session.query(Asignacion).filter(
+        Asignacion.fecha.between(fecha_inicio_mes, fecha_fin_mes)
+    ).all()
     
     data = []
     for a in asignaciones:
-        # Aplicar filtro por área
         if area_filtro == "Todas las áreas" or (a.empleado and a.empleado.area == area_filtro):
             data.append({
-                "Fecha": a.fecha,
+                "Fecha": a.fecha.strftime("%d/%m/%Y"),
+                "Día": a.fecha.strftime("%A"),
                 "Empleado": a.empleado.nombre if a.empleado else "N/A",
                 "Área": a.empleado.area if a.empleado and a.empleado.area else "N/A",
-                "Cargo": a.empleado.cargo if a.empleado and a.empleado.cargo else "N/A",
                 "Turno": a.turno.nombre if a.turno else "N/A",
                 "Hora inicio": a.turno.inicio if a.turno else "N/A",
-                "Hora fin": a.turno.fin if a.turno else "N/A"
+                "Hora fin": a.turno.fin if a.turno else "N/A",
+                "Acciones": "✏️ Editar"  # Columna para acciones
             })
     
     df = pd.DataFrame(data)
@@ -326,23 +526,24 @@ elif op == "Calendario":
         df = df.sort_values("Fecha")
         st.dataframe(df, use_container_width=True)
         
-        # Estadísticas por área
+        # Botón para edición rápida (esto abriría la pestaña de asignación manual)
+        if st.button("✏️ Ir a asignación manual", use_container_width=True):
+            cambiar_pagina("Asignacion manual")
+            st.rerun()
+        
+        # Estadísticas
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("Total turnos", len(df))
         col2.metric("Empleados", df["Empleado"].nunique())
         col3.metric("Áreas", df["Área"].nunique())
         col4.metric("Turnos únicos", df["Turno"].nunique())
-        
-        # Mostrar resumen por área
-        if area_filtro == "Todas las áreas":
-            st.markdown("### 📊 Resumen por área")
-            resumen_area = df.groupby("Área").agg({
-                "Empleado": "nunique",
-                "Turno": "count"
-            }).rename(columns={"Empleado": "Empleados", "Turno": "Total turnos"})
-            st.dataframe(resumen_area, use_container_width=True)
     else:
-        st.info("ℹ️ No hay asignaciones registradas para el área seleccionada")
+        st.info(f"ℹ️ No hay asignaciones para {mes} {año}")
+        
+        # Botón para crear asignaciones
+        if st.button("➕ Crear primera asignación", use_container_width=True):
+            cambiar_pagina("Asignacion manual")
+            st.rerun()
 
 # ========== REPORTES ==========
 elif op == "Reportes":
