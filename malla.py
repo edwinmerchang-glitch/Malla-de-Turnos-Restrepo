@@ -163,7 +163,7 @@ def login():
             <div class="login-header">
                 <div class="login-icon">📅</div>
                 <h1>Malla de Turnos</h1>
-                <p>Sistema de Gestión de Horarios</p>
+                <p>Malla de Turnos Locatel Restrepo</p>
             </div>
         """, unsafe_allow_html=True)
         
