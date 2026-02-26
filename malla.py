@@ -214,7 +214,7 @@ def login():
         """, unsafe_allow_html=True)
 
 # -------- MENÚ MODERNO CON BOTONES SEGÚN EL ROL --------
-st.sidebar.markdown("""
+if st.sidebar.markdown("""
 <style>
     /* Estilos generales del sidebar */
     .sidebar-header {
