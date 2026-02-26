@@ -5,42 +5,121 @@ from database import Session, Empleado, Turno, Asignacion
 from scheduler import generar_malla_inteligente
 from backup import backup_sqlite
 import os
-import shutil  # IMPORTANTE: para copiar archivos
+import shutil
 from calendar import monthrange
-from datetime import datetime  # Agrega esto junto con los otros imports
+from datetime import datetime
 
 st.set_page_config("Malla de Turnos", layout="wide")
 
-# Función para limpiar turnos de un empleado
-def limpiar_turnos_empleado(empleado_id, fecha_inicio, fecha_fin, tipo_limpieza="todos"):
-    """
-    Limpia los turnos de un empleado en un rango de fechas
-    tipo_limpieza: "todos" (elimina todos), "vacaciones", "incapacidad", "cumpleaños", etc.
-    """
-    query = session.query(Asignacion).filter(
-        Asignacion.empleado_id == empleado_id,
-        Asignacion.fecha.between(fecha_inicio, fecha_fin)
-    )
-    
-    if tipo_limpieza != "todos":
-        # Filtrar por tipo de turno
-        turnos_especiales = {
-            "vacaciones": ["VACACIONES", "VAC", "VACACION"],
-            "incapacidad": ["INCAPACIDAD", "INCAP", "INC"],
-            "cumpleaños": ["DIA CUMPLEAÑOS", "CUMPLEAÑOS", "DIA CUMPLE"],
-            "descanso": ["DESCANSO", "DESC", "—"]
-        }
-        
-        if tipo_limpieza in turnos_especiales:
-            turnos_filtro = turnos_especiales[tipo_limpieza]
-            # Esto requiere una consulta más compleja, por ahora lo dejamos simple
-            pass
-    
-    count = query.delete(synchronize_session=False)
-    session.commit()
-    return count
+# ===== MENÚ HAMBURGUESA =====
+# Inicializar estado del menú
+if "menu_colapsado" not in st.session_state:
+    st.session_state.menu_colapsado = False
 
-# -------- LOGIN --------
+# Función para toggle del menú
+def toggle_menu():
+    st.session_state.menu_colapsado = not st.session_state.menu_colapsado
+
+# CSS para el menú hamburguesa
+st.markdown("""
+<style>
+    /* Botón hamburguesa flotante */
+    .hamburguesa-btn {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        z-index: 1000;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        font-size: 24px;
+        cursor: pointer;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .hamburguesa-btn:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    /* Sidebar colapsable */
+    section[data-testid="stSidebar"] {
+        transition: all 0.3s ease;
+    }
+    
+    section[data-testid="stSidebar"][aria-expanded="true"] {
+        margin-left: 0px !important;
+        min-width: 250px !important;
+        width: 250px !important;
+    }
+    
+    section[data-testid="stSidebar"][aria-expanded="false"] {
+        margin-left: -250px !important;
+        min-width: 0px !important;
+        width: 0px !important;
+        display: none;
+    }
+    
+    /* Tooltips para iconos */
+    .icono-con-tooltip {
+        position: relative;
+        display: inline-block;
+    }
+    
+    .icono-con-tooltip:hover::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        left: 100%;
+        top: 50%;
+        transform: translateY(-50%);
+        background: #333;
+        color: white;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 14px;
+        white-space: nowrap;
+        margin-left: 10px;
+        z-index: 1000;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        animation: fadeIn 0.2s ease;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-50%) translateX(-10px); }
+        to { opacity: 1; transform: translateY(-50%) translateX(0); }
+    }
+    
+    /* Ajustar contenido principal cuando el menú está oculto */
+    .main-content {
+        transition: margin-left 0.3s ease;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# Botón hamburguesa flotante
+col1, col2, col3 = st.columns([1, 10, 1])
+with col1:
+    st.markdown(f"""
+    <button class="hamburguesa-btn" onclick="toggleMenu()">☰</button>
+    <script>
+    function toggleMenu() {{
+        const sidebar = parent.document.querySelector('section[data-testid="stSidebar"]');
+        if (sidebar) {{
+            const expanded = sidebar.getAttribute('aria-expanded') === 'true';
+            sidebar.setAttribute('aria-expanded', !expanded);
+        }}
+    }}
+    </script>
+    """, unsafe_allow_html=True)
+
+# Función para login (sin cambios)
 def login():
     st.title("🔐 Ingreso al sistema")
     user = st.text_input("Usuario")
