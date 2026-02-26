@@ -181,7 +181,7 @@ st.markdown("""
         font-size: 0.9rem;
     }
     
-    /* Tu tarjeta de usuario */
+    /* Tarjeta de usuario */
     .user-info-card {
         background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
         border-radius: 15px;
@@ -293,14 +293,6 @@ st.markdown("""
         font-size: 0.8rem;
         border-top: 1px solid #f0f0f0;
     }
-    
-    /* Ajustar el contenido principal cuando el menú está abierto */
-    .main-content {
-        transition: margin-left 0.3s ease;
-    }
-    .main-content.shifted {
-        margin-left: 0;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -308,8 +300,10 @@ st.markdown("""
 if "menu_abierto" not in st.session_state:
     st.session_state.menu_abierto = False
 
-# Botón hamburguesa flotante (usando HTML directamente)
-hamburger_clicked = st.button("☰", key="hamburger_floating")
+# Botón hamburguesa
+col1, col2, col3 = st.columns([1, 1, 10])
+with col1:
+    hamburger_clicked = st.button("☰", key="hamburger_btn")
 
 if hamburger_clicked:
     st.session_state.menu_abierto = not st.session_state.menu_abierto
@@ -331,7 +325,6 @@ st.markdown(f"""
         <p>Sistema de Gestión de Horarios</p>
     </div>
     
-    <!-- Tu tarjeta de usuario -->
     <div class="user-info-card">
         <div class="user-info-item">
             <div class="user-info-icon">👤</div>
@@ -375,7 +368,7 @@ if "pagina_actual" not in st.session_state:
 
 def cambiar_pagina(pagina):
     st.session_state.pagina_actual = pagina
-    st.session_state.menu_abierto = False  # Cerrar menú después de seleccionar
+    st.session_state.menu_abierto = False
 
 # -------- MENÚ PARA EMPLEADOS --------
 if user.rol == "empleado":
