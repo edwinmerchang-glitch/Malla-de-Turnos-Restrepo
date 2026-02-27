@@ -1488,39 +1488,68 @@ if "user" in st.session_state:
                         st.rerun()
         
         with tab3:
+            st.markdown("### Editar empleado")
+            
             empleados = session.query(Empleado).all()
-            if empleados:
+            if not empleados:
+                st.info("No hay empleados para editar")
+            else:
+                # Selector de empleado
                 opciones = {f"{e.nombre} ({e.usuario})": e.id for e in empleados}
                 seleccion = st.selectbox("Seleccionar empleado", list(opciones.keys()))
                 emp_id = opciones[seleccion]
                 emp = session.get(Empleado, emp_id)
                 
                 if emp:
-                    with st.form("editar"):
-                        st.markdown("#### Información básica")
+                    with st.form("editar_empleado_form"):
+                        st.markdown("#### 📝 Información básica")
                         
-                        nombre = st.text_input("Nombre", emp.nombre)
-                        area = st.text_input("Área", emp.area or "")
-                        cargo = st.text_input("Cargo", emp.cargo or "")
-                        rol = st.selectbox("Rol", ["empleado", "supervisor", "admin"], 
-                                         index=["empleado", "supervisor", "admin"].index(emp.rol))
+                        # Campos EDITABLES
+                        nombre = st.text_input("Nombre completo", value=emp.nombre)
+                        usuario = st.text_input("Usuario", value=emp.usuario)
+                        
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            area = st.text_input("Área", value=emp.area or "")
+                        with col2:
+                            cargo = st.text_input("Cargo", value=emp.cargo or "")
+                        
+                        rol = st.selectbox(
+                            "Rol", 
+                            ["empleado", "supervisor", "admin"], 
+                            index=["empleado", "supervisor", "admin"].index(emp.rol)
+                        )
                         
                         st.markdown("---")
                         st.markdown("#### 🔐 Cambiar contraseña (opcional)")
-                        nueva_pass = st.text_input("Nueva contraseña", type="password", placeholder="Dejar vacío para no cambiar")
+                        nueva_pass = st.text_input(
+                            "Nueva contraseña", 
+                            type="password", 
+                            placeholder="Dejar vacío para no cambiar"
+                        )
                         
                         st.markdown("---")
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            guardar = st.form_submit_button("💾 Guardar cambios", use_container_width=True)
+                        col1, col2, col3 = st.columns(3)
                         with col2:
-                            eliminar = st.form_submit_button("🗑️ Eliminar empleado", use_container_width=True)
+                            guardar = st.form_submit_button("💾 Guardar cambios", use_container_width=True)
                         
                         if guardar:
                             cambios = False
                             
+                            # Actualizar campos
                             if emp.nombre != nombre:
                                 emp.nombre = nombre
+                                cambios = True
+                            if emp.usuario != usuario:
+                                # Verificar que el usuario no exista ya
+                                existe = session.query(Empleado).filter(
+                                    Empleado.usuario == usuario,
+                                    Empleado.id != emp.id
+                                ).first()
+                                if existe:
+                                    st.error(f"❌ El usuario '{usuario}' ya está en uso")
+                                    st.stop()
+                                emp.usuario = usuario
                                 cambios = True
                             if emp.area != (area or None):
                                 emp.area = area or None
@@ -1538,15 +1567,20 @@ if "user" in st.session_state:
                                     st.success("✅ Contraseña actualizada")
                                 else:
                                     st.error("❌ La contraseña debe tener al menos 4 caracteres")
+                                    st.stop()
                             
                             if cambios:
                                 session.commit()
-                                st.success("✅ Empleado actualizado")
+                                st.success("✅ Empleado actualizado correctamente")
                                 st.rerun()
                             else:
                                 st.info("ℹ️ No se realizaron cambios")
-                        
-                        if eliminar:
+                    
+                    # Botón de eliminar (FUERA del formulario)
+                    st.markdown("---")
+                    col1, col2, col3 = st.columns(3)
+                    with col2:
+                        if st.button("🗑️ Eliminar empleado", use_container_width=True, type="secondary"):
                             if emp.id == user.id:
                                 st.error("❌ No puedes eliminarte a ti mismo")
                             else:
