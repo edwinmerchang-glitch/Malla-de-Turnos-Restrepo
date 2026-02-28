@@ -1733,13 +1733,13 @@ if "user" in st.session_state:
         with col1:
             meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
                      "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
-            mes = st.selectbox("Mes", meses, index=1)
+            mes = st.selectbox("Mes", meses, index=1, key="matriz_mes")
         with col2:
-            año = st.number_input("Año", min_value=2024, max_value=2030, value=2026)
+            año = st.number_input("Año", min_value=2024, max_value=2030, value=2026, key="matriz_ano")
         with col3:
             areas = list(set([e.area for e in session.query(Empleado).all() if e.area]))
             areas.sort()
-            area_filtro = st.selectbox("Filtrar por área", ["Todas"] + areas)
+            area_filtro = st.selectbox("Filtrar por área", ["Todas"] + areas, key="matriz_area")
         
         mes_num = meses.index(mes) + 1
         from calendar import monthrange
@@ -1807,18 +1807,18 @@ if "user" in st.session_state:
             if empleados:
                 col1, col2 = st.columns(2)
                 with col1:
-                    emp_sel = st.selectbox("Empleado", [e.nombre for e in empleados])
+                    emp_sel = st.selectbox("Empleado", [e.nombre for e in empleados], key="rapido_emp")
                     empleado = next(e for e in empleados if e.nombre == emp_sel)
                 
                 with col2:
                     turno_opciones = ["Descanso"] + [t.nombre for t in turnos]
-                    turno_sel = st.selectbox("Turno", turno_opciones)
+                    turno_sel = st.selectbox("Turno", turno_opciones, key="rapido_turno")
                 
                 col1, col2 = st.columns(2)
                 with col1:
-                    dia_inicio = st.number_input("Día inicio", 1, dias_mes, 1)
+                    dia_inicio = st.number_input("Día inicio", 1, dias_mes, 1, key="rapido_ini")
                 with col2:
-                    dia_fin = st.number_input("Día fin", dia_inicio, dias_mes, dia_inicio)
+                    dia_fin = st.number_input("Día fin", dia_inicio, dias_mes, dia_inicio, key="rapido_fin")
                 
                 if st.button("🔄 Aplicar asignación masiva", use_container_width=True):
                     turno_id = None
@@ -1853,305 +1853,301 @@ if "user" in st.session_state:
                     st.success(f"✅ {count} turnos actualizados")
                     st.rerun()
         
-# ... (código anterior) ...
-
-                        with tab3:
-                            st.markdown("### Carga masiva desde Excel")
-                            st.markdown("""
-                            **Formato del archivo:**
-                            - **Columna A:** Empleado (nombre exacto)
-                            - **Columna B:** Área (opcional)  
-                            - **Columna C en adelante:** Números de día (1, 2, 3, ... 31)
+        with tab3:
+            st.markdown("### Carga masiva desde Excel")
+            st.markdown("""
+            **Formato del archivo:**
+            - **Columna A:** Empleado (nombre exacto)
+            - **Columna B:** Área (opcional)  
+            - **Columna C en adelante:** Números de día (1, 2, 3, ... 31)
+            
+            **Valores:** 
+            - Número de turno (ej: 151, 155, 70) 
+            - O dejar vacío o "None" para descanso
+            """)
+            
+            # Botón para descargar plantilla
+            with st.expander("📥 Descargar plantilla de ejemplo"):
+                st.markdown("""
+                **Instrucciones:**
+                1. Descarga esta plantilla
+                2. Completa los turnos para cada empleado
+                3. Guarda el archivo y súbelo
+                """)
+                
+                # Crear plantilla con algunos empleados de ejemplo
+                empleados_ejemplo = session.query(Empleado).limit(5).all()
+                template_data = []
+                for emp in empleados_ejemplo:
+                    fila = {
+                        "Empleado": emp.nombre,
+                        "Área": emp.area or "",
+                        "Cargo": emp.cargo or "",
+                    }
+                    # Agregar algunos días de ejemplo
+                    for dia in [1, 2, 3, 4, 5]:
+                        fila[dia] = ""
+                    template_data.append(fila)
+                
+                df_template = pd.DataFrame(template_data)
+                
+                # Guardar temporalmente
+                template_path = "plantilla_carga.xlsx"
+                df_template.to_excel(template_path, index=False)
+                
+                with open(template_path, "rb") as f:
+                    st.download_button(
+                        "📥 Descargar plantilla Excel",
+                        f,
+                        "plantilla_turnos.xlsx",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        use_container_width=True
+                    )
+                
+                # Limpiar archivo temporal
+                if os.path.exists(template_path):
+                    os.remove(template_path)
+            
+            # Cargador de archivos
+            archivo = st.file_uploader(
+                "Seleccionar archivo Excel para cargar",
+                type=['xlsx', 'xls'],
+                help="Sube el archivo Excel con los turnos para cargar masivamente"
+            )
+            
+            if archivo:
+                try:
+                    # Mostrar información de depuración
+                    st.info(f"📁 Archivo: {archivo.name}")
+                    
+                    # Leer el archivo
+                    df_carga = pd.read_excel(archivo)
+                    
+                    # Mostrar vista previa
+                    st.write("### Vista previa del archivo cargado")
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        mostrar_todas = st.checkbox("Mostrar todas las filas", value=False)
+                    
+                    if mostrar_todas:
+                        st.dataframe(df_carga)
+                    else:
+                        st.dataframe(df_carga.head(5))
+                        st.caption(f"Mostrando 5 de {len(df_carga)} filas")
+                    
+                    # Identificar columnas
+                    columnas = df_carga.columns.tolist()
+                    st.write("**Columnas encontradas:**", columnas)
+                    
+                    # Buscar columna de empleado
+                    col_empleado = None
+                    for col in columnas:
+                        if str(col).strip().lower() == 'empleado':
+                            col_empleado = col
+                            break
+                    
+                    if not col_empleado:
+                        st.error("❌ No se encontró la columna 'Empleado'")
+                        st.stop()
+                    
+                    # Identificar columnas de días (números del 1 al 31)
+                    columnas_dias = []
+                    for col in columnas:
+                        try:
+                            # Intentar convertir a entero
+                            num = int(str(col).strip())
+                            if 1 <= num <= 31:
+                                columnas_dias.append(str(col))
+                        except (ValueError, TypeError):
+                            # No es un número, ignorar
+                            pass
+                    
+                    # Estadísticas
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Empleados a procesar", len(df_carga))
+                    with col2:
+                        st.metric("Días encontrados", len(columnas_dias))
+                    with col3:
+                        st.metric("Mes a procesar", f"{mes} {año}")
+                    
+                    if not columnas_dias:
+                        st.error("❌ No se encontraron columnas de días (números del 1 al 31)")
+                        st.stop()
+                    
+                    # Botón de procesar
+                    if st.button("📤 Procesar carga masiva", use_container_width=True, type="primary"):
+                        count_total = 0
+                        empleados_no_encontrados = []
+                        turnos_no_encontrados = []
+                        exitosos = []
+                        
+                        progress_bar = st.progress(0)
+                        status_text = st.empty()
+                        
+                        # Obtener todos los empleados y turnos
+                        todos_empleados_db = session.query(Empleado).all()
+                        todos_turnos_db = session.query(Turno).all()
+                        
+                        # Crear diccionario de empleados para búsqueda flexible
+                        empleados_dict = {}
+                        for emp in todos_empleados_db:
+                            # Guardar varias versiones del nombre
+                            nombre_original = emp.nombre.upper().strip()
+                            nombre_sin_acentos = (emp.nombre
+                                .upper()
+                                .replace('Á', 'A').replace('É', 'E').replace('Í', 'I')
+                                .replace('Ó', 'O').replace('Ú', 'U')
+                                .replace('Ü', 'U')).strip()
                             
-                            **Valores:** 
-                            - Número de turno (ej: 151, 155, 70) 
-                            - O dejar vacío o "None" para descanso
-                            """)
+                            empleados_dict[nombre_original] = emp
+                            empleados_dict[nombre_sin_acentos] = emp
+                        
+                        # Crear diccionario de turnos
+                        turnos_dict = {}
+                        for turno in todos_turnos_db:
+                            turnos_dict[turno.nombre.upper().strip()] = turno
+                        
+                        st.write("### Procesando...")
+                        
+                        # Mostrar empleados disponibles para referencia
+                        with st.expander("📋 Empleados disponibles en el sistema"):
+                            for emp in todos_empleados_db[:10]:
+                                st.write(f"  • {emp.nombre}")
+                            if len(todos_empleados_db) > 10:
+                                st.write(f"  ... y {len(todos_empleados_db) - 10} más")
+                        
+                        for idx, row in df_carga.iterrows():
+                            progress = (idx + 1) / len(df_carga)
+                            progress_bar.progress(progress)
                             
-                            # Botón para descargar plantilla
-                            with st.expander("📥 Descargar plantilla de ejemplo"):
-                                st.markdown("""
-                                **Instrucciones:**
-                                1. Descarga esta plantilla
-                                2. Completa los turnos para cada empleado
-                                3. Guarda el archivo y súbelo
-                                """)
-                                
-                                # Crear plantilla con algunos empleados de ejemplo
-                                empleados_ejemplo = session.query(Empleado).limit(5).all()
-                                template_data = []
-                                for emp in empleados_ejemplo:
-                                    fila = {
-                                        "Empleado": emp.nombre,
-                                        "Área": emp.area or "",
-                                        "Cargo": emp.cargo or "",
-                                    }
-                                    # Agregar algunos días de ejemplo
-                                    for dia in [1, 2, 3, 4, 5]:
-                                        fila[dia] = ""
-                                    template_data.append(fila)
-                                
-                                df_template = pd.DataFrame(template_data)
-                                
-                                # Guardar temporalmente
-                                template_path = "plantilla_carga.xlsx"
-                                df_template.to_excel(template_path, index=False)
-                                
-                                with open(template_path, "rb") as f:
-                                    st.download_button(
-                                        "📥 Descargar plantilla Excel",
-                                        f,
-                                        "plantilla_turnos.xlsx",
-                                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                        use_container_width=True
-                                    )
-                                
-                                # Limpiar archivo temporal
-                                if os.path.exists(template_path):
-                                    os.remove(template_path)
+                            # Obtener nombre del empleado
+                            nombre_emp = str(row[col_empleado]).strip().upper()
+                            status_text.text(f"Procesando: {nombre_emp} ({idx + 1}/{len(df_carga)})")
                             
-                            # Cargador de archivos
-                            archivo = st.file_uploader(
-                                "Seleccionar archivo Excel para cargar",
-                                type=['xlsx', 'xls'],
-                                help="Sube el archivo Excel con los turnos para cargar masivamente"
-                            )
+                            if not nombre_emp or nombre_emp in ['NAN', 'NONE', '']:
+                                continue
                             
-                            if archivo:
-                                try:
-                                    # Mostrar información de depuración
-                                    st.info(f"📁 Archivo: {archivo.name}")
+                            # Buscar empleado
+                            empleado = None
+                            
+                            # Búsqueda exacta
+                            if nombre_emp in empleados_dict:
+                                empleado = empleados_dict[nombre_emp]
+                            else:
+                                # Búsqueda por coincidencia parcial
+                                for emp_nombre, emp in empleados_dict.items():
+                                    if nombre_emp in emp_nombre or emp_nombre in nombre_emp:
+                                        empleado = emp
+                                        break
+                            
+                            if empleado:
+                                exitosos.append(nombre_emp)
+                                
+                                for dia_col in columnas_dias:
+                                    dia = int(str(dia_col).strip())
                                     
-                                    # Leer el archivo
-                                    df_carga = pd.read_excel(archivo)
-                                    
-                                    # Mostrar vista previa
-                                    st.write("### Vista previa del archivo cargado")
-                                    col1, col2 = st.columns(2)
-                                    with col1:
-                                        mostrar_todas = st.checkbox("Mostrar todas las filas", value=False)
-                                    
-                                    if mostrar_todas:
-                                        st.dataframe(df_carga)
-                                    else:
-                                        st.dataframe(df_carga.head(5))
-                                        st.caption(f"Mostrando 5 de {len(df_carga)} filas")
-                                    
-                                    # Identificar columnas
-                                    columnas = df_carga.columns.tolist()
-                                    st.write("**Columnas encontradas:**", columnas)
-                                    
-                                    # Buscar columna de empleado
-                                    col_empleado = None
-                                    for col in columnas:
-                                        if str(col).strip().lower() == 'empleado':
-                                            col_empleado = col
-                                            break
-                                    
-                                    if not col_empleado:
-                                        st.error("❌ No se encontró la columna 'Empleado'")
-                                        st.stop()
-                                    
-                                    # Identificar columnas de días (números del 1 al 31)
-                                    columnas_dias = []
-                                    for col in columnas:
-                                        try:
-                                            # Intentar convertir a entero
-                                            num = int(str(col).strip())
-                                            if 1 <= num <= 31:
-                                                columnas_dias.append(str(col))
-                                        except (ValueError, TypeError):
-                                            # No es un número, ignorar
-                                            pass
-                                    
-                                    # Estadísticas
-                                    col1, col2, col3 = st.columns(3)
-                                    with col1:
-                                        st.metric("Empleados a procesar", len(df_carga))
-                                    with col2:
-                                        st.metric("Días encontrados", len(columnas_dias))
-                                    with col3:
-                                        st.metric("Mes a procesar", f"{mes} {año}")
-                                    
-                                    if not columnas_dias:
-                                        st.error("❌ No se encontraron columnas de días (números del 1 al 31)")
-                                        st.stop()
-                                    
-                                    # Botón de procesar
-                                    if st.button("📤 Procesar carga masiva", use_container_width=True, type="primary"):
-                                        count_total = 0
-                                        empleados_no_encontrados = []
-                                        turnos_no_encontrados = []
-                                        exitosos = []
+                                    if 1 <= dia <= dias_mes:
+                                        valor_turno = row[dia_col]
                                         
-                                        progress_bar = st.progress(0)
-                                        status_text = st.empty()
+                                        # Procesar valor del turno
+                                        es_descanso = False
                                         
-                                        # Obtener todos los empleados y turnos
-                                        todos_empleados_db = session.query(Empleado).all()
-                                        todos_turnos_db = session.query(Turno).all()
+                                        # Verificar si es descanso
+                                        if pd.isna(valor_turno):
+                                            es_descanso = True
+                                        else:
+                                            valor_str = str(valor_turno).strip().upper()
+                                            if valor_str in ['', 'NONE', 'NAN', '—', '-', 'DESCANSO', 'NULL']:
+                                                es_descanso = True
                                         
-                                        # Crear diccionario de empleados para búsqueda flexible
-                                        empleados_dict = {}
-                                        for emp in todos_empleados_db:
-                                            # Guardar varias versiones del nombre
-                                            nombre_original = emp.nombre.upper().strip()
-                                            nombre_sin_acentos = (emp.nombre
-                                                .upper()
-                                                .replace('Á', 'A').replace('É', 'E').replace('Í', 'I')
-                                                .replace('Ó', 'O').replace('Ú', 'U')
-                                                .replace('Ü', 'U')).strip()
-                                            
-                                            empleados_dict[nombre_original] = emp
-                                            empleados_dict[nombre_sin_acentos] = emp
-                                        
-                                        # Crear diccionario de turnos
-                                        turnos_dict = {}
-                                        for turno in todos_turnos_db:
-                                            turnos_dict[turno.nombre.upper().strip()] = turno
-                                        
-                                        st.write("### Procesando...")
-                                        
-                                        # Mostrar empleados disponibles para referencia
-                                        with st.expander("📋 Empleados disponibles en el sistema"):
-                                            for emp in todos_empleados_db[:10]:
-                                                st.write(f"  • {emp.nombre}")
-                                            if len(todos_empleados_db) > 10:
-                                                st.write(f"  ... y {len(todos_empleados_db) - 10} más")
-                                        
-                                        for idx, row in df_carga.iterrows():
-                                            progress = (idx + 1) / len(df_carga)
-                                            progress_bar.progress(progress)
-                                            
-                                            # Obtener nombre del empleado
-                                            nombre_emp = str(row[col_empleado]).strip().upper()
-                                            status_text.text(f"Procesando: {nombre_emp} ({idx + 1}/{len(df_carga)})")
-                                            
-                                            if not nombre_emp or nombre_emp in ['NAN', 'NONE', '']:
-                                                continue
-                                            
-                                            # Buscar empleado
-                                            empleado = None
-                                            
-                                            # Búsqueda exacta
-                                            if nombre_emp in empleados_dict:
-                                                empleado = empleados_dict[nombre_emp]
+                                        if es_descanso:
+                                            # Eliminar asignación si existe
+                                            existe = session.query(Asignacion).filter_by(
+                                                empleado_id=empleado.id,
+                                                fecha=date(año, mes_num, dia)
+                                            ).first()
+                                            if existe:
+                                                session.delete(existe)
+                                                count_total += 1
+                                        else:
+                                            # Obtener nombre del turno
+                                            if isinstance(valor_turno, (int, float)):
+                                                if valor_turno == int(valor_turno):
+                                                    turno_nombre = str(int(valor_turno))
+                                                else:
+                                                    turno_nombre = str(valor_turno)
                                             else:
-                                                # Búsqueda por coincidencia parcial
-                                                for emp_nombre, emp in empleados_dict.items():
-                                                    if nombre_emp in emp_nombre or emp_nombre in nombre_emp:
-                                                        empleado = emp
-                                                        break
+                                                turno_nombre = str(valor_turno).strip()
                                             
-                                            if empleado:
-                                                exitosos.append(nombre_emp)
+                                            turno_busqueda = turno_nombre.upper()
+                                            
+                                            # Buscar turno
+                                            turno = None
+                                            if turno_busqueda in turnos_dict:
+                                                turno = turnos_dict[turno_busqueda]
+                                            
+                                            if turno:
+                                                existe = session.query(Asignacion).filter_by(
+                                                    empleado_id=empleado.id,
+                                                    fecha=date(año, mes_num, dia)
+                                                ).first()
                                                 
-                                                for dia_col in columnas_dias:
-                                                    dia = int(str(dia_col).strip())
-                                                    
-                                                    if 1 <= dia <= dias_mes:
-                                                        valor_turno = row[dia_col]
-                                                        
-                                                        # Procesar valor del turno
-                                                        es_descanso = False
-                                                        
-                                                        # Verificar si es descanso
-                                                        if pd.isna(valor_turno):
-                                                            es_descanso = True
-                                                        else:
-                                                            valor_str = str(valor_turno).strip().upper()
-                                                            if valor_str in ['', 'NONE', 'NAN', '—', '-', 'DESCANSO', 'NULL']:
-                                                                es_descanso = True
-                                                        
-                                                        if es_descanso:
-                                                            # Eliminar asignación si existe
-                                                            existe = session.query(Asignacion).filter_by(
-                                                                empleado_id=empleado.id,
-                                                                fecha=date(año, mes_num, dia)
-                                                            ).first()
-                                                            if existe:
-                                                                session.delete(existe)
-                                                                count_total += 1
-                                                        else:
-                                                            # Obtener nombre del turno
-                                                            if isinstance(valor_turno, (int, float)):
-                                                                if valor_turno == int(valor_turno):
-                                                                    turno_nombre = str(int(valor_turno))
-                                                                else:
-                                                                    turno_nombre = str(valor_turno)
-                                                            else:
-                                                                turno_nombre = str(valor_turno).strip()
-                                                            
-                                                            turno_busqueda = turno_nombre.upper()
-                                                            
-                                                            # Buscar turno
-                                                            turno = None
-                                                            if turno_busqueda in turnos_dict:
-                                                                turno = turnos_dict[turno_busqueda]
-                                                            
-                                                            if turno:
-                                                                existe = session.query(Asignacion).filter_by(
-                                                                    empleado_id=empleado.id,
-                                                                    fecha=date(año, mes_num, dia)
-                                                                ).first()
-                                                                
-                                                                if existe:
-                                                                    existe.turno_id = turno.id
-                                                                else:
-                                                                    session.add(Asignacion(
-                                                                        empleado_id=empleado.id,
-                                                                        fecha=date(año, mes_num, dia),
-                                                                        turno_id=turno.id
-                                                                    ))
-                                                                count_total += 1
-                                                            else:
-                                                                if turno_nombre not in turnos_no_encontrados:
-                                                                    turnos_no_encontrados.append(turno_nombre)
+                                                if existe:
+                                                    existe.turno_id = turno.id
+                                                else:
+                                                    session.add(Asignacion(
+                                                        empleado_id=empleado.id,
+                                                        fecha=date(año, mes_num, dia),
+                                                        turno_id=turno.id
+                                                    ))
+                                                count_total += 1
                                             else:
-                                                if nombre_emp not in empleados_no_encontrados:
-                                                    empleados_no_encontrados.append(nombre_emp)
-                                            
-                                            # Commit cada 10 registros
-                                            if (idx + 1) % 10 == 0:
-                                                session.commit()
-                                        
-                                        # Commit final
-                                        session.commit()
-                                        progress_bar.empty()
-                                        status_text.empty()
-                                        
-                                        # Mostrar resultados
-                                        st.success(f"✅ Procesamiento completado: {count_total} turnos actualizados")
-                                        
-                                        if exitosos:
-                                            st.info(f"✅ Empleados procesados correctamente: {len(set(exitosos))}")
-                                        
-                                        if empleados_no_encontrados:
-                                            st.warning(f"⚠️ No se encontraron {len(empleados_no_encontrados)} empleados:")
-                                            for emp in empleados_no_encontrados[:10]:
-                                                st.write(f"  • '{emp}'")
-                                            if len(empleados_no_encontrados) > 10:
-                                                st.write(f"  ... y {len(empleados_no_encontrados) - 10} más")
-                                        
-                                        if turnos_no_encontrados:
-                                            st.warning(f"⚠️ No se encontraron {len(turnos_no_encontrados)} turnos:")
-                                            for turno in turnos_no_encontrados[:10]:
-                                                st.write(f"  • '{turno}'")
-                                            if len(turnos_no_encontrados) > 10:
-                                                st.write(f"  ... y {len(turnos_no_encontrados) - 10} más")
-                                        
-                                        if count_total > 0:
-                                            st.balloons()
-                                            if st.button("🔄 Recargar matriz", use_container_width=True):
-                                                st.rerun()
-                                        
-                                except Exception as e:
-                                    st.error(f"❌ Error al procesar el archivo: {str(e)}")
-                                    import traceback
-                                    with st.expander("Ver detalles del error"):
-                                        st.code(traceback.format_exc())
-
-# ... (código posterior) ...
+                                                if turno_nombre not in turnos_no_encontrados:
+                                                    turnos_no_encontrados.append(turno_nombre)
+                            else:
+                                if nombre_emp not in empleados_no_encontrados:
+                                    empleados_no_encontrados.append(nombre_emp)
+                            
+                            # Commit cada 10 registros
+                            if (idx + 1) % 10 == 0:
+                                session.commit()
+                        
+                        # Commit final
+                        session.commit()
+                        progress_bar.empty()
+                        status_text.empty()
+                        
+                        # Mostrar resultados
+                        st.success(f"✅ Procesamiento completado: {count_total} turnos actualizados")
+                        
+                        if exitosos:
+                            st.info(f"✅ Empleados procesados correctamente: {len(set(exitosos))}")
+                        
+                        if empleados_no_encontrados:
+                            st.warning(f"⚠️ No se encontraron {len(empleados_no_encontrados)} empleados:")
+                            for emp in empleados_no_encontrados[:10]:
+                                st.write(f"  • '{emp}'")
+                            if len(empleados_no_encontrados) > 10:
+                                st.write(f"  ... y {len(empleados_no_encontrados) - 10} más")
+                        
+                        if turnos_no_encontrados:
+                            st.warning(f"⚠️ No se encontraron {len(turnos_no_encontrados)} turnos:")
+                            for turno in turnos_no_encontrados[:10]:
+                                st.write(f"  • '{turno}'")
+                            if len(turnos_no_encontrados) > 10:
+                                st.write(f"  ... y {len(turnos_no_encontrados) - 10} más")
+                        
+                        if count_total > 0:
+                            st.balloons()
+                            if st.button("🔄 Recargar matriz", use_container_width=True):
+                                st.rerun()
+                        
+                except Exception as e:
+                    st.error(f"❌ Error al procesar el archivo: {str(e)}")
+                    import traceback
+                    with st.expander("Ver detalles del error"):
+                        st.code(traceback.format_exc())
 
     elif op == "Asignacion manual":
         if user.rol != "admin":
