@@ -1925,6 +1925,14 @@ if "user" in st.session_state:
                     
                     # Mostrar vista previa
                     st.write("### Vista previa del archivo cargado")
+                    
+                    # Mostrar información de las columnas para depuración
+                    st.write("**Columnas en el archivo:**")
+                    columnas_info = []
+                    for i, col in enumerate(df_carga.columns):
+                        columnas_info.append(f"{i+1}. '{col}' (tipo: {type(col).__name__})")
+                    st.write("\n".join(columnas_info))
+                    
                     col1, col2 = st.columns(2)
                     with col1:
                         mostrar_todas = st.checkbox("Mostrar todas las filas", value=False)
@@ -1935,13 +1943,9 @@ if "user" in st.session_state:
                         st.dataframe(df_carga.head(5))
                         st.caption(f"Mostrando 5 de {len(df_carga)} filas")
                     
-                    # Identificar columnas
-                    columnas = df_carga.columns.tolist()
-                    st.write("**Columnas encontradas:**", columnas)
-                    
-                    # Buscar columna de empleado
+                    # Buscar columna de empleado (insensible a mayúsculas/minúsculas)
                     col_empleado = None
-                    for col in columnas:
+                    for col in df_carga.columns:
                         if str(col).strip().lower() == 'empleado':
                             col_empleado = col
                             break
@@ -1952,12 +1956,16 @@ if "user" in st.session_state:
                     
                     # Identificar columnas de días (números del 1 al 31)
                     columnas_dias = []
-                    for col in columnas:
+                    for col in df_carga.columns:
+                        if col == col_empleado or str(col).strip().lower() in ['área', 'area', 'cargo']:
+                            continue
+                        
                         try:
                             # Intentar convertir a entero
-                            num = int(str(col).strip())
+                            num = int(float(str(col).strip()))
                             if 1 <= num <= 31:
-                                columnas_dias.append(str(col))
+                                columnas_dias.append(col)
+                                st.write(f"Columna de día detectada: '{col}' -> día {num}")
                         except (ValueError, TypeError):
                             # No es un número, ignorar
                             pass
@@ -2045,9 +2053,14 @@ if "user" in st.session_state:
                                 exitosos.append(nombre_emp)
                                 
                                 for dia_col in columnas_dias:
-                                    dia = int(str(dia_col).strip())
+                                    # Obtener el número del día desde el nombre de la columna
+                                    try:
+                                        dia = int(float(str(dia_col).strip()))
+                                    except:
+                                        continue
                                     
                                     if 1 <= dia <= dias_mes:
+                                        # Obtener el valor usando el nombre original de la columna
                                         valor_turno = row[dia_col]
                                         
                                         # Procesar valor del turno
