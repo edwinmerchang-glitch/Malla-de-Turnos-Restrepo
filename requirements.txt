@@ -1,8 +1,6 @@
-streamlit==1.31.0
+streamlit
 pandas
-sqlalchemy
-streamlit-calendar
-plotly
+numpy
 openpyxl
 xlsxwriter
-reportlab
+sqlalchemy
