@@ -1793,219 +1793,215 @@ if "user" in st.session_state:
         # Tabs para diferentes funcionalidades
         tab1, tab2, tab3 = st.tabs(["📋 Vista matriz", "✏️ Edición rápida", "📥 Carga masiva"])
         
-with tab1:
-    st.markdown("### Vista de matriz de turnos")
-    
-    # Construir datos para la matriz
-    data = []
-    for emp in empleados:
-        fila = {
-            "Empleado": emp.nombre,
-            "Área": emp.area if emp.area else "N/A",
-            "Cargo": emp.cargo if emp.cargo else "N/A",
-        }
-        for dia in range(1, dias_mes + 1):
-            turno_id = matriz.get(emp.id, {}).get(dia)
-            if turno_id:
-                fila[str(dia)] = turnos_dict.get(turno_id, "?")
-            else:
-                fila[str(dia)] = "—"
-        data.append(fila)
-    
-    if data:
-        # Crear DataFrame
-        df = pd.DataFrame(data)
-        
-        # Mostrar estadísticas
-        total = sum(1 for emp in matriz for dia in matriz[emp])
-        st.metric("Total turnos asignados", total)
-        
-        # Controles para personalizar la vista
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            alto_tabla = st.slider("Altura de la tabla", min_value=300, max_value=800, value=500, step=50, key="altura_tabla")
-        with col2:
-            ancho_col_fija = st.slider("Ancho columnas fijas", min_value=150, max_value=300, value=200, step=10, key="ancho_fijas")
-        with col3:
-            ancho_col_dia = st.slider("Ancho columnas días", min_value=50, max_value=120, value=70, step=5, key="ancho_dias")
-        
-        # Mostrar el DataFrame directamente para depuración
-        st.write("Vista previa del DataFrame:")
-        st.dataframe(df.head(3))
-        
-        # Convertir DataFrame a HTML con formato adecuado
-        html_table = df.to_html(index=False, escape=False, classes='matriz-turnos', border=0)
-        
-        # CSS personalizado para inmovilizar las primeras 3 columnas
-        st.markdown(f"""
-        <style>
-        .matriz-container {{
-            position: relative;
-            overflow-x: auto;
-            overflow-y: auto;
-            max-height: {alto_tabla}px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            margin-top: 20px;
-            background: white;
-        }}
-        
-        .matriz-turnos {{
-            border-collapse: collapse;
-            width: 100%;
-            background: white;
-            font-size: 14px;
-            min-width: 100%;
-        }}
-        
-        .matriz-turnos th,
-        .matriz-turnos td {{
-            padding: 12px 8px;
-            border: 1px solid #e0e0e0;
-            text-align: center;
-            white-space: nowrap;
-        }}
-        
-        /* Estilo para las columnas fijas (primeras 3) */
-        .matriz-turnos th:nth-child(1),
-        .matriz-turnos td:nth-child(1),
-        .matriz-turnos th:nth-child(2),
-        .matriz-turnos td:nth-child(2),
-        .matriz-turnos th:nth-child(3),
-        .matriz-turnos td:nth-child(3) {{
-            position: sticky;
-            left: 0;
-            background: white;
-            z-index: 10;
-            min-width: {ancho_col_fija}px;
-            max-width: {ancho_col_fija}px;
-            box-shadow: 2px 0 5px -2px rgba(0,0,0,0.1);
-        }}
-        
-        /* Fondo para el encabezado */
-        .matriz-turnos th {{
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            font-weight: 600;
-            position: sticky;
-            top: 0;
-            z-index: 20;
-            padding: 12px 8px;
-        }}
-        
-        /* Asegurar que los encabezados de columnas fijas estén sobre el contenido */
-        .matriz-turnos th:nth-child(1),
-        .matriz-turnos th:nth-child(2),
-        .matriz-turnos th:nth-child(3) {{
-            z-index: 30;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }}
-        
-        /* Estilo para las columnas de días */
-        .matriz-turnos td:nth-child(n+4) {{
-            min-width: {ancho_col_dia}px;
-            max-width: {ancho_col_dia}px;
-        }}
-        
-        /* Estilo para los encabezados de días */
-        .matriz-turnos th:nth-child(n+4) {{
-            min-width: {ancho_col_dia}px;
-            max-width: {ancho_col_dia}px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }}
-        
-        /* Efecto hover en celdas */
-        .matriz-turnos td:hover {{
-            background-color: #f0f7ff !important;
-            cursor: pointer;
-        }}
-        
-        /* Estilo para descansos */
-        .matriz-turnos td {{
-            color: #333;
-        }}
-        
-        .matriz-turnos td:contains("—") {{
-            color: #999;
-            font-style: italic;
-            background-color: #fafafa;
-        }}
-        
-        /* Scrollbar personalizada */
-        .matriz-container::-webkit-scrollbar {{
-            height: 10px;
-            width: 10px;
-        }}
-        
-        .matriz-container::-webkit-scrollbar-track {{
-            background: #f1f1f1;
-            border-radius: 5px;
-        }}
-        
-        .matriz-container::-webkit-scrollbar-thumb {{
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 5px;
-        }}
-        
-        .matriz-container::-webkit-scrollbar-thumb:hover {{
-            background: linear-gradient(135deg, #5a6fd8 0%, #6a4390 100%);
-        }}
-        
-        /* Estilo para filas alternadas */
-        .matriz-turnos tbody tr:nth-child(even) {{
-            background-color: #f8f9fa;
-        }}
-        
-        .matriz-turnos tbody tr:hover {{
-            background-color: #e8f0fe;
-        }}
-        </style>
-        
-        <div class="matriz-container">
-            {html_table}
-        </div>
-        
-        <div style="margin-top: 15px; color: #666; font-size: 12px; text-align: center; padding: 10px; background: #f8f9fa; border-radius: 5px; border-left: 4px solid #667eea;">
-            <strong>📌 Las primeras 3 columnas (Empleado, Área, Cargo) están fijas.</strong> Desplázate horizontalmente para ver más días.
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Botones de exportación
-        st.markdown("---")
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            csv = df.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                "📥 CSV",
-                csv,
-                f"matriz_turnos_{mes}_{año}.csv",
-                "text/csv",
-                use_container_width=True
-            )
-        
-        with col2:
-            # Para Excel
-            from io import BytesIO
-            output = BytesIO()
-            with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                df.to_excel(writer, index=False, sheet_name=f"Turnos_{mes}_{año}")
-            excel_data = output.getvalue()
+        with tab1:
+            st.markdown("### Vista de matriz de turnos")
             
-            st.download_button(
-                "📥 Excel",
-                excel_data,
-                f"matriz_turnos_{mes}_{año}.xlsx",
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True
-            )
-        
-        with col3:
-            if st.button("🔄 Refrescar", use_container_width=True):
-                st.rerun()
-        
-        with col4:
-            st.info(f"📊 {len(empleados)} empleados • {dias_mes} días", icon="📊")
+            # Construir datos para la matriz
+            data = []
+            for emp in empleados:
+                fila = {
+                    "Empleado": emp.nombre,
+                    "Área": emp.area if emp.area else "N/A",
+                    "Cargo": emp.cargo if emp.cargo else "N/A",
+                }
+                for dia in range(1, dias_mes + 1):
+                    turno_id = matriz.get(emp.id, {}).get(dia)
+                    if turno_id:
+                        fila[str(dia)] = turnos_dict.get(turno_id, "?")
+                    else:
+                        fila[str(dia)] = "—"
+                data.append(fila)
+            
+            if data:
+                # Crear DataFrame
+                df = pd.DataFrame(data)
+                
+                # Mostrar estadísticas
+                total = sum(1 for emp in matriz for dia in matriz[emp])
+                st.metric("Total turnos asignados", total)
+                
+                # Controles para personalizar la vista
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    alto_tabla = st.slider("Altura de la tabla", min_value=300, max_value=800, value=500, step=50, key="altura_tabla")
+                with col2:
+                    ancho_col_fija = st.slider("Ancho columnas fijas", min_value=150, max_value=300, value=200, step=10, key="ancho_fijas")
+                with col3:
+                    ancho_col_dia = st.slider("Ancho columnas días", min_value=50, max_value=120, value=70, step=5, key="ancho_dias")
+                
+                # Convertir DataFrame a HTML
+                html_table = df.to_html(index=False, escape=False, classes='matriz-turnos')
+                
+                # CSS personalizado para inmovilizar las primeras 3 columnas
+                st.markdown(f"""
+                <style>
+                .matriz-container {{
+                    position: relative;
+                    overflow-x: auto;
+                    overflow-y: auto;
+                    max-height: {alto_tabla}px;
+                    border: 1px solid #ddd;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                    margin-top: 20px;
+                    background: white;
+                }}
+                
+                .matriz-turnos {{
+                    border-collapse: collapse;
+                    width: 100%;
+                    background: white;
+                    font-size: 14px;
+                    min-width: 100%;
+                }}
+                
+                .matriz-turnos th,
+                .matriz-turnos td {{
+                    padding: 12px 8px;
+                    border: 1px solid #e0e0e0;
+                    text-align: center;
+                    white-space: nowrap;
+                }}
+                
+                /* Estilo para las columnas fijas (primeras 3) */
+                .matriz-turnos th:nth-child(1),
+                .matriz-turnos td:nth-child(1),
+                .matriz-turnos th:nth-child(2),
+                .matriz-turnos td:nth-child(2),
+                .matriz-turnos th:nth-child(3),
+                .matriz-turnos td:nth-child(3) {{
+                    position: sticky;
+                    left: 0;
+                    background: white;
+                    z-index: 10;
+                    min-width: {ancho_col_fija}px;
+                    max-width: {ancho_col_fija}px;
+                    box-shadow: 2px 0 5px -2px rgba(0,0,0,0.1);
+                }}
+                
+                /* Fondo para el encabezado */
+                .matriz-turnos th {{
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    font-weight: 600;
+                    position: sticky;
+                    top: 0;
+                    z-index: 20;
+                    padding: 12px 8px;
+                }}
+                
+                /* Asegurar que los encabezados de columnas fijas estén sobre el contenido */
+                .matriz-turnos th:nth-child(1),
+                .matriz-turnos th:nth-child(2),
+                .matriz-turnos th:nth-child(3) {{
+                    z-index: 30;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                }}
+                
+                /* Estilo para las columnas de días */
+                .matriz-turnos td:nth-child(n+4) {{
+                    min-width: {ancho_col_dia}px;
+                    max-width: {ancho_col_dia}px;
+                }}
+                
+                /* Estilo para los encabezados de días */
+                .matriz-turnos th:nth-child(n+4) {{
+                    min-width: {ancho_col_dia}px;
+                    max-width: {ancho_col_dia}px;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                }}
+                
+                /* Efecto hover en celdas */
+                .matriz-turnos td:hover {{
+                    background-color: #f0f7ff !important;
+                    cursor: pointer;
+                }}
+                
+                /* Estilo para descansos */
+                .matriz-turnos td {{
+                    color: #333;
+                }}
+                
+                .matriz-turnos td:contains("—") {{
+                    color: #999;
+                    font-style: italic;
+                    background-color: #fafafa;
+                }}
+                
+                /* Scrollbar personalizada */
+                .matriz-container::-webkit-scrollbar {{
+                    height: 10px;
+                    width: 10px;
+                }}
+                
+                .matriz-container::-webkit-scrollbar-track {{
+                    background: #f1f1f1;
+                    border-radius: 5px;
+                }}
+                
+                .matriz-container::-webkit-scrollbar-thumb {{
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    border-radius: 5px;
+                }}
+                
+                .matriz-container::-webkit-scrollbar-thumb:hover {{
+                    background: linear-gradient(135deg, #5a6fd8 0%, #6a4390 100%);
+                }}
+                
+                /* Estilo para filas alternadas */
+                .matriz-turnos tbody tr:nth-child(even) {{
+                    background-color: #f8f9fa;
+                }}
+                
+                .matriz-turnos tbody tr:hover {{
+                    background-color: #e8f0fe;
+                }}
+                </style>
+                
+                <div class="matriz-container">
+                    {html_table}
+                </div>
+                
+                <div style="margin-top: 15px; color: #666; font-size: 12px; text-align: center; padding: 10px; background: #f8f9fa; border-radius: 5px; border-left: 4px solid #667eea;">
+                    <strong>📌 Las primeras 3 columnas (Empleado, Área, Cargo) están fijas.</strong> Desplázate horizontalmente para ver más días.
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Botones de exportación
+                st.markdown("---")
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    csv = df.to_csv(index=False).encode('utf-8')
+                    st.download_button(
+                        "📥 CSV",
+                        csv,
+                        f"matriz_turnos_{mes}_{año}.csv",
+                        "text/csv",
+                        use_container_width=True
+                    )
+                
+                with col2:
+                    # Para Excel necesitamos BytesIO
+                    from io import BytesIO
+                    output = BytesIO()
+                    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                        df.to_excel(writer, index=False, sheet_name=f"Turnos_{mes}_{año}")
+                    excel_data = output.getvalue()
+                    
+                    st.download_button(
+                        "📥 Excel",
+                        excel_data,
+                        f"matriz_turnos_{mes}_{año}.xlsx",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        use_container_width=True
+                    )
+                
+                with col3:
+                    if st.button("🔄 Refrescar", use_container_width=True):
+                        st.rerun()
+                
+                with col4:
+                    st.info(f"📊 {len(empleados)} empleados • {dias_mes} días", icon="📊")
         
         with tab2:
             st.markdown("### Edición rápida")
