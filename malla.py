@@ -7,6 +7,13 @@ from backup import backup_sqlite
 import os
 import shutil
 from calendar import monthrange
+# Después de los imports existentes, agregar:
+from datetime import datetime
+
+def get_mes_actual():
+    """Retorna el índice del mes actual (0-11) y el año actual"""
+    hoy = datetime.now()
+    return hoy.month - 1, hoy.year  # month-1 porque los meses en la lista son 0-index
 
 st.set_page_config("Malla de Turnos", layout="wide")
 
@@ -686,9 +693,10 @@ if "user" in st.session_state:
             with col1:
                 meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
                          "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
-                mes = st.selectbox("📆 Selecciona el mes", meses, index=1, key="cal_mes_moderno")
+                mes_index, año_actual = get_mes_actual()
+                mes = st.selectbox("📆 Selecciona el mes", meses, index=mes_index, key="cal_mes_moderno")
             with col2:
-                año = st.number_input("📅 Año", min_value=2024, max_value=2030, value=2026, key="cal_ano_moderno")
+                año = st.number_input("📅 Año", min_value=2024, max_value=2030, value=año_actual, key="cal_ano_moderno")
             st.markdown('</div>', unsafe_allow_html=True)
         
         mes_num = meses.index(mes) + 1
@@ -1246,9 +1254,10 @@ if "user" in st.session_state:
         with col1:
             meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
                      "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
-            mes = st.selectbox("Mes", meses, index=1)
+            mes_index, año_actual = get_mes_actual()
+            mes = st.selectbox("Mes", meses, index=mes_index)
         with col2:
-            año = st.number_input("Año", min_value=2024, max_value=2030, value=2026)
+            año = st.number_input("Año", min_value=2024, max_value=2030, value=año_actual)
         
         mes_num = meses.index(mes) + 1
         dias_mes = monthrange(año, mes_num)[1]
@@ -1312,9 +1321,10 @@ if "user" in st.session_state:
         with col1:
             meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
                      "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
-            mes = st.selectbox("Mes", meses, index=1)
+            mes_index, año_actual = get_mes_actual()
+            mes = st.selectbox("Mes", meses, index=mes_index)
         with col2:
-            año = st.number_input("Año", min_value=2024, max_value=2030, value=2026)
+            año = st.number_input("Año", min_value=2024, max_value=2030, value=año_actual)
         
         mes_num = meses.index(mes) + 1
         dias_mes = monthrange(año, mes_num)[1]
@@ -1733,7 +1743,8 @@ if "user" in st.session_state:
         with col1:
             meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
                      "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
-            mes = st.selectbox("Mes", meses, index=1, key="matriz_mes")
+            mes_index, año_actual = get_mes_actual()
+            mes = st.selectbox("Mes", meses, index=mes_index, key="matriz_mes")
         with col2:
             año = st.number_input("Año", min_value=2024, max_value=2030, value=2026, key="matriz_ano")
         with col3:
