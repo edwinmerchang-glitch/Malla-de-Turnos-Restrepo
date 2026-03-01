@@ -3948,286 +3948,14 @@ if "user" in st.session_state:
         st.dataframe(reporte, use_container_width=True)
         st.bar_chart(reporte.set_index("Empleado"))
 
-    # ========== PÁGINAS PARA ADMINISTRADORES ==========
+# ========== PÁGINAS PARA ADMINISTRADORES ==========
     elif op == "Empleados":
-        if user.rol != "admin":
-            st.error("❌ No tienes permiso")
-            st.stop()
-        
-        st.subheader("👥 Gestión de Empleados")
-        
-        tab1, tab2, tab3 = st.tabs(["📋 Lista", "➕ Nuevo", "✏️ Editar"])
-        
-        with tab1:
-            empleados = session.query(Empleado).all()
-            data = []
-            for e in empleados:
-                data.append({
-                    "ID": e.id,
-                    "Nombre": e.nombre,
-                    "Área": e.area or "N/A",
-                    "Cargo": e.cargo or "N/A",
-                    "Usuario": e.usuario,
-                    "Rol": e.rol
-                })
-            st.dataframe(pd.DataFrame(data), use_container_width=True)
-        
-        with tab2:
-            with st.form("nuevo_emp"):
-                col1, col2 = st.columns(2)
-                with col1:
-                    n = st.text_input("Nombre *")
-                    u = st.text_input("Usuario *")
-                    r = st.selectbox("Rol *", ["empleado", "supervisor", "admin"])
-                with col2:
-                    area = st.text_input("Área")
-                    cargo = st.text_input("Cargo")
-                    p = st.text_input("Contraseña *", type="password")
-                
-                if st.form_submit_button("✅ Crear"):
-                    if n and u and p:
-                        session.add(Empleado(
-                            nombre=n, rol=r, usuario=u, password=p,
-                            area=area or None, cargo=cargo or None
-                        ))
-                        session.commit()
-                        st.success("✅ Creado")
-                        st.rerun()
-        
-        with tab3:
-            st.markdown("### Editar empleado")
-            
-            empleados = session.query(Empleado).all()
-            if not empleados:
-                st.info("No hay empleados para editar")
-            else:
-                # Selector de empleado
-                opciones = {f"{e.nombre} ({e.usuario})": e.id for e in empleados}
-                seleccion = st.selectbox("Seleccionar empleado", list(opciones.keys()))
-                emp_id = opciones[seleccion]
-                emp = session.get(Empleado, emp_id)
-                
-                if emp:
-                    with st.form("editar_empleado_form"):
-                        st.markdown("#### 📝 Información básica")
-                        
-                        # Campos EDITABLES
-                        nombre = st.text_input("Nombre completo", value=emp.nombre)
-                        usuario = st.text_input("Usuario", value=emp.usuario)
-                        
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            area = st.text_input("Área", value=emp.area or "")
-                        with col2:
-                            cargo = st.text_input("Cargo", value=emp.cargo or "")
-                        
-                        rol = st.selectbox(
-                            "Rol", 
-                            ["empleado", "supervisor", "admin"], 
-                            index=["empleado", "supervisor", "admin"].index(emp.rol)
-                        )
-                        
-                        st.markdown("---")
-                        st.markdown("#### 🔐 Cambiar contraseña (opcional)")
-                        nueva_pass = st.text_input(
-                            "Nueva contraseña", 
-                            type="password", 
-                            placeholder="Dejar vacío para no cambiar"
-                        )
-                        
-                        st.markdown("---")
-                        col1, col2, col3 = st.columns(3)
-                        with col2:
-                            guardar = st.form_submit_button("💾 Guardar cambios", use_container_width=True)
-                        
-                        if guardar:
-                            cambios = False
-                            
-                            # Actualizar campos
-                            if emp.nombre != nombre:
-                                emp.nombre = nombre
-                                cambios = True
-                            if emp.usuario != usuario:
-                                # Verificar que el usuario no exista ya
-                                existe = session.query(Empleado).filter(
-                                    Empleado.usuario == usuario,
-                                    Empleado.id != emp.id
-                                ).first()
-                                if existe:
-                                    st.error(f"❌ El usuario '{usuario}' ya está en uso")
-                                    st.stop()
-                                emp.usuario = usuario
-                                cambios = True
-                            if emp.area != (area or None):
-                                emp.area = area or None
-                                cambios = True
-                            if emp.cargo != (cargo or None):
-                                emp.cargo = cargo or None
-                                cambios = True
-                            if emp.rol != rol:
-                                emp.rol = rol
-                                cambios = True
-                            if nueva_pass:
-                                if len(nueva_pass) >= 4:
-                                    emp.password = nueva_pass
-                                    cambios = True
-                                    st.success("✅ Contraseña actualizada")
-                                else:
-                                    st.error("❌ La contraseña debe tener al menos 4 caracteres")
-                                    st.stop()
-                            
-                            if cambios:
-                                session.commit()
-                                st.success("✅ Empleado actualizado correctamente")
-                                st.rerun()
-                            else:
-                                st.info("ℹ️ No se realizaron cambios")
-                    
-                    # Botón de eliminar (FUERA del formulario)
-                    st.markdown("---")
-                    col1, col2, col3 = st.columns(3)
-                    with col2:
-                        if st.button("🗑️ Eliminar empleado", use_container_width=True, type="secondary"):
-                            if emp.id == user.id:
-                                st.error("❌ No puedes eliminarte a ti mismo")
-                            else:
-                                # Verificar si tiene asignaciones
-                                asignaciones = session.query(Asignacion).filter_by(empleado_id=emp.id).first()
-                                if asignaciones:
-                                    st.warning("⚠️ Este empleado tiene turnos asignados. No se puede eliminar.")
-                                else:
-                                    session.delete(emp)
-                                    session.commit()
-                                    st.success("✅ Empleado eliminado correctamente")
-                                    st.rerun()
+        # ... (tu código existente de Empleados) ...
+        pass
 
     elif op == "Turnos":
-        if user.rol != "admin":
-            st.error("❌ No tienes permiso")
-            st.stop()
-        
-        st.subheader("⏰ Gestión de Turnos")
-        
-        tab1, tab2, tab3 = st.tabs(["📋 Lista de turnos", "➕ Nuevo turno", "✏️ Editar/Eliminar"])
-        
-        with tab1:
-            turnos = session.query(Turno).all()
-            if turnos:
-                data = []
-                for t in turnos:
-                    data.append({
-                        "ID": t.id,
-                        "Nombre": t.nombre,
-                        "Inicio": t.inicio,
-                        "Fin": t.fin
-                    })
-                df = pd.DataFrame(data)
-                st.dataframe(df, use_container_width=True)
-                st.metric("Total turnos", len(turnos))
-            else:
-                st.info("No hay turnos registrados")
-        
-        with tab2:
-            st.markdown("### Crear nuevo turno")
-            
-            with st.form("nuevo_turno"):
-                col1, col2 = st.columns(2)
-                with col1:
-                    n = st.text_input("Nombre del turno *", placeholder="Ej: 151, 155, 70...")
-                with col2:
-                    pass
-                
-                col1, col2 = st.columns(2)
-                with col1:
-                    hi = st.text_input("Hora inicio *", placeholder="Ej: 08:00")
-                with col2:
-                    hf = st.text_input("Hora fin *", placeholder="Ej: 16:00")
-                
-                submitted = st.form_submit_button("✅ Crear turno", use_container_width=True)
-                
-                if submitted:
-                    if n and hi and hf:
-                        existe = session.query(Turno).filter_by(nombre=n).first()
-                        if existe:
-                            st.error(f"❌ El turno '{n}' ya existe")
-                        else:
-                            session.add(Turno(nombre=n, inicio=hi, fin=hf))
-                            session.commit()
-                            st.success(f"✅ Turno '{n}' creado correctamente")
-                            st.rerun()
-                    else:
-                        st.error("❌ Todos los campos son obligatorios")
-        
-        with tab3:
-            st.markdown("### Editar o eliminar turnos")
-            
-            turnos = session.query(Turno).all()
-            
-            if not turnos:
-                st.info("No hay turnos para editar")
-            else:
-                opciones = {f"{t.nombre} ({t.inicio} - {t.fin})": t.id for t in turnos}
-                seleccion = st.selectbox("Seleccionar turno", list(opciones.keys()))
-                turno_id = opciones[seleccion]
-                turno = session.get(Turno, turno_id)
-                
-                if turno:
-                    col1, col2 = st.columns([2, 1])
-                    
-                    with col1:
-                        with st.form("editar_turno"):
-                            st.markdown("#### Editar turno")
-                            
-                            nombre_edit = st.text_input("Nombre", value=turno.nombre)
-                            
-                            col_a, col_b = st.columns(2)
-                            with col_a:
-                                inicio_edit = st.text_input("Hora inicio", value=turno.inicio)
-                            with col_b:
-                                fin_edit = st.text_input("Hora fin", value=turno.fin)
-                            
-                            col_guardar, col_eliminar = st.columns(2)
-                            with col_guardar:
-                                guardar = st.form_submit_button("💾 Guardar cambios", use_container_width=True)
-                            with col_eliminar:
-                                eliminar = st.form_submit_button("🗑️ Eliminar", use_container_width=True)
-                            
-                            if guardar:
-                                existe = session.query(Turno).filter(
-                                    Turno.nombre == nombre_edit,
-                                    Turno.id != turno.id
-                                ).first()
-                                
-                                if existe:
-                                    st.error(f"❌ Ya existe un turno con el nombre '{nombre_edit}'")
-                                else:
-                                    turno.nombre = nombre_edit
-                                    turno.inicio = inicio_edit
-                                    turno.fin = fin_edit
-                                    session.commit()
-                                    st.success("✅ Turno actualizado correctamente")
-                                    st.rerun()
-                            
-                            if eliminar:
-                                asignaciones = session.query(Asignacion).filter_by(turno_id=turno.id).first()
-                                if asignaciones:
-                                    st.warning("⚠️ Este turno tiene asignaciones. No se puede eliminar.")
-                                    st.info("Primero elimina las asignaciones de este turno.")
-                                else:
-                                    session.delete(turno)
-                                    session.commit()
-                                    st.success("✅ Turno eliminado correctamente")
-                                    st.rerun()
-                    
-                    with col2:
-                        st.markdown("#### 📊 Estadísticas")
-                        
-                        total_asignaciones = session.query(Asignacion).filter_by(turno_id=turno.id).count()
-                        st.metric("Asignaciones", total_asignaciones)
-                        
-                        ultima_asignacion = session.query(Asignacion).filter_by(turno_id=turno.id).order_by(Asignacion.fecha.desc()).first()
-                        if ultima_asignacion:
-                            st.caption(f"Último uso: {ultima_asignacion.fecha.strftime('%d/%m/%Y')}")
+        # ... (tu código existente de Turnos) ...
+        pass
 
     elif op == "Matriz turnos":
         if user.rol != "admin":
@@ -4243,7 +3971,7 @@ if "user" in st.session_state:
             mes_index, año_actual = get_mes_actual()
             mes = st.selectbox("Mes", meses, index=mes_index, key="matriz_mes")
         with col2:
-            año = st.number_input("Año", min_value=2024, max_value=2030, value=2026, key="matriz_ano")
+            año = st.number_input("Año", min_value=2024, max_value=2030, value=año_actual, key="matriz_ano")
         with col3:
             areas = list(set([e.area for e in session.query(Empleado).all() if e.area]))
             areas.sort()
@@ -4253,13 +3981,17 @@ if "user" in st.session_state:
         from calendar import monthrange
         dias_mes = monthrange(año, mes_num)[1]
         
-        empleados = session.query(Empleado).all()
+        # Obtener empleados
+        query_empleados = session.query(Empleado)
         if area_filtro != "Todas":
-            empleados = [e for e in empleados if e.area == area_filtro]
+            query_empleados = query_empleados.filter_by(area=area_filtro)
+        empleados = query_empleados.all()
         
+        # Obtener turnos
         turnos = session.query(Turno).all()
         turnos_dict = {t.id: t.nombre for t in turnos}
         
+        # Obtener asignaciones del mes
         fecha_inicio = date(año, mes_num, 1)
         fecha_fin = date(año, mes_num, dias_mes)
         
@@ -4267,12 +3999,14 @@ if "user" in st.session_state:
             Asignacion.fecha.between(fecha_inicio, fecha_fin)
         ).all()
         
+        # Construir matriz de asignaciones
         matriz = {}
         for a in asignaciones:
             if a.empleado_id not in matriz:
                 matriz[a.empleado_id] = {}
             matriz[a.empleado_id][a.fecha.day] = a.turno_id
         
+        # Validaciones
         if not empleados:
             st.warning("⚠️ No hay empleados registrados")
             st.stop()
@@ -4281,11 +4015,13 @@ if "user" in st.session_state:
             st.warning("⚠️ No hay turnos registrados")
             st.stop()
         
+        # Tabs para diferentes funcionalidades
         tab1, tab2, tab3 = st.tabs(["📋 Vista matriz", "✏️ Edición rápida", "📥 Carga masiva"])
         
         with tab1:
             st.markdown("### Vista de matriz de turnos")
             
+            # Construir datos para la matriz
             data = []
             for emp in empleados:
                 fila = {
@@ -4302,11 +4038,165 @@ if "user" in st.session_state:
                 data.append(fila)
             
             if data:
+                # Crear DataFrame
                 df = pd.DataFrame(data)
-                st.dataframe(df, use_container_width=True, height=600)
                 
+                # Mostrar estadísticas
                 total = sum(1 for emp in matriz for dia in matriz[emp])
                 st.metric("Total turnos asignados", total)
+                
+                # Controles para personalizar la vista
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    alto_tabla = st.slider("Altura de la tabla", min_value=300, max_value=800, value=500, step=50, key="altura_tabla")
+                with col2:
+                    ancho_col_fija = st.slider("Ancho columnas fijas", min_value=150, max_value=300, value=200, step=10, key="ancho_fijas")
+                with col3:
+                    ancho_col_dia = st.slider("Ancho columnas días", min_value=50, max_value=120, value=70, step=5, key="ancho_dias")
+                
+                # Convertir DataFrame a HTML
+                html_table = df.to_html(index=False, escape=False, classes='matriz-turnos')
+                
+                # CSS personalizado para inmovilizar las primeras 3 columnas
+                st.markdown(f"""
+                <style>
+                .matriz-container {{
+                    position: relative;
+                    overflow-x: auto;
+                    overflow-y: auto;
+                    max-height: {alto_tabla}px;
+                    border: 1px solid #ddd;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                    margin-top: 20px;
+                }}
+                
+                .matriz-turnos {{
+                    border-collapse: collapse;
+                    width: max-content;
+                    background: white;
+                    font-size: 14px;
+                }}
+                
+                .matriz-turnos th,
+                .matriz-turnos td {{
+                    padding: 10px 8px;
+                    border: 1px solid #e0e0e0;
+                    text-align: center;
+                    white-space: nowrap;
+                }}
+                
+                /* Estilo para las columnas fijas (primeras 3) */
+                .matriz-turnos th:nth-child(1),
+                .matriz-turnos td:nth-child(1),
+                .matriz-turnos th:nth-child(2),
+                .matriz-turnos td:nth-child(2),
+                .matriz-turnos th:nth-child(3),
+                .matriz-turnos td:nth-child(3) {{
+                    position: sticky;
+                    left: 0;
+                    background: white;
+                    z-index: 10;
+                    min-width: {ancho_col_fija}px;
+                    box-shadow: 2px 0 5px -2px rgba(0,0,0,0.1);
+                }}
+                
+                /* Fondo para el encabezado */
+                .matriz-turnos th {{
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    font-weight: 600;
+                    position: sticky;
+                    top: 0;
+                    z-index: 20;
+                }}
+                
+                /* Asegurar que los encabezados de columnas fijas estén sobre el contenido */
+                .matriz-turnos th:nth-child(1),
+                .matriz-turnos th:nth-child(2),
+                .matriz-turnos th:nth-child(3) {{
+                    z-index: 30;
+                }}
+                
+                /* Estilo para las columnas de días */
+                .matriz-turnos td:nth-child(n+4) {{
+                    min-width: {ancho_col_dia}px;
+                }}
+                
+                /* Efecto hover en celdas */
+                .matriz-turnos td:hover {{
+                    background-color: #f5f5f5;
+                    cursor: pointer;
+                }}
+                
+                /* Estilo para descansos */
+                .matriz-turnos td:contains("—") {{
+                    color: #999;
+                    font-style: italic;
+                    background-color: #fafafa;
+                }}
+                
+                /* Scrollbar personalizada */
+                .matriz-container::-webkit-scrollbar {{
+                    height: 8px;
+                    width: 8px;
+                }}
+                
+                .matriz-container::-webkit-scrollbar-track {{
+                    background: #f1f1f1;
+                    border-radius: 4px;
+                }}
+                
+                .matriz-container::-webkit-scrollbar-thumb {{
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    border-radius: 4px;
+                }}
+                
+                .matriz-container::-webkit-scrollbar-thumb:hover {{
+                    background: linear-gradient(135deg, #5a6fd8 0%, #6a4390 100%);
+                }}
+                </style>
+                
+                <div class="matriz-container">
+                    {html_table}
+                </div>
+                
+                <div style="margin-top: 10px; color: #666; font-size: 12px; text-align: center; padding: 10px; background: #f8f9fa; border-radius: 5px;">
+                    ℹ️ Las primeras 3 columnas (Empleado, Área, Cargo) están fijas. Desplázate horizontalmente para ver más días.
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Botones de exportación
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    csv = df.to_csv(index=False).encode('utf-8')
+                    st.download_button(
+                        "📥 Descargar CSV",
+                        csv,
+                        f"matriz_turnos_{mes}_{año}.csv",
+                        "text/csv",
+                        use_container_width=True
+                    )
+                
+                with col2:
+                    # Para Excel necesitamos BytesIO
+                    from io import BytesIO
+                    output = BytesIO()
+                    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                        df.to_excel(writer, index=False, sheet_name=f"Turnos_{mes}_{año}")
+                    excel_data = output.getvalue()
+                    
+                    st.download_button(
+                        "📥 Descargar Excel",
+                        excel_data,
+                        f"matriz_turnos_{mes}_{año}.xlsx",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        use_container_width=True
+                    )
+                
+                with col3:
+                    if st.button("🔄 Refrescar vista", use_container_width=True):
+                        st.rerun()
         
         with tab2:
             st.markdown("### Edición rápida")
@@ -4367,7 +4257,8 @@ if "user" in st.session_state:
             **Formato del archivo:**
             - **Columna A:** Empleado (nombre exacto)
             - **Columna B:** Área (opcional)  
-            - **Columna C en adelante:** Números de día (1, 2, 3, ... 31)
+            - **Columna C:** Cargo (opcional)
+            - **Columna D en adelante:** Números de día (1, 2, 3, ... 31)
             
             **Valores:** 
             - Número de turno (ej: 151, 155, 70) 
@@ -4438,7 +4329,7 @@ if "user" in st.session_state:
                     st.write("**Columnas en el archivo:**")
                     columnas_info = []
                     for i, col in enumerate(df_carga.columns):
-                        columnas_info.append(f"{i+1}. '{col}' (tipo: {type(col).__name__})")
+                        columnas_info.append(f"{i+1}. '{col}'")
                     st.write("\n".join(columnas_info))
                     
                     col1, col2 = st.columns(2)
@@ -4451,32 +4342,36 @@ if "user" in st.session_state:
                         st.dataframe(df_carga.head(5))
                         st.caption(f"Mostrando 5 de {len(df_carga)} filas")
                     
-                    # Buscar columna de empleado (insensible a mayúsculas/minúsculas)
+                    # Identificar columnas
                     col_empleado = None
-                    for col in df_carga.columns:
-                        if str(col).strip().lower() == 'empleado':
+                    col_area = None
+                    col_cargo = None
+                    columnas_dias = []
+                    
+                    for i, col in enumerate(df_carga.columns):
+                        col_str = str(col).strip().lower()
+                        if col_str == 'empleado':
                             col_empleado = col
-                            break
+                        elif col_str in ['área', 'area']:
+                            col_area = col
+                        elif col_str == 'cargo':
+                            col_cargo = col
+                        else:
+                            try:
+                                # Intentar convertir a entero para identificar días
+                                dia = int(float(str(col).strip()))
+                                if 1 <= dia <= 31:
+                                    columnas_dias.append(col)
+                            except (ValueError, TypeError):
+                                pass
                     
                     if not col_empleado:
                         st.error("❌ No se encontró la columna 'Empleado'")
                         st.stop()
                     
-                    # Identificar columnas de días (números del 1 al 31)
-                    columnas_dias = []
-                    for col in df_carga.columns:
-                        if col == col_empleado or str(col).strip().lower() in ['área', 'area', 'cargo']:
-                            continue
-                        
-                        try:
-                            # Intentar convertir a entero
-                            num = int(float(str(col).strip()))
-                            if 1 <= num <= 31:
-                                columnas_dias.append(col)
-                                st.write(f"Columna de día detectada: '{col}' -> día {num}")
-                        except (ValueError, TypeError):
-                            # No es un número, ignorar
-                            pass
+                    if not columnas_dias:
+                        st.error("❌ No se encontraron columnas de días (números del 1 al 31)")
+                        st.stop()
                     
                     # Estadísticas
                     col1, col2, col3 = st.columns(3)
@@ -4486,10 +4381,6 @@ if "user" in st.session_state:
                         st.metric("Días encontrados", len(columnas_dias))
                     with col3:
                         st.metric("Mes a procesar", f"{mes} {año}")
-                    
-                    if not columnas_dias:
-                        st.error("❌ No se encontraron columnas de días (números del 1 al 31)")
-                        st.stop()
                     
                     # Botón de procesar
                     if st.button("📤 Procesar carga masiva", use_container_width=True, type="primary"):
@@ -4505,10 +4396,9 @@ if "user" in st.session_state:
                         todos_empleados_db = session.query(Empleado).all()
                         todos_turnos_db = session.query(Turno).all()
                         
-                        # Crear diccionario de empleados para búsqueda flexible
+                        # Crear diccionario de empleados
                         empleados_dict = {}
                         for emp in todos_empleados_db:
-                            # Guardar varias versiones del nombre
                             nombre_original = emp.nombre.upper().strip()
                             nombre_sin_acentos = (emp.nombre
                                 .upper()
@@ -4520,13 +4410,11 @@ if "user" in st.session_state:
                             empleados_dict[nombre_sin_acentos] = emp
                         
                         # Crear diccionario de turnos
-                        turnos_dict = {}
+                        turnos_dict_nombres = {}
                         for turno in todos_turnos_db:
-                            turnos_dict[turno.nombre.upper().strip()] = turno
+                            turnos_dict_nombres[turno.nombre.upper().strip()] = turno
                         
-                        st.write("### Procesando...")
-                        
-                        # Mostrar empleados disponibles para referencia
+                        # Mostrar empleados disponibles
                         with st.expander("📋 Empleados disponibles en el sistema"):
                             for emp in todos_empleados_db[:10]:
                                 st.write(f"  • {emp.nombre}")
@@ -4546,8 +4434,6 @@ if "user" in st.session_state:
                             
                             # Buscar empleado
                             empleado = None
-                            
-                            # Búsqueda exacta
                             if nombre_emp in empleados_dict:
                                 empleado = empleados_dict[nombre_emp]
                             else:
@@ -4561,20 +4447,17 @@ if "user" in st.session_state:
                                 exitosos.append(nombre_emp)
                                 
                                 for dia_col in columnas_dias:
-                                    # Obtener el número del día desde el nombre de la columna
                                     try:
                                         dia = int(float(str(dia_col).strip()))
                                     except:
                                         continue
                                     
                                     if 1 <= dia <= dias_mes:
-                                        # Obtener el valor usando el nombre original de la columna
+                                        # Obtener el valor del turno
                                         valor_turno = row[dia_col]
                                         
-                                        # Procesar valor del turno
-                                        es_descanso = False
-                                        
                                         # Verificar si es descanso
+                                        es_descanso = False
                                         if pd.isna(valor_turno):
                                             es_descanso = True
                                         else:
@@ -4604,9 +4487,7 @@ if "user" in st.session_state:
                                             turno_busqueda = turno_nombre.upper()
                                             
                                             # Buscar turno
-                                            turno = None
-                                            if turno_busqueda in turnos_dict:
-                                                turno = turnos_dict[turno_busqueda]
+                                            turno = turnos_dict_nombres.get(turno_busqueda)
                                             
                                             if turno:
                                                 existe = session.query(Asignacion).filter_by(
