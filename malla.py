@@ -620,32 +620,27 @@ if "user" in st.session_state:
             if vista == "📅 Grupal":
                 st.markdown(f"### 📅 Calendario Grupal - {mes_sel} {año_sel}")
                 
-                # Leyenda simple con columnas de Streamlit
-                col1, col2, col3, col4, col5 = st.columns(5)
-                with col1:
-                    st.markdown("🟢 **Con turno**")
-                with col2:
-                    st.markdown("⚪ **Descanso**")
-                with col3:
-                    st.markdown("📌 **Tú**")
-                with col4:
-                    st.markdown("💬 **Comentarios**")
-                with col5:
-                    st.markdown("📅 **Fin de semana**")
+                # Leyenda
+                cols_leyenda = st.columns(5)
+                with cols_leyenda[0]:
+                    st.write("🟢 Con turno")
+                with cols_leyenda[1]:
+                    st.write("⚪ Descanso")
+                with cols_leyenda[2]:
+                    st.write("📌 Tú")
+                with cols_leyenda[3]:
+                    st.write("💬 Comentarios")
+                with cols_leyenda[4]:
+                    st.write("📅 Fin de semana")
                 
-                st.markdown("---")
+                st.divider()
                 
-                # Cabecera de días usando columnas de Streamlit
+                # Cabecera de días
                 dias_semana = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"]
                 cols = st.columns(7)
                 for i, dia in enumerate(dias_semana):
                     with cols[i]:
-                        st.markdown(f"""
-                        <div style="text-align: center; font-weight: bold; color: white; 
-                                    background: #667eea; padding: 10px 5px; border-radius: 8px;">
-                            {dia}
-                        </div>
-                        """, unsafe_allow_html=True)
+                        st.markdown(f"**:blue[{dia}]**")
                 
                 # Obtener primer día del mes
                 primer_dia = date(año_sel, mes_num, 1).weekday()
@@ -658,7 +653,7 @@ if "user" in st.session_state:
                     for dia_semana in range(7):
                         with cols[dia_semana]:
                             if semana == 0 and dia_semana < primer_dia:
-                                st.write(" ")  # Celda vacía
+                                st.write("---")
                             elif dia_actual <= dias_mes:
                                 fecha_actual = date(año_sel, mes_num, dia_actual)
                                 dia_semana_nombre = dias_semana_nombres[fecha_actual.weekday()]
@@ -675,61 +670,35 @@ if "user" in st.session_state:
                                 comentarios = obtener_comentarios(user.area, fecha_actual)
                                 tiene_comentarios = len(comentarios) > 0
                                 
-                                # Color de fondo
+                                # Crear un expander para cada día
+                                titulo_dia = f"**{dia_actual}** {dia_semana_nombre}"
+                                if tiene_comentarios:
+                                    titulo_dia += " 💬"
                                 if es_fin_semana:
-                                    bg_color = "#fff8e7"
-                                else:
-                                    bg_color = "#ffffff"
+                                    titulo_dia = f"📅 {titulo_dia}"
                                 
-                                # Borde si tiene comentarios
-                                border_style = "3px solid #ff6b6b" if tiene_comentarios else "1px solid #e0e0e0"
-                                
-                                # Construir contenido
-                                with st.container():
-                                    st.markdown(f"""
-                                    <div style="background: {bg_color}; border: {border_style}; 
-                                                border-radius: 10px; padding: 8px; min-height: 130px;">
-                                        <div style="display: flex; justify-content: space-between; 
-                                                    border-bottom: 2px solid #667eea; padding-bottom: 5px; margin-bottom: 5px;">
-                                            <strong style="font-size: 1.2rem;">{dia_actual}</strong>
-                                            <span style="color: #667eea; font-weight: bold; font-size: 0.7rem;">{dia_semana_nombre}</span>
-                                            {(' 💬' if tiene_comentarios else '')}
-                                        </div>
-                                    """, unsafe_allow_html=True)
-                                    
+                                with st.expander(titulo_dia, expanded=False):
                                     if empleados_con_turno:
-                                        for emp, turno in empleados_con_turno[:4]:
+                                        for emp, turno in empleados_con_turno:
                                             es_usuario = emp.id == user.id
                                             icono = "📌" if es_usuario else "👤"
-                                            color_texto = "#4CAF50" if es_usuario else "#667eea"
-                                            nombre_corto = emp.nombre[:10] + ".." if len(emp.nombre) > 10 else emp.nombre
                                             
-                                            st.markdown(f"""
-                                            <div style="font-size: 0.7rem; padding: 3px 0; 
-                                                        border-bottom: 1px solid #f0f0f0;">
-                                                <span style="color: {color_texto}; font-weight: bold;">{icono}</span> 
-                                                <strong>{nombre_corto}</strong>
-                                                <span style="background: #667eea; color: white; padding: 2px 6px; 
-                                                             border-radius: 12px; font-size: 0.6rem; float: right;">
-                                                    {turno.nombre}
-                                                </span>
-                                            </div>
-                                            """, unsafe_allow_html=True)
-                                        
-                                        if len(empleados_con_turno) > 4:
-                                            st.caption(f"+{len(empleados_con_turno) - 4} más...")
+                                            if es_usuario:
+                                                st.markdown(f"**{icono} {emp.nombre}**: :green[{turno.nombre}] ({turno.inicio}-{turno.fin})")
+                                            else:
+                                                st.write(f"{icono} {emp.nombre}: {turno.nombre} ({turno.inicio}-{turno.fin})")
                                     else:
-                                        st.markdown("""
-                                        <div style="text-align: center; color: #999; padding: 10px 0;">
-                                            🌙 Descanso
-                                        </div>
-                                        """, unsafe_allow_html=True)
+                                        st.write("🌙 Descanso")
                                     
-                                    st.markdown("</div>", unsafe_allow_html=True)
+                                    if tiene_comentarios:
+                                        st.divider()
+                                        st.caption("💬 Comentarios:")
+                                        for usuario, comentario, fecha_creacion in comentarios:
+                                            st.caption(f"**{usuario}**: {comentario}")
                                 
                                 dia_actual += 1
                             else:
-                                st.write(" ")  # Celda vacía
+                                st.write("---")
                     
                     if dia_actual > dias_mes:
                         break
