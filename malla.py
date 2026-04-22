@@ -629,134 +629,132 @@ if "user" in st.session_state:
                         gap: 10px;
                         margin-top: 15px;
                     }
+                # CSS mejorado para un diseño más profesional
+                st.markdown("""
+                <style>
                     .semana-container {
                         display: grid;
                         grid-template-columns: repeat(7, 1fr);
-                        gap: 10px;
-                        margin-bottom: 15px;
-                        padding-bottom: 15px;
-                        border-bottom: 1px solid #e0e0e0;
+                        gap: 8px;
+                        margin-bottom: 8px;
                     }
                     .dia-tarjeta {
                         background: white;
-                        border-radius: 12px;
-                        padding: 12px 10px;
-                        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-                        border: 1px solid #e8e8e8;
-                        transition: all 0.2s ease;
-                        min-height: 180px;
-                    }
-                    .dia-tarjeta:hover {
-                        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-                        border-color: #667eea;
+                        border-radius: 10px;
+                        padding: 10px 8px;
+                        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+                        border: 1px solid #e0e0e0;
+                        min-height: 160px;
                     }
                     .dia-tarjeta.fin-semana {
                         background: #fef9f0;
-                        border-color: #ffe0b2;
+                        border-color: #ffd699;
                     }
                     .dia-tarjeta.con-comentarios {
-                        border: 2px solid #ff6b6b;
+                        border-left: 3px solid #ff6b6b;
                     }
                     .dia-header {
                         display: flex;
                         justify-content: space-between;
                         align-items: center;
-                        margin-bottom: 10px;
-                        padding-bottom: 8px;
-                        border-bottom: 2px solid #667eea;
+                        margin-bottom: 8px;
+                        padding-bottom: 5px;
+                        border-bottom: 1.5px solid #667eea;
                     }
                     .dia-numero {
-                        font-size: 1.4rem;
+                        font-size: 1.2rem;
                         font-weight: 700;
                         color: #333;
-                        line-height: 1;
                     }
                     .dia-semana {
-                        font-size: 0.75rem;
+                        font-size: 0.7rem;
                         font-weight: 600;
                         color: #667eea;
-                        text-transform: uppercase;
-                        letter-spacing: 0.3px;
                         background: #f0f4ff;
-                        padding: 3px 8px;
-                        border-radius: 20px;
+                        padding: 2px 8px;
+                        border-radius: 12px;
                     }
                     .turno-lista {
                         display: flex;
                         flex-direction: column;
-                        gap: 6px;
+                        gap: 4px;
                     }
                     .turno-item {
-                        padding: 6px 8px;
-                        border-radius: 8px;
-                        background: #f8f9fa;
+                        padding: 5px 6px;
+                        border-radius: 6px;
+                        background: #f5f7fa;
                         border-left: 3px solid #667eea;
-                        font-size: 0.75rem;
+                        font-size: 0.7rem;
                     }
                     .turno-item.usuario {
                         background: #e8f5e9;
-                        border-left: 4px solid #4CAF50;
+                        border-left: 3px solid #4CAF50;
                     }
                     .turno-empleado {
                         font-weight: 600;
                         color: #333;
                         margin-bottom: 2px;
+                        font-size: 0.7rem;
                     }
                     .turno-detalle {
                         display: flex;
                         justify-content: space-between;
                         align-items: center;
+                        color: #555;
+                        font-size: 0.65rem;
+                    }
+                    .turno-horario {
                         color: #666;
-                        font-size: 0.7rem;
                     }
                     .turno-nombre-badge {
                         background: #667eea;
                         color: white;
-                        padding: 2px 8px;
-                        border-radius: 12px;
+                        padding: 2px 6px;
+                        border-radius: 10px;
                         font-weight: 600;
-                        font-size: 0.7rem;
+                        font-size: 0.6rem;
                     }
                     .usuario .turno-nombre-badge {
                         background: #4CAF50;
                     }
                     .descanso-item {
                         text-align: center;
-                        padding: 15px 0;
+                        padding: 12px 0;
                         color: #999;
-                        font-size: 0.8rem;
-                    }
-                    .comentario-mini {
-                        margin-top: 8px;
-                        padding-top: 8px;
-                        border-top: 1px dashed #ddd;
-                        font-size: 0.65rem;
-                        color: #ff6b6b;
+                        font-size: 0.7rem;
                     }
                     .leyenda-container {
                         display: flex;
-                        gap: 20px;
-                        padding: 12px 16px;
-                        background: linear-gradient(135deg, #f5f7fa 0%, #eef2f7 100%);
-                        border-radius: 12px;
-                        margin-bottom: 20px;
+                        gap: 16px;
+                        padding: 10px 15px;
+                        background: #f8f9fa;
+                        border-radius: 10px;
+                        margin-bottom: 15px;
                         flex-wrap: wrap;
+                        border: 1px solid #e0e0e0;
                     }
                     .leyenda-item {
                         display: flex;
                         align-items: center;
-                        gap: 6px;
-                        font-size: 0.8rem;
+                        gap: 5px;
+                        font-size: 0.75rem;
+                        color: #555;
                     }
                     .cabecera-dia {
                         text-align: center;
                         font-weight: 700;
                         color: white;
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                        padding: 12px 5px;
-                        border-radius: 10px;
-                        font-size: 0.9rem;
-                        letter-spacing: 0.5px;
+                        background: #667eea;
+                        padding: 10px 5px;
+                        border-radius: 8px;
+                        font-size: 0.8rem;
+                    }
+                    .comentario-mini {
+                        margin-top: 6px;
+                        padding-top: 5px;
+                        border-top: 1px dashed #ddd;
+                        font-size: 0.6rem;
+                        color: #ff6b6b;
                     }
                 </style>
                 """, unsafe_allow_html=True)
