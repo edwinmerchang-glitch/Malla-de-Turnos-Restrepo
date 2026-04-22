@@ -180,7 +180,6 @@ def exportar_calendario_area_pdf(empleados, asignaciones, turnos_dict, mes, año
     
     buffer = BytesIO()
     
-    # Usar orientación horizontal para que quepan más columnas
     doc = SimpleDocTemplate(buffer, pagesize=landscape(A4), 
                            rightMargin=0.5*cm, leftMargin=0.5*cm, 
                            topMargin=1.5*cm, bottomMargin=1*cm)
@@ -199,7 +198,6 @@ def exportar_calendario_area_pdf(empleados, asignaciones, turnos_dict, mes, año
     title = Paragraph(f"Calendario de Turnos - {area}<br/>{mes} {año}", title_style)
     elements.append(title)
     
-    # Dividir el mes en dos mitades para que quepa mejor
     mitad = 15
     partes = []
     
@@ -208,20 +206,16 @@ def exportar_calendario_area_pdf(empleados, asignaciones, turnos_dict, mes, año
         partes.append((parte_inicio, parte_fin))
     
     for idx, (parte_inicio, parte_fin) in enumerate(partes):
-        # Crear tabla para esta parte
         table_data = []
         
-        # Cabecera con días
         header = ["Empleado"]
         for dia in range(parte_inicio, parte_fin + 1):
             fecha = date(año, mes_num, dia)
-            # Abreviar día de la semana
-            dias_sem = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
+            dias_sem = ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"]
             header.append(f"{dia}\n{dias_sem[fecha.weekday()]}")
         table_data.append(header)
         
-        # Datos de empleados
-        for emp in empleados[:20]:  # Máximo 20 empleados por página
+        for emp in empleados[:20]:
             nombre_corto = emp.nombre[:10] + "..." if len(emp.nombre) > 10 else emp.nombre
             row = [nombre_corto]
             for dia in range(parte_inicio, parte_fin + 1):
@@ -230,7 +224,6 @@ def exportar_calendario_area_pdf(empleados, asignaciones, turnos_dict, mes, año
                     if a.empleado_id == emp.id and a.fecha.day == dia:
                         turno_encontrado = turnos_dict.get(a.turno_id, "?")
                         break
-                # Abreviar turno si es muy largo
                 if turno_encontrado:
                     if len(turno_encontrado) > 4:
                         turno_encontrado = turno_encontrado[:3] + "."
@@ -239,7 +232,6 @@ def exportar_calendario_area_pdf(empleados, asignaciones, turnos_dict, mes, año
                 row.append(turno_encontrado)
             table_data.append(row)
         
-        # Crear tabla con estilo compacto
         col_widths = [2.5*cm] + [0.9*cm] * (parte_fin - parte_inicio + 1)
         table = Table(table_data, repeatRows=1, colWidths=col_widths)
         
@@ -259,27 +251,24 @@ def exportar_calendario_area_pdf(empleados, asignaciones, turnos_dict, mes, año
             ('BOTTOMPADDING', (0, 1), (-1, -1), 4),
         ])
         
-        # Colorear fines de semana
         for dia in range(parte_inicio, parte_fin + 1):
             fecha = date(año, mes_num, dia)
-            if fecha.weekday() >= 5:  # Sábado o Domingo
+            if fecha.weekday() >= 5:
                 col_idx = dia - parte_inicio + 1
                 style.add('BACKGROUND', (col_idx, 1), (col_idx, -1), colors.HexColor('#fff3e0'))
         
         table.setStyle(style)
         elements.append(table)
         
-        # Agregar espacio entre partes
         if idx < len(partes) - 1:
             elements.append(Spacer(1, 0.5*cm))
     
-    # Estadísticas
     elements.append(Spacer(1, 0.8*cm))
     total_turnos = len([a for a in asignaciones if a.turno_id])
     empleados_con_turno = len(set([a.empleado_id for a in asignaciones if a.turno_id]))
     stats_text = f"""
-    <b>Estadísticas del mes:</b><br/>
-    • Total empleados en el área: {len(empleados)}<br/>
+    <b>Estadisticas del mes:</b><br/>
+    • Total empleados en el area: {len(empleados)}<br/>
     • Empleados con turnos asignados: {empleados_con_turno}<br/>
     • Total turnos asignados: {total_turnos}<br/>
     • Promedio turnos por empleado: {round(total_turnos/len(empleados), 1) if empleados else 0}
@@ -354,7 +343,7 @@ def login():
             <div class="login-header">
                 <div class="login-icon">📅</div>
                 <h1>Malla de Turnos</h1>
-                <p>Gestión de Horarios Locatel Restrepo</p>
+                <p>Gestion de Horarios Locatel Restrepo</p>
             </div>
         """, unsafe_allow_html=True)
         
@@ -375,7 +364,7 @@ def login():
         
         st.markdown("""
             <div style="text-align: center; margin-top: 2rem; color: #999; font-size: 0.9rem;">
-                <p>© 2026 Edwin Merchán - Versión 3.0</p>
+                <p>© 2026 Edwin Merchan - Version 3.0</p>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -455,7 +444,7 @@ if "user" in st.session_state:
             </div>
             <hr style="margin: 10px 0;">
             <div style="font-size: 0.9rem;">
-                <div>🏢 {user.area if user.area else 'Sin área'}</div>
+                <div>🏢 {user.area if user.area else 'Sin area'}</div>
                 <div>📌 {user.cargo if user.cargo else 'Sin cargo'}</div>
             </div>
         </div>
@@ -465,7 +454,7 @@ if "user" in st.session_state:
             st.markdown(f"""
             <div style="background: #ff6b6b; color: white; padding: 10px; 
                         border-radius: 10px; margin: 10px 0; text-align: center;">
-                🔔 {notificaciones} notificaciones nuevas en tu área
+                🔔 {notificaciones} notificaciones nuevas en tu area
             </div>
             """, unsafe_allow_html=True)
         
@@ -480,12 +469,12 @@ if "user" in st.session_state:
         def cambiar_pagina(pagina):
             st.session_state.pagina_actual = pagina
         
-        st.markdown("### 📋 Menú")
+        st.markdown("### 📋 Menu")
         
         if user.rol == "empleado":
             col1, col2 = st.sidebar.columns(2)
             with col1:
-                if st.button("👥 Mi área", use_container_width=True):
+                if st.button("👥 Mi area", use_container_width=True):
                     cambiar_pagina("Mi area")
                 if st.button("📅 Calendario", use_container_width=True):
                     cambiar_pagina("Calendario")
@@ -500,7 +489,7 @@ if "user" in st.session_state:
             with col1:
                 if st.button("👥 Mi equipo", use_container_width=True):
                     cambiar_pagina("Mi equipo")
-                if st.button("📊 Matriz área", use_container_width=True):
+                if st.button("📊 Matriz area", use_container_width=True):
                     cambiar_pagina("Matriz area")
                 if st.button("👤 Mi perfil", use_container_width=True):
                     cambiar_pagina("Mi perfil")
@@ -509,7 +498,7 @@ if "user" in st.session_state:
                     cambiar_pagina("Asignar area")
                 if st.button("📈 Reportes", use_container_width=True):
                     cambiar_pagina("Reportes area")
-                if st.button("🌐 Otras áreas", use_container_width=True):
+                if st.button("🌐 Otras areas", use_container_width=True):
                     cambiar_pagina("Otras areas")
         
         elif user.rol == "admin":
@@ -534,37 +523,37 @@ if "user" in st.session_state:
                     cambiar_pagina("Backup")
         
         st.markdown("---")
-        st.markdown(f"📍 **Página actual:** {st.session_state.pagina_actual}")
+        st.markdown(f"📍 **Pagina actual:** {st.session_state.pagina_actual}")
         
-        if st.button("🚪 Cerrar sesión", use_container_width=True):
+        if st.button("🚪 Cerrar sesion", use_container_width=True):
             st.session_state.clear()
             st.rerun()
         
         st.markdown("""
         <div style="text-align: center; margin-top: 2rem; color: #999; font-size: 0.8rem;">
-            © 2026 Edwin Merchán<br>Versión 3.0
+            © 2026 Edwin Merchan<br>Version 3.0
         </div>
         """, unsafe_allow_html=True)
     
     op = st.session_state.pagina_actual
     
-    # ============ PÁGINA: MI ÁREA ============
+    # ============ PAGINA: MI AREA ============
     if op == "Mi area":
         if user.rol not in ["empleado", "supervisor"]:
-            st.error("❌ No tienes permiso para acceder a esta sección")
+            st.error("❌ No tienes permiso para acceder a esta seccion")
             st.stop()
         
-        area_usuario = user.area if user.area else "Sin área asignada"
+        area_usuario = user.area if user.area else "Sin area asignada"
         
         st.markdown(f"""
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
                     padding: 2rem; border-radius: 20px; margin-bottom: 2rem;">
-            <h1 style="color: white; text-align: center; margin: 0;">👥 Mi Área de Trabajo</h1>
+            <h1 style="color: white; text-align: center; margin: 0;">👥 Mi Area de Trabajo</h1>
             <p style="color: rgba(255,255,255,0.9); text-align: center; margin: 10px 0 0 0;">{area_usuario}</p>
         </div>
         """, unsafe_allow_html=True)
         
-        tab1, tab2, tab3, tab4 = st.tabs(["📅 Calendario", "💬 Comentarios", "📊 Estadísticas", "📤 Exportar"])
+        tab1, tab2, tab3, tab4 = st.tabs(["📅 Calendario", "💬 Comentarios", "📊 Estadisticas", "📤 Exportar"])
         
         empleados_area = session.query(Empleado).filter_by(area=user.area).all()
         turnos = session.query(Turno).all()
@@ -572,7 +561,7 @@ if "user" in st.session_state:
         turnos_nombres = {t.id: t.nombre for t in turnos}
         
         if not empleados_area:
-            st.warning(f"⚠️ No hay empleados registrados en el área '{user.area}'")
+            st.warning(f"⚠️ No hay empleados registrados en el area '{user.area}'")
             st.stop()
         
         # TAB 1: CALENDARIO
@@ -617,14 +606,220 @@ if "user" in st.session_state:
                 prom = round(len(asignaciones) / len(empleados_area), 1) if empleados_area else 0
                 st.metric("📈 Promedio", prom)
             
-File "/app/malla.py", line 822
-                  st.markdown("<br>", unsafe_allow_html=True)
-                 ^
-IndentationError: unexpected indent
-        
+            if vista == "📅 Grupal":
+                st.markdown(f"### 📅 Calendario Grupal - {mes_sel} {año_sel}")
+
+                # CSS para calendario
+                st.markdown("""
+                <style>
+                    .calendario-cabecera {
+                        display: grid;
+                        grid-template-columns: repeat(7, 1fr);
+                        gap: 6px;
+                        margin-bottom: 8px;
+                    }
+                    .cabecera-dia {
+                        background: linear-gradient(135deg, #5f9cff 0%, #7b61ff 100%);
+                        color: white;
+                        padding: 12px;
+                        text-align: center;
+                        font-weight: 700;
+                        border-radius: 10px;
+                        font-size: 0.9rem;
+                    }
+                    .semana-fila {
+                        display: grid;
+                        grid-template-columns: repeat(7, 1fr);
+                        gap: 6px;
+                        margin-bottom: 6px;
+                    }
+                    .dia-celda {
+                        background: rgba(255,255,255,0.9);
+                        border-radius: 12px;
+                        padding: 8px;
+                        min-height: 140px;
+                        backdrop-filter: blur(6px);
+                        transition: all 0.2s ease;
+                        border: 1px solid #eee;
+                    }
+                    .dia-celda:hover {
+                        transform: translateY(-4px);
+                        box-shadow: 0 10px 25px rgba(0,0,0,0.12);
+                    }
+                    .dia-celda.hoy {
+                        border: 2px solid #ff6b6b;
+                        background: #fff5f5;
+                    }
+                    .dia-celda.fin-semana {
+                        background: #faf9f6;
+                    }
+                    .dia-cabecera {
+                        display: flex;
+                        justify-content: space-between;
+                        border-bottom: 1px solid #eee;
+                        margin-bottom: 6px;
+                    }
+                    .dia-numero {
+                        font-size: 1.2rem;
+                        font-weight: bold;
+                    }
+                    .dia-semana {
+                        font-size: 0.7rem;
+                        color: #888;
+                    }
+                    .turno-mini {
+                        font-size: 0.65rem;
+                        padding: 4px;
+                        margin-bottom: 3px;
+                        border-radius: 6px;
+                        background: #f4f6fb;
+                        border-left: 3px solid #5f9cff;
+                    }
+                    .turno-mini.usuario {
+                        background: linear-gradient(135deg, #d4fc79 0%, #96e6a1 100%);
+                        font-weight: 700;
+                    }
+                    .turno-mini .nombre {
+                        font-weight: 600;
+                    }
+                    .turno-mini .horario {
+                        font-size: 0.6rem;
+                        color: #666;
+                    }
+                    .contador {
+                        font-size: 0.6rem;
+                        color: #999;
+                        text-align: right;
+                    }
+                    .sin-turnos {
+                        text-align: center;
+                        font-size: 0.7rem;
+                        color: #bbb;
+                        margin-top: 20px;
+                    }
+                </style>
+                """, unsafe_allow_html=True)
+
+                # Cabecera
+                dias_semana = ["LUN", "MAR", "MIE", "JUE", "VIE", "SAB", "DOM"]
+                st.markdown('<div class="calendario-cabecera">', unsafe_allow_html=True)
+                for d in dias_semana:
+                    st.markdown(f'<div class="cabecera-dia">{d}</div>', unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
+
+                # Calendario
+                primer_dia = date(año_sel, mes_num, 1).weekday()
+                dia_actual = 1
+                dias_semana_nombres = ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"]
+
+                for semana in range(6):
+                    st.markdown('<div class="semana-fila">', unsafe_allow_html=True)
+
+                    for d in range(7):
+                        if semana == 0 and d < primer_dia:
+                            st.markdown('<div class="dia-celda"></div>', unsafe_allow_html=True)
+
+                        elif dia_actual <= dias_mes:
+                            fecha_actual = date(año_sel, mes_num, dia_actual)
+                            es_hoy = fecha_actual == date.today()
+                            es_fin = fecha_actual.weekday() >= 5
+
+                            empleados_con_turno = []
+                            for emp in empleados_area:
+                                if emp.id in turnos_por_empleado_dia and dia_actual in turnos_por_empleado_dia[emp.id]:
+                                    turno = turnos_por_empleado_dia[emp.id][dia_actual]
+                                    empleados_con_turno.append((emp, turno))
+
+                            clase = ""
+                            if es_hoy:
+                                clase += " hoy"
+                            if es_fin:
+                                clase += " fin-semana"
+
+                            html = f'<div class="dia-celda{clase}">'
+
+                            dia_nombre = dias_semana_nombres[fecha_actual.weekday()]
+                            html += f'''
+                            <div class="dia-cabecera">
+                                <span class="dia-numero">{dia_actual}</span>
+                                <span class="dia-semana">{dia_nombre}</span>
+                            </div>
+                            '''
+
+                            html += f'<div class="contador">👥 {len(empleados_con_turno)}</div>'
+
+                            if empleados_con_turno:
+                                for emp, turno in empleados_con_turno[:4]:
+                                    es_usuario = emp.id == user.id
+                                    clase_usuario = " usuario" if es_usuario else ""
+                                    icono = "📌 " if es_usuario else ""
+
+                                    nombre = emp.nombre.split()[0]
+                                    if len(emp.nombre.split()) > 1:
+                                        nombre += " " + emp.nombre.split()[1][0] + "."
+
+                                    html += f'''
+                                    <div class="turno-mini{clase_usuario}">
+                                        <div class="nombre">{icono}{nombre}</div>
+                                        <div class="horario">{turno.inicio[:5]} - {turno.fin[:5]} | {turno.nombre}</div>
+                                    </div>
+                                    '''
+
+                                if len(empleados_con_turno) > 4:
+                                    html += f'<div class="contador">+{len(empleados_con_turno)-4} mas</div>'
+                            else:
+                                html += '<div class="sin-turnos">🌙 Descanso</div>'
+
+                            html += '</div>'
+                            st.markdown(html, unsafe_allow_html=True)
+                            dia_actual += 1
+
+                        else:
+                            st.markdown('<div class="dia-celda"></div>', unsafe_allow_html=True)
+
+                    st.markdown('</div>', unsafe_allow_html=True)
+
+                    if dia_actual > dias_mes:
+                        break
+
+            else:
+                empleados_dict = {e.nombre: e for e in empleados_area}
+                empleado_sel = st.selectbox("Selecciona un empleado", list(empleados_dict.keys()))
+                
+                if empleado_sel:
+                    emp = empleados_dict[empleado_sel]
+                    es_usuario = emp.id == user.id
+                    turnos_emp = turnos_por_empleado_dia.get(emp.id, {})
+                    
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Total turnos", len(turnos_emp))
+                    with col2:
+                        st.metric("Cargo", emp.cargo or "No asignado")
+                    with col3:
+                        st.metric("Dias trabajados", len(set(turnos_emp.keys())))
+                    
+                    st.markdown(f"#### 📅 Turnos de {emp.nombre}" + (" (Tu)" if es_usuario else ""))
+                    
+                    if turnos_emp:
+                        data_turnos = []
+                        for dia, turno in sorted(turnos_emp.items()):
+                            fecha = date(año_sel, mes_num, dia)
+                            dias_sem = ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo"]
+                            data_turnos.append({
+                                "Fecha": fecha.strftime("%d/%m/%Y"),
+                                "Dia": dias_sem[fecha.weekday()],
+                                "Turno": turno.nombre,
+                                "Horario": f"{turno.inicio} - {turno.fin}"
+                            })
+                        df_turnos = pd.DataFrame(data_turnos)
+                        st.dataframe(df_turnos, use_container_width=True, hide_index=True)
+                    else:
+                        st.info(f"{emp.nombre} no tiene turnos asignados en {mes_sel} {año_sel}")
+
         # TAB 2: COMENTARIOS
         with tab2:
-            st.markdown("### 💬 Chat del Área")
+            st.markdown("### 💬 Chat del Area")
             
             col1, col2 = st.columns([2, 1])
             
@@ -656,7 +851,7 @@ IndentationError: unexpected indent
                 st.markdown("#### ✏️ Nuevo comentario")
                 
                 with st.form("nuevo_comentario"):
-                    nuevo = st.text_area("Escribe tu mensaje", placeholder="Ej: Recordatorio de reunión...", height=100)
+                    nuevo = st.text_area("Escribe tu mensaje", placeholder="Ej: Recordatorio de reunion...", height=100)
                     if st.form_submit_button("📤 Enviar", use_container_width=True):
                         if nuevo:
                             if guardar_comentario(user.area, fecha_comentario, user.nombre, nuevo):
@@ -674,10 +869,10 @@ IndentationError: unexpected indent
                 - 🎉 Anunciar eventos
                 - ⚠️ Reportar novedades
                 """)
-        
-        # TAB 3: ESTADÍSTICAS
+
+        # TAB 3: ESTADISTICAS
         with tab3:
-            st.markdown("### 📊 Estadísticas del Área")
+            st.markdown("### 📊 Estadisticas del Area")
             
             col1, col2 = st.columns(2)
             with col1:
@@ -715,10 +910,10 @@ IndentationError: unexpected indent
                     if stats_emp:
                         max_t = max([s["total"] for s in stats_emp.values()])
                         emp_max = [s["nombre"] for s in stats_emp.values() if s["total"] == max_t][0]
-                        st.metric("Más turnos", f"{emp_max} ({max_t})")
+                        st.metric("Mas turnos", f"{emp_max} ({max_t})")
             else:
                 st.info("No hay datos en el rango seleccionado")
-        
+
         # TAB 4: EXPORTAR
         with tab4:
             st.markdown("### 📤 Exportar Datos")
@@ -764,7 +959,7 @@ IndentationError: unexpected indent
                     st.success(f"✅ Calendario generado correctamente")
             
             with col2:
-                st.markdown("#### 📊 Exportar estadísticas")
+                st.markdown("#### 📊 Exportar estadisticas")
                 
                 if st.button("📈 Generar reporte completo", use_container_width=True):
                     output = BytesIO()
@@ -801,7 +996,7 @@ IndentationError: unexpected indent
                     )
                     st.success("✅ Reporte generado correctamente")
 
-    # ============ PÁGINA: CALENDARIO ============
+    # ============ PAGINA: CALENDARIO ============
     elif op == "Calendario":
         if user.rol not in ["empleado", "supervisor"]:
             st.error("❌ No tienes permiso")
@@ -841,14 +1036,14 @@ IndentationError: unexpected indent
             st.metric("Total turnos", len(mis_turnos))
         with col2:
             dias_trabajados = len(set([t.fecha.day for t in mis_turnos]))
-            st.metric("Días trabajados", dias_trabajados)
+            st.metric("Dias trabajados", dias_trabajados)
         with col3:
-            st.metric("Días descanso", dias_mes - dias_trabajados)
+            st.metric("Dias descanso", dias_mes - dias_trabajados)
         
         st.markdown(f"### 📅 {mes} {año}")
         
-        dias_semana = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"]
-        dias_semana_nombres = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+        dias_semana = ["LUN", "MAR", "MIE", "JUE", "VIE", "SAB", "DOM"]
+        dias_semana_nombres = ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo"]
         primer_dia = date(año, mes_num, 1).weekday()
         
         cols = st.columns(7)
@@ -931,13 +1126,13 @@ IndentationError: unexpected indent
                 for t in mis_turnos:
                     data.append({
                         "Fecha": t.fecha.strftime("%d/%m/%Y"),
-                        "Día": dias_semana_nombres[t.fecha.weekday()],
+                        "Dia": dias_semana_nombres[t.fecha.weekday()],
                         "Turno": t.turno.nombre if t.turno else "N/A",
                         "Horario": f"{t.turno.inicio} - {t.turno.fin}" if t.turno else "N/A"
                     })
                 st.dataframe(pd.DataFrame(data), use_container_width=True, hide_index=True)
 
-    # ============ PÁGINA: MI PERFIL ============
+    # ============ PAGINA: MI PERFIL ============
     elif op == "Mi perfil":
         st.markdown("""
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
@@ -950,7 +1145,7 @@ IndentationError: unexpected indent
         with col1:
             st.markdown(f"""
             <div class="stats-card">
-                <h3>Información Personal</h3>
+                <h3>Informacion Personal</h3>
                 <p><strong>Nombre:</strong> {user.nombre}</p>
                 <p><strong>Usuario:</strong> {user.usuario}</p>
                 <p><strong>Rol:</strong> {user.rol.upper()}</p>
@@ -959,8 +1154,8 @@ IndentationError: unexpected indent
         with col2:
             st.markdown(f"""
             <div class="stats-card">
-                <h3>Información Laboral</h3>
-                <p><strong>Área:</strong> {user.area if user.area else 'No asignada'}</p>
+                <h3>Informacion Laboral</h3>
+                <p><strong>Area:</strong> {user.area if user.area else 'No asignada'}</p>
                 <p><strong>Cargo:</strong> {user.cargo if user.cargo else 'No asignado'}</p>
             </div>
             """, unsafe_allow_html=True)
@@ -968,7 +1163,7 @@ IndentationError: unexpected indent
         total_turnos = session.query(Asignacion).filter_by(empleado_id=user.id).count()
         st.metric("Total de turnos asignados", total_turnos)
 
-    # ============ PÁGINA: MIS TURNOS ============
+    # ============ PAGINA: MIS TURNOS ============
     elif op == "Mis turnos":
         st.markdown("""
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
@@ -991,7 +1186,7 @@ IndentationError: unexpected indent
         else:
             st.info("No tienes turnos asignados")
 
-    # ============ PÁGINA: MI EQUIPO ============
+    # ============ PAGINA: MI EQUIPO ============
     elif op == "Mi equipo":
         if user.rol not in ["supervisor", "admin"]:
             st.error("❌ No tienes permiso")
@@ -1007,14 +1202,14 @@ IndentationError: unexpected indent
         if user.rol == "admin":
             areas = list(set([e.area for e in session.query(Empleado).all() if e.area]))
             areas.sort()
-            area_sel = st.selectbox("Seleccionar área", areas)
+            area_sel = st.selectbox("Seleccionar area", areas)
         else:
             area_sel = user.area
         
         empleados = session.query(Empleado).filter_by(area=area_sel).all()
         
         if empleados:
-            st.markdown(f"### Área: {area_sel}")
+            st.markdown(f"### Area: {area_sel}")
             
             cols = st.columns(3)
             for i, e in enumerate(empleados):
@@ -1040,9 +1235,9 @@ IndentationError: unexpected indent
                 } for e in empleados]
                 st.dataframe(pd.DataFrame(data), use_container_width=True)
         else:
-            st.info(f"No hay empleados en el área '{area_sel}'")
+            st.info(f"No hay empleados en el area '{area_sel}'")
 
-    # ============ PÁGINA: MATRIZ AREA ============
+    # ============ PAGINA: MATRIZ AREA ============
     elif op == "Matriz area":
         if user.rol != "supervisor":
             st.error("❌ No tienes permiso")
@@ -1070,7 +1265,7 @@ IndentationError: unexpected indent
         empleados = session.query(Empleado).filter_by(area=user.area).all()
         
         if not empleados:
-            st.warning("No hay empleados en tu área")
+            st.warning("No hay empleados en tu area")
             st.stop()
         
         turnos = session.query(Turno).all()
@@ -1102,9 +1297,9 @@ IndentationError: unexpected indent
             st.dataframe(df, use_container_width=True, height=500)
             
             total = sum(1 for emp in matriz for dia in matriz[emp])
-            st.metric("Total turnos en el área", total)
+            st.metric("Total turnos en el area", total)
 
-    # ============ PÁGINA: ASIGNAR AREA ============
+    # ============ PAGINA: ASIGNAR AREA ============
     elif op == "Asignar area":
         if user.rol != "supervisor":
             st.error("❌ No tienes permiso")
@@ -1120,7 +1315,7 @@ IndentationError: unexpected indent
         empleados = session.query(Empleado).filter_by(area=user.area).all()
         
         if not empleados:
-            st.warning("No hay empleados en tu área")
+            st.warning("No hay empleados en tu area")
             st.stop()
         
         col1, col2 = st.columns(2)
@@ -1158,7 +1353,7 @@ IndentationError: unexpected indent
             st.success(f"✅ Turno {msg} correctamente")
             st.rerun()
 
-    # ============ PÁGINA: REPORTES AREA ============
+    # ============ PAGINA: REPORTES AREA ============
     elif op == "Reportes area":
         if user.rol != "supervisor":
             st.error("❌ No tienes permiso")
@@ -1167,14 +1362,14 @@ IndentationError: unexpected indent
         st.markdown("""
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
                     padding: 1.5rem; border-radius: 15px; margin-bottom: 2rem;">
-            <h2 style="color: white; text-align: center; margin: 0;">📈 Reportes del Área</h2>
+            <h2 style="color: white; text-align: center; margin: 0;">📈 Reportes del Area</h2>
         </div>
         """, unsafe_allow_html=True)
         
         empleados_ids = [e.id for e in session.query(Empleado).filter_by(area=user.area).all()]
         
         if not empleados_ids:
-            st.info("No hay empleados en tu área")
+            st.info("No hay empleados en tu area")
             st.stop()
         
         asignaciones = session.query(Asignacion).filter(
@@ -1182,7 +1377,7 @@ IndentationError: unexpected indent
         ).all()
         
         if not asignaciones:
-            st.info("No hay asignaciones en tu área")
+            st.info("No hay asignaciones en tu area")
             st.stop()
         
         data = []
@@ -1201,7 +1396,7 @@ IndentationError: unexpected indent
         st.dataframe(reporte, use_container_width=True)
         st.bar_chart(reporte.set_index("Empleado"))
 
-    # ============ PÁGINA: OTRAS AREAS ============
+    # ============ PAGINA: OTRAS AREAS ============
     elif op == "Otras areas":
         if user.rol not in ["admin", "supervisor"]:
             st.error("❌ No tienes permiso")
@@ -1210,7 +1405,7 @@ IndentationError: unexpected indent
         st.markdown("""
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
                     padding: 1.5rem; border-radius: 15px; margin-bottom: 2rem;">
-            <h2 style="color: white; text-align: center; margin: 0;">🌐 Vista de Otras Áreas</h2>
+            <h2 style="color: white; text-align: center; margin: 0;">🌐 Vista de Otras Areas</h2>
         </div>
         """, unsafe_allow_html=True)
         
@@ -1220,13 +1415,13 @@ IndentationError: unexpected indent
         if user.rol == "supervisor":
             areas = [user.area]
         
-        area_sel = st.selectbox("Selecciona un área", areas)
+        area_sel = st.selectbox("Selecciona un area", areas)
         
         if area_sel:
             empleados = session.query(Empleado).filter_by(area=area_sel).all()
             
             if empleados:
-                st.markdown(f"### Área: {area_sel}")
+                st.markdown(f"### Area: {area_sel}")
                 
                 col1, col2, col3 = st.columns(3)
                 with col1:
@@ -1250,9 +1445,9 @@ IndentationError: unexpected indent
                 
                 st.dataframe(pd.DataFrame(data), use_container_width=True)
             else:
-                st.info(f"No hay empleados en el área {area_sel}")
+                st.info(f"No hay empleados en el area {area_sel}")
 
-    # ============ PÁGINA: EMPLEADOS (ADMIN) ============
+    # ============ PAGINA: EMPLEADOS (ADMIN) ============
     elif op == "Empleados":
         if user.rol != "admin":
             st.error("❌ No tienes permiso")
@@ -1261,7 +1456,7 @@ IndentationError: unexpected indent
         st.markdown("""
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
                     padding: 1.5rem; border-radius: 15px; margin-bottom: 2rem;">
-            <h2 style="color: white; text-align: center; margin: 0;">👥 Gestión de Empleados</h2>
+            <h2 style="color: white; text-align: center; margin: 0;">👥 Gestion de Empleados</h2>
         </div>
         """, unsafe_allow_html=True)
         
@@ -1271,7 +1466,7 @@ IndentationError: unexpected indent
             empleados = session.query(Empleado).all()
             if empleados:
                 data = [{
-                    "ID": e.id, "Nombre": e.nombre, "Área": e.area or "N/A",
+                    "ID": e.id, "Nombre": e.nombre, "Area": e.area or "N/A",
                     "Cargo": e.cargo or "N/A", "Usuario": e.usuario, "Rol": e.rol
                 } for e in empleados]
                 st.dataframe(pd.DataFrame(data), use_container_width=True)
@@ -1286,7 +1481,7 @@ IndentationError: unexpected indent
                     u = st.text_input("Usuario *")
                     r = st.selectbox("Rol *", ["empleado", "supervisor", "admin"])
                 with col2:
-                    area = st.text_input("Área")
+                    area = st.text_input("Area")
                     cargo = st.text_input("Cargo")
                     p = st.text_input("Contraseña *", type="password")
                 
@@ -1314,7 +1509,7 @@ IndentationError: unexpected indent
                         usuario = st.text_input("Usuario", value=emp.usuario)
                         col1, col2 = st.columns(2)
                         with col1:
-                            area = st.text_input("Área", value=emp.area or "")
+                            area = st.text_input("Area", value=emp.area or "")
                         with col2:
                             cargo = st.text_input("Cargo", value=emp.cargo or "")
                         rol = st.selectbox("Rol", ["empleado", "supervisor", "admin"], 
@@ -1342,7 +1537,7 @@ IndentationError: unexpected indent
                         else:
                             st.error("❌ No puedes eliminarte a ti mismo")
 
-    # ============ PÁGINA: TURNOS (ADMIN) ============
+    # ============ PAGINA: TURNOS (ADMIN) ============
     elif op == "Turnos":
         if user.rol != "admin":
             st.error("❌ No tienes permiso")
@@ -1351,7 +1546,7 @@ IndentationError: unexpected indent
         st.markdown("""
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
                     padding: 1.5rem; border-radius: 15px; margin-bottom: 2rem;">
-            <h2 style="color: white; text-align: center; margin: 0;">⏰ Gestión de Turnos</h2>
+            <h2 style="color: white; text-align: center; margin: 0;">⏰ Gestion de Turnos</h2>
         </div>
         """, unsafe_allow_html=True)
         
@@ -1419,7 +1614,7 @@ IndentationError: unexpected indent
                                     st.success("✅ Eliminado")
                                     st.rerun()
 
-    # ============ PÁGINA: MATRIZ TURNOS (ADMIN) ============
+    # ============ PAGINA: MATRIZ TURNOS (ADMIN) ============
     elif op == "Matriz turnos":
         if user.rol != "admin":
             st.error("❌ No tienes permiso")
@@ -1443,7 +1638,7 @@ IndentationError: unexpected indent
         with col3:
             areas = list(set([e.area for e in session.query(Empleado).all() if e.area]))
             areas.sort()
-            area_filtro = st.selectbox("Filtrar por área", ["Todas"] + areas)
+            area_filtro = st.selectbox("Filtrar por area", ["Todas"] + areas)
         
         mes_num = meses.index(mes) + 1
         dias_mes = monthrange(año, mes_num)[1]
@@ -1476,7 +1671,7 @@ IndentationError: unexpected indent
         for emp in empleados:
             fila = {
                 "Empleado": emp.nombre,
-                "Área": emp.area or "N/A",
+                "Area": emp.area or "N/A",
                 "Cargo": emp.cargo or "N/A",
             }
             for dia in range(1, dias_mes + 1):
@@ -1502,7 +1697,7 @@ IndentationError: unexpected indent
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
 
-    # ============ PÁGINA: ASIGNACION MANUAL (ADMIN) ============
+    # ============ PAGINA: ASIGNACION MANUAL (ADMIN) ============
     elif op == "Asignacion manual":
         if user.rol != "admin":
             st.error("❌ No tienes permiso")
@@ -1511,7 +1706,7 @@ IndentationError: unexpected indent
         st.markdown("""
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
                     padding: 1.5rem; border-radius: 15px; margin-bottom: 2rem;">
-            <h2 style="color: white; text-align: center; margin: 0;">✏️ Asignación Manual</h2>
+            <h2 style="color: white; text-align: center; margin: 0;">✏️ Asignacion Manual</h2>
         </div>
         """, unsafe_allow_html=True)
         
@@ -1546,7 +1741,7 @@ IndentationError: unexpected indent
             st.success("✅ Asignado")
             st.rerun()
 
-    # ============ PÁGINA: GENERAR MALLA (ADMIN) ============
+    # ============ PAGINA: GENERAR MALLA (ADMIN) ============
     elif op == "Generar malla":
         if user.rol != "admin":
             st.error("❌ No tienes permiso")
@@ -1555,13 +1750,13 @@ IndentationError: unexpected indent
         st.markdown("""
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
                     padding: 1.5rem; border-radius: 15px; margin-bottom: 2rem;">
-            <h2 style="color: white; text-align: center; margin: 0;">🤖 Generar Malla Automática</h2>
+            <h2 style="color: white; text-align: center; margin: 0;">🤖 Generar Malla Automatica</h2>
         </div>
         """, unsafe_allow_html=True)
         
-        st.info("Función en desarrollo - Generación automática de turnos")
+        st.info("Funcion en desarrollo - Generacion automatica de turnos")
 
-    # ============ PÁGINA: REPORTES (ADMIN) ============
+    # ============ PAGINA: REPORTES (ADMIN) ============
     elif op == "Reportes":
         if user.rol != "admin":
             st.error("❌ No tienes permiso")
@@ -1574,9 +1769,9 @@ IndentationError: unexpected indent
         </div>
         """, unsafe_allow_html=True)
         
-        st.info("Función en desarrollo - Reportes avanzados")
+        st.info("Funcion en desarrollo - Reportes avanzados")
 
-    # ============ PÁGINA: BACKUP (ADMIN) ============
+    # ============ PAGINA: BACKUP (ADMIN) ============
     elif op == "Backup":
         if user.rol != "admin":
             st.error("❌ No tienes permiso")
@@ -1585,7 +1780,7 @@ IndentationError: unexpected indent
         st.markdown("""
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
                     padding: 1.5rem; border-radius: 15px; margin-bottom: 2rem;">
-            <h2 style="color: white; text-align: center; margin: 0;">🛡 Backup y Restauración</h2>
+            <h2 style="color: white; text-align: center; margin: 0;">🛡 Backup y Restauracion</h2>
         </div>
         """, unsafe_allow_html=True)
         
@@ -1597,7 +1792,7 @@ IndentationError: unexpected indent
             col1, col2 = st.columns(2)
             
             with col1:
-                if st.button("🔄 Generar backup automático", use_container_width=True):
+                if st.button("🔄 Generar backup automatico", use_container_width=True):
                     fecha = datetime.now().strftime("%Y%m%d_%H%M%S")
                     nombre = f"backup_{fecha}.db"
                     
@@ -1635,7 +1830,7 @@ IndentationError: unexpected indent
         
         with tab2:
             st.markdown("### Importar base de datos")
-            st.warning("⚠️ Al importar un backup, se sobrescribirá la base de datos actual")
+            st.warning("⚠️ Al importar un backup, se sobrescribira la base de datos actual")
             
             archivo = st.file_uploader("Seleccionar archivo de backup", type=['db'])
             
@@ -1658,7 +1853,7 @@ IndentationError: unexpected indent
                             f.write(archivo.getbuffer())
                         
                         st.success("✅ Base de datos restaurada")
-                        st.warning("🔄 Recarga la página para aplicar los cambios")
+                        st.warning("🔄 Recarga la pagina para aplicar los cambios")
                         
                     except Exception as e:
                         st.error(f"❌ Error: {str(e)}")
