@@ -585,79 +585,202 @@ if "user" in st.session_state:
             if vista == "📅 Grupal":
                 st.markdown(f"### 📅 Calendario Grupal - {mes_sel} {año_sel}")
 
-                # Cabecera
-                dias_semana = ["LUN", "MAR", "MIE", "JUE", "VIE", "SAB", "DOM"]
-                st.markdown('<div class="calendario-cabecera">', unsafe_allow_html=True)
-                for d in dias_semana:
-                    st.markdown(f'<div class="cabecera-dia">{d}</div>', unsafe_allow_html=True)
-                st.markdown('</div>', unsafe_allow_html=True)
+                # --- Estilos CSS mejorados para el calendario grupal ---
+                st.markdown("""
+                <style>
+                .calendario-container {
+                    overflow-x: auto;
+                    margin-top: 20px;
+                }
+                .calendario-grid {
+                    display: grid;
+                    grid-template-columns: repeat(7, minmax(140px, 1fr));
+                    gap: 12px;
+                    min-width: 980px;
+                }
+                .dia-header {
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    padding: 12px 8px;
+                    text-align: center;
+                    font-weight: 700;
+                    border-radius: 12px 12px 8px 8px;
+                    font-size: 0.9rem;
+                    margin-bottom: 4px;
+                }
+                .dia-card {
+                    background: white;
+                    border-radius: 12px;
+                    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+                    overflow: hidden;
+                    transition: transform 0.2s, box-shadow 0.2s;
+                    border: 1px solid #f0f0f0;
+                }
+                .dia-card:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 6px 14px rgba(0,0,0,0.1);
+                }
+                .dia-fin-semana {
+                    background: #fef9e6;
+                }
+                .dia-numero {
+                    background: #f8f9fc;
+                    padding: 8px;
+                    text-align: center;
+                    font-weight: bold;
+                    font-size: 1.2rem;
+                    border-bottom: 1px solid #eee;
+                    color: #333;
+                }
+                .dia-numero small {
+                    font-size: 0.7rem;
+                    font-weight: normal;
+                    color: #888;
+                    margin-left: 6px;
+                }
+                .turnos-lista {
+                    padding: 8px;
+                    max-height: 280px;
+                    overflow-y: auto;
+                }
+                .turno-item {
+                    background: #f4f7fb;
+                    border-radius: 10px;
+                    padding: 8px 10px;
+                    margin-bottom: 8px;
+                    border-left: 4px solid #4CAF50;
+                    transition: all 0.2s;
+                }
+                .turno-item.usuario-actual {
+                    background: #e8f5e9;
+                    border-left-color: #2e7d32;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                }
+                .turno-nombre {
+                    font-weight: 700;
+                    font-size: 0.75rem;
+                    color: #1e293b;
+                    display: inline-block;
+                    background: #e0e7ff;
+                    padding: 2px 8px;
+                    border-radius: 20px;
+                    margin-bottom: 6px;
+                }
+                .turno-empleado {
+                    font-weight: 600;
+                    font-size: 0.8rem;
+                    color: #0f172a;
+                    display: flex;
+                    align-items: center;
+                    gap: 4px;
+                    margin-bottom: 4px;
+                }
+                .turno-horario {
+                    font-size: 0.7rem;
+                    color: #475569;
+                    display: flex;
+                    align-items: center;
+                    gap: 4px;
+                }
+                .turno-horario i {
+                    font-style: normal;
+                    font-size: 0.65rem;
+                }
+                .sin-turnos {
+                    text-align: center;
+                    color: #94a3b8;
+                    font-size: 0.75rem;
+                    padding: 15px 5px;
+                }
+                .contador-turnos {
+                    font-size: 0.7rem;
+                    color: #64748b;
+                    text-align: center;
+                    margin-top: 6px;
+                    padding-top: 4px;
+                    border-top: 1px dashed #e2e8f0;
+                }
+                </style>
+                """, unsafe_allow_html=True)
 
-                # Calendario
+                # Cabecera con nombres de días
+                dias_semana = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"]
+                html_header = '<div class="calendario-grid">'
+                for dia in dias_semana:
+                    html_header += f'<div class="dia-header">{dia}</div>'
+                html_header += '</div>'
+                st.markdown(html_header, unsafe_allow_html=True)
+
+                # Preparar datos del mes
                 primer_dia = date(año_sel, mes_num, 1).weekday()
+                dias_mes = monthrange(año_sel, mes_num)[1]
                 dia_actual = 1
-                dias_semana_nombres = ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"]
-
-                for semana in range(6):
-                    st.markdown('<div class="semana-fila">', unsafe_allow_html=True)
-
-                    for d in range(7):
-                        if semana == 0 and d < primer_dia:
-                            st.markdown('<div class="dia-celda"></div>', unsafe_allow_html=True)
-
-                        elif dia_actual <= dias_mes:
-                            fecha_actual = date(año_sel, mes_num, dia_actual)
-                            es_fin = fecha_actual.weekday() >= 5
-
-                            empleados_con_turno = []
-                            for emp in empleados_area:
-                                if emp.id in turnos_por_empleado_dia and dia_actual in turnos_por_empleado_dia[emp.id]:
-                                    turno = turnos_por_empleado_dia[emp.id][dia_actual]
-                                    empleados_con_turno.append((emp, turno))
-
-                            clase = " fin-semana" if es_fin else ""
-                            html = f'<div class="dia-celda{clase}">'
-
-                            dia_nombre = dias_semana_nombres[fecha_actual.weekday()]
-                            html += f'''
-                            <div class="dia-cabecera">
-                                <span class="dia-numero">{dia_actual}</span>
-                                <span class="dia-semana">{dia_nombre}</span>
-                            </div>
-                            '''
-
-                            html += f'<div class="contador">👥 {len(empleados_con_turno)}</div>'
-
-                            if empleados_con_turno:
-                                for emp, turno in empleados_con_turno[:4]:
-                                    es_usuario = emp.id == user.id
-                                    clase_usuario = " usuario" if es_usuario else ""
-                                    icono = "📌 " if es_usuario else ""
-
-                                    nombre = emp.nombre.split()[0]
-                                    if len(emp.nombre.split()) > 1:
-                                        nombre += " " + emp.nombre.split()[1][0] + "."
-
-                                    html += f'''
-                                    <div class="turno-mini{clase_usuario}">
-                                        <div class="nombre">{icono}{nombre}</div>
-                                        <div class="horario">{turno.inicio[:5]} - {turno.fin[:5]} | {turno.nombre}</div>
-                                    </div>
-                                    '''
-
-                                if len(empleados_con_turno) > 4:
-                                    html += f'<div class="contador">+{len(empleados_con_turno)-4} mas</div>'
-                            else:
-                                html += '<div class="sin-turnos">🌙 Descanso</div>'
-
-                            html += '</div>'
-                            st.markdown(html, unsafe_allow_html=True)
+                semanas = []
+                
+                # Construir matriz de semanas
+                while dia_actual <= dias_mes:
+                    semana = []
+                    for i in range(7):
+                        if dia_actual <= dias_mes and (len(semanas) > 0 or i >= primer_dia):
+                            semana.append(dia_actual)
                             dia_actual += 1
-
                         else:
-                            st.markdown('<div class="dia-celda"></div>', unsafe_allow_html=True)
+                            semana.append(None)
+                    semanas.append(semana)
 
-                    st.markdown('</div>', unsafe_allow_html=True)
-
+                # Mostrar cada semana
+                for semana in semanas:
+                    html_fila = '<div class="calendario-grid" style="margin-top: 12px;">'
+                    for dia_num in semana:
+                        if dia_num is None:
+                            html_fila += '<div class="dia-card" style="background: #fafafa; box-shadow: none; min-height: 200px;"></div>'
+                            continue
+                        
+                        fecha_actual = date(año_sel, mes_num, dia_num)
+                        es_fin = fecha_actual.weekday() >= 5
+                        dia_semana_nombre = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"][fecha_actual.weekday()]
+                        
+                        # Obtener empleados con turno este día
+                        empleados_con_turno = []
+                        for emp in empleados_area:
+                            if emp.id in turnos_por_empleado_dia and dia_num in turnos_por_empleado_dia[emp.id]:
+                                turno = turnos_por_empleado_dia[emp.id][dia_num]
+                                empleados_con_turno.append((emp, turno))
+                        
+                        # Ordenar: primero el usuario actual si está, luego por nombre
+                        empleados_con_turno.sort(key=lambda x: (x[0].id != user.id, x[0].nombre))
+                        
+                        clase_fin = " dia-fin-semana" if es_fin else ""
+                        html_fila += f'<div class="dia-card{clase_fin}">'
+                        html_fila += f'<div class="dia-numero">{dia_num}<small>{dia_semana_nombre}</small></div>'
+                        html_fila += '<div class="turnos-lista">'
+                        
+                        if empleados_con_turno:
+                            for emp, turno in empleados_con_turno[:5]:  # Mostrar máximo 5 por celda
+                                es_usuario = emp.id == user.id
+                                clase_usuario = " usuario-actual" if es_usuario else ""
+                                icono = "⭐ " if es_usuario else "👤 "
+                                
+                                html_fila += f'''
+                                <div class="turno-item{clase_usuario}">
+                                    <div class="turno-empleado">{icono}{emp.nombre}</div>
+                                    <div class="turno-nombre">{turno.nombre}</div>
+                                    <div class="turno-horario">
+                                        <i>🕒</i> {turno.inicio[:5]} - {turno.fin[:5]}
+                                    </div>
+                                </div>
+                                '''
+                            
+                            if len(empleados_con_turno) > 5:
+                                restantes = len(empleados_con_turno) - 5
+                                html_fila += f'<div class="contador-turnos">+{restantes} empleado(s) más</div>'
+                        else:
+                            html_fila += '<div class="sin-turnos">🌙 Descanso / Sin turno</div>'
+                        
+                        html_fila += '</div></div>'
+                    
+                    html_fila += '</div>'
+                    st.markdown(html_fila, unsafe_allow_html=True)
                     if dia_actual > dias_mes:
                         break
 
