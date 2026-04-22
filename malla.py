@@ -531,186 +531,210 @@ if "user" in st.session_state:
             st.warning(f"⚠️ No hay empleados registrados en el área '{user.area}'")
             st.stop()
         
-        # ============ TAB 1: CALENDARIO ============
-        with tab1:
-            col1, col2, col3 = st.columns([2, 1, 1])
-            with col1:
-                meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
-                         "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
-                mes_index, año_actual = get_mes_actual()
-                mes_sel = st.selectbox("Mes", meses, index=mes_index, key="area_mes")
-            with col2:
-                año_sel = st.number_input("Año", min_value=2024, max_value=2030, value=año_actual, key="area_ano")
-            with col3:
-                vista = st.radio("Vista", ["📅 Grupal", "👤 Individual"], horizontal=True, key="vista_area")
-            
-            mes_num = meses.index(mes_sel) + 1
-            dias_mes = monthrange(año_sel, mes_num)[1]
-            fecha_inicio = date(año_sel, mes_num, 1)
-            fecha_fin = date(año_sel, mes_num, dias_mes)
-            
-            empleados_ids = [e.id for e in empleados_area]
-            asignaciones = session.query(Asignacion).filter(
-                Asignacion.empleado_id.in_(empleados_ids),
-                Asignacion.fecha.between(fecha_inicio, fecha_fin)
-            ).all()
-            
-            turnos_por_empleado_dia = {}
-            for a in asignaciones:
-                if a.empleado_id not in turnos_por_empleado_dia:
-                    turnos_por_empleado_dia[a.empleado_id] = {}
-                turnos_por_empleado_dia[a.empleado_id][a.fecha.day] = a.turno
-            
-            col1, col2, col3, col4 = st.columns(4)
-            with col1:
-                st.metric("👥 Empleados", len(empleados_area))
-            with col2:
-                st.metric("📊 Total turnos", len(asignaciones))
-            with col3:
-                emp_con_turnos = len(set([a.empleado_id for a in asignaciones]))
-                st.metric("✅ Con turnos", emp_con_turnos)
-            with col4:
-                prom = round(len(asignaciones) / len(empleados_area), 1) if empleados_area else 0
-                st.metric("📈 Promedio", prom)
-            
-            if vista == "📅 Grupal":
-                st.markdown(f"### 📅 Calendario Grupal - {mes_sel} {año_sel}")
-                
-                st.markdown("""
-                <div style="background: #f8f9fa; padding: 10px; border-radius: 10px; margin: 10px 0;">
-                    <span style="margin-right: 20px;">🟢 <strong>Con turno</strong></span>
-                    <span style="margin-right: 20px;">⚪ <strong>Descanso</strong></span>
-                    <span>📌 <strong>Tú</strong></span>
+# ============ TAB 1: CALENDARIO ============
+with tab1:
+    col1, col2, col3 = st.columns([2, 1, 1])
+    with col1:
+        meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
+                 "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+        mes_index, año_actual = get_mes_actual()
+        mes_sel = st.selectbox("Mes", meses, index=mes_index, key="area_mes")
+    with col2:
+        año_sel = st.number_input("Año", min_value=2024, max_value=2030, value=año_actual, key="area_ano")
+    with col3:
+        vista = st.radio("Vista", ["📅 Grupal", "👤 Individual"], horizontal=True, key="vista_area")
+    
+    mes_num = meses.index(mes_sel) + 1
+    dias_mes = monthrange(año_sel, mes_num)[1]
+    fecha_inicio = date(año_sel, mes_num, 1)
+    fecha_fin = date(año_sel, mes_num, dias_mes)
+    
+    empleados_ids = [e.id for e in empleados_area]
+    asignaciones = session.query(Asignacion).filter(
+        Asignacion.empleado_id.in_(empleados_ids),
+        Asignacion.fecha.between(fecha_inicio, fecha_fin)
+    ).all()
+    
+    turnos_por_empleado_dia = {}
+    for a in asignaciones:
+        if a.empleado_id not in turnos_por_empleado_dia:
+            turnos_por_empleado_dia[a.empleado_id] = {}
+        turnos_por_empleado_dia[a.empleado_id][a.fecha.day] = a.turno
+    
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("👥 Empleados", len(empleados_area))
+    with col2:
+        st.metric("📊 Total turnos", len(asignaciones))
+    with col3:
+        emp_con_turnos = len(set([a.empleado_id for a in asignaciones]))
+        st.metric("✅ Con turnos", emp_con_turnos)
+    with col4:
+        prom = round(len(asignaciones) / len(empleados_area), 1) if empleados_area else 0
+        st.metric("📈 Promedio", prom)
+    
+    if vista == "📅 Grupal":
+        st.markdown(f"### 📅 Calendario Grupal - {mes_sel} {año_sel}")
+        
+        st.markdown("""
+        <div style="background: #f8f9fa; padding: 10px; border-radius: 10px; margin: 10px 0;">
+            <span style="margin-right: 20px;">🟢 <strong>Con turno</strong></span>
+            <span style="margin-right: 20px;">⚪ <strong>Descanso</strong></span>
+            <span>📌 <strong>Tú</strong></span>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # CORRECCIÓN: Usar nombres de días en español
+        dias_semana = ["LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES", "SÁBADO", "DOMINGO"]
+        dias_semana_corto = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"]
+        
+        # Obtener el primer día del mes
+        primer_dia = date(año_sel, mes_num, 1).weekday()
+        
+        # Cabecera de días
+        cols = st.columns(7)
+        for i, dia in enumerate(dias_semana_corto):
+            with cols[i]:
+                st.markdown(f"""
+                <div style="text-align: center; font-weight: bold; color: #667eea; padding: 10px; 
+                            background: #f0f4ff; border-radius: 8px; margin: 2px;">
+                    {dia}
                 </div>
                 """, unsafe_allow_html=True)
-                
-                dias_semana = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"]
-                primer_dia = date(año_sel, mes_num, 1).weekday()
-                
-                cols = st.columns(7)
-                for i, dia in enumerate(dias_semana):
-                    with cols[i]:
-                        st.markdown(f"""
-                        <div style="text-align: center; font-weight: bold; color: #667eea; padding: 10px;">
-                            {dia}
+        
+        dia_actual = 1
+        for semana in range(6):
+            cols = st.columns(7)
+            for dia_semana in range(7):
+                with cols[dia_semana]:
+                    if semana == 0 and dia_semana < primer_dia:
+                        # Días vacíos al inicio del mes
+                        st.markdown("""
+                        <div style="padding: 10px; min-height: 120px; background: #f5f5f5; 
+                                    border-radius: 10px; opacity: 0.5; text-align: center;
+                                    display: flex; align-items: center; justify-content: center;">
+                            <div style="color: #999;">-</div>
                         </div>
                         """, unsafe_allow_html=True)
-                
-                dia_actual = 1
-                for semana in range(6):
-                    cols = st.columns(7)
-                    for dia_semana in range(7):
-                        with cols[dia_semana]:
-                            if semana == 0 and dia_semana < primer_dia:
-                                st.markdown("""
-                                <div style="padding: 10px; min-height: 120px; background: #f9f9f9; 
-                                            border-radius: 10px; opacity: 0.5; text-align: center;">
-                                    <div style="color: #ccc;">-</div>
-                                </div>
-                                """, unsafe_allow_html=True)
-                            elif dia_actual <= dias_mes:
-                                fecha_actual = date(año_sel, mes_num, dia_actual)
-                                dia_semana_nombre = fecha_actual.strftime("%a").upper()
+                    elif dia_actual <= dias_mes:
+                        fecha_actual = date(año_sel, mes_num, dia_actual)
+                        # Obtener nombre del día en español
+                        dias_semana_nombres = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+                        dia_semana_nombre = dias_semana_nombres[fecha_actual.weekday()]
+                        
+                        empleados_con_turno = []
+                        for emp in empleados_area:
+                            if emp.id in turnos_por_empleado_dia and dia_actual in turnos_por_empleado_dia[emp.id]:
+                                turno = turnos_por_empleado_dia[emp.id][dia_actual]
+                                empleados_con_turno.append((emp, turno))
+                        
+                        comentarios = obtener_comentarios(user.area, fecha_actual)
+                        tiene_comentarios = len(comentarios) > 0
+                        
+                        # Determinar color de fondo según el día
+                        if fecha_actual.weekday() >= 5:  # Fin de semana
+                            bg_color = "#fff3e0"
+                        else:
+                            bg_color = "white"
+                        
+                        html_dia = f"""
+                        <div style="background: {bg_color}; border-radius: 10px; padding: 8px; 
+                                    min-height: 120px; border: 1px solid #e0e0e0;
+                                    {'border: 2px solid #ff6b6b;' if tiene_comentarios else ''}">
+                            <div style="font-weight: bold; text-align: center; 
+                                        padding-bottom: 5px; border-bottom: 2px solid #667eea;
+                                        display: flex; justify-content: space-between; align-items: center;">
+                                <span>
+                                    <span style="font-size: 1.1rem;">{dia_actual}</span>
+                                    <span style="color: #999; font-size: 0.7rem; margin-left: 5px;">{dia_semana_nombre[:3]}</span>
+                                </span>
+                                {'<span style="font-size: 1rem;">💬</span>' if tiene_comentarios else ''}
+                            </div>
+                            <div style="margin-top: 5px; max-height: 85px; overflow-y: auto;">
+                        """
+                        
+                        if empleados_con_turno:
+                            for emp, turno in empleados_con_turno[:4]:
+                                es_usuario = emp.id == user.id
+                                bg_color_item = "#e8f5e9" if es_usuario else "#f0f8ff"
+                                border_color = "#4CAF50" if es_usuario else "#667eea"
+                                icono = "📌 " if es_usuario else "👤 "
                                 
-                                empleados_con_turno = []
-                                for emp in empleados_area:
-                                    if emp.id in turnos_por_empleado_dia and dia_actual in turnos_por_empleado_dia[emp.id]:
-                                        turno = turnos_por_empleado_dia[emp.id][dia_actual]
-                                        empleados_con_turno.append((emp, turno))
-                                
-                                comentarios = obtener_comentarios(user.area, fecha_actual)
-                                tiene_comentarios = len(comentarios) > 0
-                                
-                                html_dia = f"""
-                                <div style="background: white; border-radius: 10px; padding: 8px; 
-                                            min-height: 120px; border: 1px solid #e0e0e0;
-                                            {'border: 2px solid #ff6b6b;' if tiene_comentarios else ''}">
-                                    <div style="font-weight: bold; text-align: center; 
-                                                padding-bottom: 5px; border-bottom: 2px solid #667eea;
-                                                display: flex; justify-content: space-between;">
-                                        <span>{dia_actual} <span style="color: #999; font-size: 0.8rem;">{dia_semana_nombre}</span></span>
-                                        {'<span>💬</span>' if tiene_comentarios else ''}
-                                    </div>
-                                    <div style="margin-top: 5px; max-height: 85px; overflow-y: auto;">
-                                """
-                                
-                                if empleados_con_turno:
-                                    for emp, turno in empleados_con_turno[:4]:
-                                        es_usuario = "📌 " if emp.id == user.id else ""
-                                        bg_color = "#e8f5e9" if emp.id == user.id else "#f0f8ff"
-                                        border_color = "#4CAF50" if emp.id == user.id else "#667eea"
-                                        
-                                        html_dia += f"""
-                                        <div style="background: {bg_color}; padding: 2px 5px; margin: 2px 0; 
-                                                    border-radius: 5px; font-size: 0.7rem; 
-                                                    border-left: 3px solid {border_color};">
-                                            <strong>{es_usuario}{emp.nombre[:10]}...</strong> {turno.nombre}
-                                        </div>
-                                        """
-                                    if len(empleados_con_turno) > 4:
-                                        html_dia += f"""
-                                        <div style="font-size: 0.7rem; color: #999; text-align: center;">
-                                            +{len(empleados_con_turno) - 4} más
-                                        </div>
-                                        """
-                                else:
-                                    html_dia += """
-                                    <div style="color: #999; text-align: center; padding: 10px; font-size: 0.7rem;">
-                                        🟢 Sin turnos
-                                    </div>
-                                    """
-                                
-                                html_dia += """
-                                    </div>
+                                html_dia += f"""
+                                <div style="background: {bg_color_item}; padding: 3px 5px; margin: 2px 0; 
+                                            border-radius: 5px; font-size: 0.7rem; 
+                                            border-left: 3px solid {border_color};">
+                                    <strong>{icono}{emp.nombre[:10]}{'...' if len(emp.nombre) > 10 else ''}</strong>
+                                    <span style="color: #666; margin-left: 3px;">{turno.nombre}</span>
                                 </div>
                                 """
-                                
-                                st.markdown(html_dia, unsafe_allow_html=True)
-                                dia_actual += 1
-                            else:
-                                st.markdown("""
-                                <div style="padding: 10px; min-height: 120px; background: #f9f9f9; 
-                                            border-radius: 10px; opacity: 0.5; text-align: center;">
-                                    <div style="color: #ccc;">-</div>
+                            if len(empleados_con_turno) > 4:
+                                html_dia += f"""
+                                <div style="font-size: 0.65rem; color: #999; text-align: center; padding: 2px;">
+                                    +{len(empleados_con_turno) - 4} más
                                 </div>
-                                """, unsafe_allow_html=True)
-                    
-                    if dia_actual > dias_mes:
-                        break
-            
-            else:
-                empleados_dict = {e.nombre: e for e in empleados_area}
-                empleado_sel = st.selectbox("Selecciona un empleado", list(empleados_dict.keys()))
-                
-                if empleado_sel:
-                    emp = empleados_dict[empleado_sel]
-                    es_usuario = emp.id == user.id
-                    turnos_emp = turnos_por_empleado_dia.get(emp.id, {})
-                    
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.metric("Total turnos", len(turnos_emp))
-                    with col2:
-                        st.metric("Cargo", emp.cargo or "No asignado")
-                    with col3:
-                        st.metric("Días trabajados", len(set(turnos_emp.keys())))
-                    
-                    st.markdown(f"#### 📅 Turnos de {emp.nombre}" + (" (Tú)" if es_usuario else ""))
-                    
-                    if turnos_emp:
-                        data_turnos = []
-                        for dia, turno in sorted(turnos_emp.items()):
-                            fecha = date(año_sel, mes_num, dia)
-                            data_turnos.append({
-                                "Fecha": fecha.strftime("%d/%m/%Y"),
-                                "Día": fecha.strftime("%A"),
-                                "Turno": turno.nombre,
-                                "Horario": f"{turno.inicio} - {turno.fin}"
-                            })
-                        df_turnos = pd.DataFrame(data_turnos)
-                        st.dataframe(df_turnos, use_container_width=True, hide_index=True)
+                                """
+                        else:
+                            html_dia += """
+                            <div style="color: #999; text-align: center; padding: 10px; font-size: 0.7rem;">
+                                🟢 Sin turnos
+                            </div>
+                            """
+                        
+                        html_dia += """
+                            </div>
+                        </div>
+                        """
+                        
+                        st.markdown(html_dia, unsafe_allow_html=True)
+                        dia_actual += 1
                     else:
-                        st.info(f"{emp.nombre} no tiene turnos asignados en {mes_sel} {año_sel}")
+                        # Días vacíos al final del mes
+                        st.markdown("""
+                        <div style="padding: 10px; min-height: 120px; background: #f5f5f5; 
+                                    border-radius: 10px; opacity: 0.5; text-align: center;
+                                    display: flex; align-items: center; justify-content: center;">
+                            <div style="color: #999;">-</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+            
+            if dia_actual > dias_mes:
+                break
+    
+    else:  # Vista Individual
+        empleados_dict = {e.nombre: e for e in empleados_area}
+        empleado_sel = st.selectbox("Selecciona un empleado", list(empleados_dict.keys()))
+        
+        if empleado_sel:
+            emp = empleados_dict[empleado_sel]
+            es_usuario = emp.id == user.id
+            turnos_emp = turnos_por_empleado_dia.get(emp.id, {})
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Total turnos", len(turnos_emp))
+            with col2:
+                st.metric("Cargo", emp.cargo or "No asignado")
+            with col3:
+                st.metric("Días trabajados", len(set(turnos_emp.keys())))
+            
+            st.markdown(f"#### 📅 Turnos de {emp.nombre}" + (" (Tú)" if es_usuario else ""))
+            
+            if turnos_emp:
+                data_turnos = []
+                for dia, turno in sorted(turnos_emp.items()):
+                    fecha = date(año_sel, mes_num, dia)
+                    dias_semana_nombres = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+                    data_turnos.append({
+                        "Fecha": fecha.strftime("%d/%m/%Y"),
+                        "Día": dias_semana_nombres[fecha.weekday()],
+                        "Turno": turno.nombre,
+                        "Horario": f"{turno.inicio} - {turno.fin}"
+                    })
+                df_turnos = pd.DataFrame(data_turnos)
+                st.dataframe(df_turnos, use_container_width=True, hide_index=True)
+            else:
+                st.info(f"{emp.nombre} no tiene turnos asignados en {mes_sel} {año_sel}")
         
         # ============ TAB 2: COMENTARIOS ============
         with tab2:
@@ -891,50 +915,147 @@ if "user" in st.session_state:
                     )
                     st.success("✅ Reporte generado correctamente")
 
-    # ============ PÁGINA: CALENDARIO ============
-    elif op == "Calendario":
-        if user.rol not in ["empleado", "supervisor"]:
-            st.error("❌ No tienes permiso")
-            st.stop()
+# ============ PÁGINA: CALENDARIO ============
+elif op == "Calendario":
+    if user.rol not in ["empleado", "supervisor"]:
+        st.error("❌ No tienes permiso")
+        st.stop()
+    
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                padding: 1.5rem; border-radius: 15px; margin-bottom: 2rem;">
+        <h2 style="color: white; text-align: center; margin: 0;">📅 Mi Calendario Personal</h2>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
+                 "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+        mes_index, año_actual = get_mes_actual()
+        mes = st.selectbox("Mes", meses, index=mes_index)
+    with col2:
+        año = st.number_input("Año", min_value=2024, max_value=2030, value=año_actual)
+    
+    mes_num = meses.index(mes) + 1
+    dias_mes = monthrange(año, mes_num)[1]
+    
+    mis_turnos = session.query(Asignacion).filter(
+        Asignacion.empleado_id == user.id,
+        Asignacion.fecha >= date(año, mes_num, 1),
+        Asignacion.fecha <= date(año, mes_num, dias_mes)
+    ).order_by(Asignacion.fecha).all()
+    
+    # Organizar turnos por día
+    turnos_por_dia = {}
+    for t in mis_turnos:
+        turnos_por_dia[t.fecha.day] = t
+    
+    # Mostrar estadísticas
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Total turnos", len(mis_turnos))
+    with col2:
+        dias_trabajados = len(set([t.fecha.day for t in mis_turnos]))
+        st.metric("Días trabajados", dias_trabajados)
+    with col3:
+        st.metric("Días descanso", dias_mes - dias_trabajados)
+    
+    st.markdown(f"### 📅 {mes} {año}")
+    
+    # Calendario visual
+    dias_semana = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"]
+    dias_semana_nombres = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+    primer_dia = date(año, mes_num, 1).weekday()
+    
+    # Cabecera
+    cols = st.columns(7)
+    for i, dia in enumerate(dias_semana):
+        with cols[i]:
+            st.markdown(f"""
+            <div style="text-align: center; font-weight: bold; color: #667eea; padding: 10px;
+                        background: #f0f4ff; border-radius: 8px;">
+                {dia}
+            </div>
+            """, unsafe_allow_html=True)
+    
+    dia_actual = 1
+    for semana in range(6):
+        cols = st.columns(7)
+        for dia_semana in range(7):
+            with cols[dia_semana]:
+                if semana == 0 and dia_semana < primer_dia:
+                    st.markdown("""
+                    <div style="padding: 10px; min-height: 100px; background: #f5f5f5; 
+                                border-radius: 10px; opacity: 0.5; text-align: center;
+                                display: flex; align-items: center; justify-content: center;">
+                        <div style="color: #999;">-</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                elif dia_actual <= dias_mes:
+                    fecha_actual = date(año, mes_num, dia_actual)
+                    dia_semana_nombre = dias_semana_nombres[fecha_actual.weekday()]
+                    
+                    if dia_actual in turnos_por_dia:
+                        turno = turnos_por_dia[dia_actual].turno
+                        st.markdown(f"""
+                        <div style="background: #e8f5e9; border-radius: 10px; padding: 10px; 
+                                    min-height: 100px; border: 2px solid #4CAF50;">
+                            <div style="font-weight: bold; text-align: center; font-size: 1.1rem;">{dia_actual}</div>
+                            <div style="font-size: 0.7rem; color: #666; text-align: center;">{dia_semana_nombre[:3]}</div>
+                            <div style="text-align: center; margin-top: 8px;">
+                                <span style="background: #4CAF50; color: white; padding: 3px 8px; 
+                                             border-radius: 20px; font-size: 0.75rem; font-weight: bold;">
+                                    {turno.nombre}
+                                </span>
+                            </div>
+                            <div style="font-size: 0.65rem; text-align: center; color: #666; margin-top: 3px;">
+                                {turno.inicio} - {turno.fin}
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        # Determinar si es fin de semana
+                        if fecha_actual.weekday() >= 5:
+                            bg_color = "#fff3e0"
+                        else:
+                            bg_color = "#f9f9f9"
+                        
+                        st.markdown(f"""
+                        <div style="background: {bg_color}; border-radius: 10px; padding: 10px; 
+                                    min-height: 100px; text-align: center; border: 1px solid #e0e0e0;">
+                            <div style="font-weight: bold; font-size: 1.1rem;">{dia_actual}</div>
+                            <div style="font-size: 0.7rem; color: #666;">{dia_semana_nombre[:3]}</div>
+                            <div style="color: #999; margin-top: 10px; font-size: 0.75rem;">
+                                🟢 Descanso
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    dia_actual += 1
+                else:
+                    st.markdown("""
+                    <div style="padding: 10px; min-height: 100px; background: #f5f5f5; 
+                                border-radius: 10px; opacity: 0.5; text-align: center;
+                                display: flex; align-items: center; justify-content: center;">
+                        <div style="color: #999;">-</div>
+                    </div>
+                    """, unsafe_allow_html=True)
         
-        st.markdown("""
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                    padding: 1.5rem; border-radius: 15px; margin-bottom: 2rem;">
-            <h2 style="color: white; text-align: center; margin: 0;">📅 Mi Calendario Personal</h2>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
-                     "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
-            mes_index, año_actual = get_mes_actual()
-            mes = st.selectbox("Mes", meses, index=mes_index)
-        with col2:
-            año = st.number_input("Año", min_value=2024, max_value=2030, value=año_actual)
-        
-        mes_num = meses.index(mes) + 1
-        dias_mes = monthrange(año, mes_num)[1]
-        
-        mis_turnos = session.query(Asignacion).filter(
-            Asignacion.empleado_id == user.id,
-            Asignacion.fecha >= date(año, mes_num, 1),
-            Asignacion.fecha <= date(año, mes_num, dias_mes)
-        ).order_by(Asignacion.fecha).all()
-        
-        if mis_turnos:
+        if dia_actual > dias_mes:
+            break
+    
+    # Lista detallada
+    if mis_turnos:
+        with st.expander("📋 Ver lista detallada"):
             data = []
             for t in mis_turnos:
                 data.append({
                     "Fecha": t.fecha.strftime("%d/%m/%Y"),
-                    "Día": t.fecha.strftime("%A"),
+                    "Día": dias_semana_nombres[t.fecha.weekday()],
                     "Turno": t.turno.nombre if t.turno else "N/A",
                     "Horario": f"{t.turno.inicio} - {t.turno.fin}" if t.turno else "N/A"
                 })
-            st.dataframe(pd.DataFrame(data), use_container_width=True)
-            st.metric("Total turnos", len(mis_turnos))
-        else:
-            st.info(f"No tienes turnos en {mes} {año}")
+            st.dataframe(pd.DataFrame(data), use_container_width=True, hide_index=True)
 
     # ============ PÁGINA: MI PERFIL ============
     elif op == "Mi perfil":
