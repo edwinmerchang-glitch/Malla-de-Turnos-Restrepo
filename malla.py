@@ -169,7 +169,7 @@ def exportar_calendario_area_excel(empleados, asignaciones, turnos_dict, mes, a�
     return output
 
 def exportar_calendario_area_pdf(empleados, asignaciones, turnos_dict, mes, año, area):
-    """Exportar calendario del área a PDF"""
+    """Exportar calendario del área a PDF con todos los días del mes"""
     meses_dict = {
         "Enero": 1, "Febrero": 2, "Marzo": 3, "Abril": 4,
         "Mayo": 5, "Junio": 6, "Julio": 7, "Agosto": 8,
@@ -179,62 +179,110 @@ def exportar_calendario_area_pdf(empleados, asignaciones, turnos_dict, mes, año
     dias_mes = monthrange(año, mes_num)[1]
     
     buffer = BytesIO()
+    
+    # Usar orientación horizontal para que quepan más columnas
     doc = SimpleDocTemplate(buffer, pagesize=landscape(A4), 
-                           rightMargin=1*cm, leftMargin=1*cm, 
-                           topMargin=2*cm, bottomMargin=1*cm)
+                           rightMargin=0.5*cm, leftMargin=0.5*cm, 
+                           topMargin=1.5*cm, bottomMargin=1*cm)
     
     styles = getSampleStyleSheet()
     title_style = ParagraphStyle(
         'CustomTitle',
         parent=styles['Heading1'],
-        fontSize=16,
+        fontSize=14,
         textColor=colors.HexColor('#667eea'),
         alignment=TA_CENTER,
-        spaceAfter=20
+        spaceAfter=15
     )
     
     elements = []
     title = Paragraph(f"Calendario de Turnos - {area}<br/>{mes} {año}", title_style)
     elements.append(title)
     
-    table_data = []
-    header = ["Empleado"]
-    for dia in range(1, min(dias_mes + 1, 16)):
-        fecha = date(año, mes_num, dia)
-        header.append(f"{dia}\n{fecha.strftime('%a')}")
-    table_data.append(header)
+    # Dividir el mes en dos mitades para que quepa mejor
+    mitad = 15
+    partes = []
     
-    for emp in empleados[:15]:
-        row = [emp.nombre[:12] + "..." if len(emp.nombre) > 12 else emp.nombre]
-        for dia in range(1, min(dias_mes + 1, 16)):
-            turno_encontrado = None
-            for a in asignaciones:
-                if a.empleado_id == emp.id and a.fecha.day == dia:
-                    turno_encontrado = turnos_dict.get(a.turno_id, "?")
-                    break
-            row.append(turno_encontrado or "D")
-        table_data.append(row)
+    for parte_inicio in range(1, dias_mes + 1, mitad):
+        parte_fin = min(parte_inicio + mitad - 1, dias_mes)
+        partes.append((parte_inicio, parte_fin))
     
-    table = Table(table_data, repeatRows=1)
-    style = TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#667eea')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 8),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-        ('FONTSIZE', (0, 1), (-1, -1), 7),
-    ])
-    table.setStyle(style)
-    elements.append(table)
+    for idx, (parte_inicio, parte_fin) in enumerate(partes):
+        # Crear tabla para esta parte
+        table_data = []
+        
+        # Cabecera con días
+        header = ["Empleado"]
+        for dia in range(parte_inicio, parte_fin + 1):
+            fecha = date(año, mes_num, dia)
+            # Abreviar día de la semana
+            dias_sem = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
+            header.append(f"{dia}\n{dias_sem[fecha.weekday()]}")
+        table_data.append(header)
+        
+        # Datos de empleados
+        for emp in empleados[:20]:  # Máximo 20 empleados por página
+            nombre_corto = emp.nombre[:10] + "..." if len(emp.nombre) > 10 else emp.nombre
+            row = [nombre_corto]
+            for dia in range(parte_inicio, parte_fin + 1):
+                turno_encontrado = None
+                for a in asignaciones:
+                    if a.empleado_id == emp.id and a.fecha.day == dia:
+                        turno_encontrado = turnos_dict.get(a.turno_id, "?")
+                        break
+                # Abreviar turno si es muy largo
+                if turno_encontrado:
+                    if len(turno_encontrado) > 4:
+                        turno_encontrado = turno_encontrado[:3] + "."
+                else:
+                    turno_encontrado = "D"
+                row.append(turno_encontrado)
+            table_data.append(row)
+        
+        # Crear tabla con estilo compacto
+        col_widths = [2.5*cm] + [0.9*cm] * (parte_fin - parte_inicio + 1)
+        table = Table(table_data, repeatRows=1, colWidths=col_widths)
+        
+        style = TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#667eea')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 7),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+            ('TOPPADDING', (0, 0), (-1, 0), 8),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('GRID', (0, 0), (-1, -1), 0.3, colors.grey),
+            ('FONTSIZE', (0, 1), (-1, -1), 6),
+            ('TOPPADDING', (0, 1), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 1), (-1, -1), 4),
+        ])
+        
+        # Colorear fines de semana
+        for dia in range(parte_inicio, parte_fin + 1):
+            fecha = date(año, mes_num, dia)
+            if fecha.weekday() >= 5:  # Sábado o Domingo
+                col_idx = dia - parte_inicio + 1
+                style.add('BACKGROUND', (col_idx, 1), (col_idx, -1), colors.HexColor('#fff3e0'))
+        
+        table.setStyle(style)
+        elements.append(table)
+        
+        # Agregar espacio entre partes
+        if idx < len(partes) - 1:
+            elements.append(Spacer(1, 0.5*cm))
     
-    elements.append(Spacer(1, 20))
+    # Estadísticas
+    elements.append(Spacer(1, 0.8*cm))
     total_turnos = len([a for a in asignaciones if a.turno_id])
+    empleados_con_turno = len(set([a.empleado_id for a in asignaciones if a.turno_id]))
     stats_text = f"""
-    <b>Estadísticas:</b> Total empleados: {len(empleados)} | Turnos asignados: {total_turnos}
+    <b>Estadísticas del mes:</b><br/>
+    • Total empleados en el área: {len(empleados)}<br/>
+    • Empleados con turnos asignados: {empleados_con_turno}<br/>
+    • Total turnos asignados: {total_turnos}<br/>
+    • Promedio turnos por empleado: {round(total_turnos/len(empleados), 1) if empleados else 0}
     """
     stats_para = Paragraph(stats_text, styles['Normal'])
     elements.append(stats_para)
