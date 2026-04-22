@@ -617,137 +617,89 @@ if "user" in st.session_state:
                 prom = round(len(asignaciones) / len(empleados_area), 1) if empleados_area else 0
                 st.metric("📈 Promedio", prom)
             
-            if vista == "📅 Grupal":
+                        if vista == "📅 Grupal":
                 st.markdown(f"### 📅 Calendario Grupal - {mes_sel} {año_sel}")
                 
-                # CSS para el calendario moderno
+                # CSS simple para el calendario
                 st.markdown("""
                 <style>
                     .calendario-grid {
                         display: flex;
                         flex-direction: column;
-                        gap: 8px;
+                        gap: 5px;
                     }
                     .semana-row {
                         display: grid;
                         grid-template-columns: repeat(7, 1fr);
-                        gap: 8px;
+                        gap: 5px;
+                        margin-bottom: 5px;
                     }
                     .dia-card {
                         background: white;
-                        border-radius: 12px;
-                        padding: 10px 8px;
-                        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-                        border: 1px solid #e8e8e8;
-                        transition: all 0.2s ease;
-                        min-height: 130px;
-                    }
-                    .dia-card:hover {
-                        box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-                        transform: translateY(-2px);
+                        border-radius: 10px;
+                        padding: 8px 5px;
+                        box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+                        border: 1px solid #ddd;
+                        min-height: 120px;
                     }
                     .dia-card.fin-semana {
-                        background: #fef9f0;
-                        border-color: #ffe0b2;
-                    }
-                    .dia-card.tiene-comentarios {
-                        border: 2px solid #ff6b6b;
+                        background: #fff8e7;
                     }
                     .dia-header {
                         display: flex;
                         justify-content: space-between;
                         align-items: center;
-                        margin-bottom: 8px;
-                        padding-bottom: 6px;
-                        border-bottom: 2px solid #667eea;
+                        margin-bottom: 5px;
+                        padding-bottom: 3px;
+                        border-bottom: 1.5px solid #667eea;
                     }
                     .dia-numero {
-                        font-size: 1.3rem;
-                        font-weight: 700;
+                        font-size: 1.2rem;
+                        font-weight: bold;
                         color: #333;
-                        line-height: 1;
                     }
                     .dia-semana {
-                        font-size: 0.75rem;
+                        font-size: 0.7rem;
                         font-weight: 600;
                         color: #667eea;
-                        text-transform: uppercase;
-                        letter-spacing: 0.5px;
-                    }
-                    .dia-contenido {
-                        display: flex;
-                        flex-direction: column;
-                        gap: 4px;
                     }
                     .turno-item {
                         display: flex;
                         align-items: center;
-                        gap: 4px;
-                        padding: 4px 6px;
-                        border-radius: 8px;
-                        font-size: 0.7rem;
-                        background: #f5f7fa;
+                        gap: 3px;
+                        padding: 3px 4px;
+                        margin: 2px 0;
+                        border-radius: 5px;
+                        font-size: 0.65rem;
+                        background: #f0f4ff;
                         border-left: 3px solid #667eea;
-                        transition: all 0.15s ease;
-                    }
-                    .turno-item:hover {
-                        background: #eef2f7;
                     }
                     .turno-item.usuario {
                         background: #e8f5e9;
                         border-left-color: #4CAF50;
                     }
                     .turno-nombre {
-                        font-weight: 600;
-                        color: #333;
-                        background: rgba(102, 126, 234, 0.1);
-                        padding: 2px 6px;
-                        border-radius: 12px;
-                        font-size: 0.65rem;
+                        font-weight: bold;
+                        background: white;
+                        padding: 1px 4px;
+                        border-radius: 10px;
                         margin-left: auto;
-                    }
-                    .turno-horario {
-                        font-size: 0.55rem;
-                        color: #888;
-                        margin-left: 4px;
-                    }
-                    .mas-turnos {
                         font-size: 0.6rem;
-                        color: #999;
-                        text-align: center;
-                        padding: 4px;
-                        background: #f0f0f0;
-                        border-radius: 20px;
-                        margin-top: 4px;
                     }
                     .sin-turnos {
                         text-align: center;
-                        padding: 12px 0;
+                        padding: 15px 0;
                         color: #aaa;
                         font-size: 0.7rem;
                     }
-                    .sin-turnos span {
-                        font-size: 1.2rem;
-                        display: block;
-                        margin-bottom: 4px;
-                    }
-                    .comentario-icono {
-                        font-size: 1rem;
-                        cursor: help;
-                    }
                     .leyenda {
                         display: flex;
-                        gap: 20px;
-                        padding: 12px 16px;
-                        background: #f8f9fa;
-                        border-radius: 12px;
-                        margin-bottom: 16px;
-                    }
-                    .leyenda-item {
-                        display: flex;
-                        align-items: center;
-                        gap: 6px;
-                        font-size: 0.8rem;
+                        flex-wrap: wrap;
+                        gap: 15px;
+                        padding: 10px 15px;
+                        background: #f5f5f5;
+                        border-radius: 10px;
+                        margin-bottom: 15px;
                     }
                 </style>
                 """, unsafe_allow_html=True)
@@ -755,127 +707,118 @@ if "user" in st.session_state:
                 # Leyenda
                 st.markdown("""
                 <div class="leyenda">
-                    <div class="leyenda-item"><span style="font-size:1.2rem;">🟢</span> Con turno</div>
-                    <div class="leyenda-item"><span style="font-size:1.2rem;">⚪</span> Descanso</div>
-                    <div class="leyenda-item"><span style="background:#e8f5e9; padding:4px 8px; border-radius:6px; border-left:3px solid #4CAF50;">📌 Tú</span></div>
-                    <div class="leyenda-item"><span style="font-size:1.2rem;">💬</span> Tiene comentarios</div>
-                    <div class="leyenda-item"><span style="background:#fef9f0; padding:4px 8px; border-radius:6px;">📅 Fin de semana</span></div>
+                    <span>🟢 Con turno</span>
+                    <span>⚪ Descanso</span>
+                    <span style="background:#e8f5e9; padding:2px 6px; border-radius:5px;">📌 Tú</span>
+                    <span>💬 Comentarios</span>
+                    <span style="background:#fff8e7; padding:2px 6px; border-radius:5px;">📅 Fin de semana</span>
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Días de la semana (cabecera)
-                dias_semana_cabecera = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"]
+                # Cabecera de días
+                dias_semana = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"]
                 cols = st.columns(7)
-                for i, dia in enumerate(dias_semana_cabecera):
+                for i, dia in enumerate(dias_semana):
                     with cols[i]:
                         st.markdown(f"""
-                        <div style="text-align: center; font-weight: 700; color: #667eea; 
-                                    padding: 10px; background: linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%); 
-                                    border-radius: 10px; margin-bottom: 5px; font-size: 0.9rem; letter-spacing: 0.5px;">
+                        <div style="text-align: center; font-weight: bold; color: white; 
+                                    background: #667eea; padding: 8px; border-radius: 8px; font-size: 0.8rem;">
                             {dia}
                         </div>
                         """, unsafe_allow_html=True)
                 
-                # Obtener el primer día del mes
+                # Obtener primer día del mes
                 primer_dia = date(año_sel, mes_num, 1).weekday()
                 dia_actual = 1
-                dias_semana_nombres = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"]
+                dias_semana_nombres = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
                 
-                # Generar calendario por semanas
+                # Generar semanas
                 for semana in range(6):
                     cols = st.columns(7)
                     for dia_semana in range(7):
                         with cols[dia_semana]:
                             if semana == 0 and dia_semana < primer_dia:
-                                # Día vacío al inicio
+                                # Día vacío
                                 st.markdown("""
-                                <div class="dia-card" style="background: #fafafa; opacity: 0.4; box-shadow: none; border: 1px dashed #ddd;">
-                                    <div style="height: 100%; display: flex; align-items: center; justify-content: center; color: #ccc;">
-                                        <span style="font-size: 1.5rem;">—</span>
-                                    </div>
+                                <div style="background: #f5f5f5; border-radius: 10px; min-height: 120px; 
+                                            border: 1px dashed #ccc; display: flex; align-items: center; justify-content: center;">
+                                    <span style="color: #bbb; font-size: 1.2rem;">—</span>
                                 </div>
                                 """, unsafe_allow_html=True)
+                            
                             elif dia_actual <= dias_mes:
                                 fecha_actual = date(año_sel, mes_num, dia_actual)
-                                dia_semana_idx = fecha_actual.weekday()
-                                dia_semana_nombre = dias_semana_nombres[dia_semana_idx]
-                                es_fin_semana = dia_semana_idx >= 5
+                                dia_semana_nombre = dias_semana_nombres[fecha_actual.weekday()]
+                                es_fin_semana = fecha_actual.weekday() >= 5
                                 
-                                # Obtener empleados con turno este día
+                                # Turnos del día
                                 empleados_con_turno = []
                                 for emp in empleados_area:
                                     if emp.id in turnos_por_empleado_dia and dia_actual in turnos_por_empleado_dia[emp.id]:
                                         turno = turnos_por_empleado_dia[emp.id][dia_actual]
                                         empleados_con_turno.append((emp, turno))
                                 
-                                # Verificar comentarios
+                                # Comentarios
                                 comentarios = obtener_comentarios(user.area, fecha_actual)
                                 tiene_comentarios = len(comentarios) > 0
                                 
-                                # Clases CSS
-                                clases = ["dia-card"]
-                                if es_fin_semana:
-                                    clases.append("fin-semana")
-                                if tiene_comentarios:
-                                    clases.append("tiene-comentarios")
+                                # Construir HTML simple
+                                bg_color = "#fff8e7" if es_fin_semana else "white"
+                                border = "2px solid #ff6b6b" if tiene_comentarios else "1px solid #ddd"
                                 
-                                # Construir HTML del día
-                                html_dia = f"""
-                                <div class="{' '.join(clases)}">
-                                    <div class="dia-header">
-                                        <span class="dia-numero">{dia_actual}</span>
-                                        <span class="dia-semana">{dia_semana_nombre}</span>
-                                        {('<span class="comentario-icono" title="Tiene comentarios">💬</span>' if tiene_comentarios else '<span></span>')}
+                                html = f"""
+                                <div style="background: {bg_color}; border-radius: 10px; padding: 8px 5px; 
+                                            min-height: 120px; border: {border}; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; 
+                                                margin-bottom: 5px; padding-bottom: 3px; border-bottom: 1.5px solid #667eea;">
+                                        <span style="font-size: 1.1rem; font-weight: bold;">{dia_actual}</span>
+                                        <span style="font-size: 0.65rem; font-weight: 600; color: #667eea;">{dia_semana_nombre}</span>
+                                        {('💬' if tiene_comentarios else '')}
                                     </div>
-                                    <div class="dia-contenido">
                                 """
                                 
                                 if empleados_con_turno:
-                                    # Mostrar máximo 3 empleados
-                                    for idx, (emp, turno) in enumerate(empleados_con_turno[:3]):
+                                    for emp, turno in empleados_con_turno[:3]:
                                         es_usuario = emp.id == user.id
-                                        clase_extra = "usuario" if es_usuario else ""
+                                        bg_item = "#e8f5e9" if es_usuario else "#f0f4ff"
+                                        border_color = "#4CAF50" if es_usuario else "#667eea"
                                         icono = "📌" if es_usuario else "👤"
+                                        nombre = emp.nombre[:7] + ".." if len(emp.nombre) > 7 else emp.nombre
                                         
-                                        nombre_corto = emp.nombre[:8] + "…" if len(emp.nombre) > 8 else emp.nombre
-                                        
-                                        html_dia += f"""
-                                        <div class="turno-item {clase_extra}">
+                                        html += f"""
+                                        <div style="background: {bg_item}; padding: 2px 4px; margin: 2px 0; 
+                                                    border-radius: 4px; font-size: 0.6rem; display: flex; align-items: center;
+                                                    border-left: 3px solid {border_color};">
                                             <span>{icono}</span>
-                                            <span style="font-weight: 500;">{nombre_corto}</span>
-                                            <span class="turno-nombre">{turno.nombre}</span>
-                                            <span class="turno-horario">{turno.inicio[:5]}</span>
+                                            <span style="margin-left: 2px; font-weight: 500;">{nombre}</span>
+                                            <span style="margin-left: auto; background: white; padding: 1px 3px; 
+                                                         border-radius: 8px; font-weight: bold; font-size: 0.55rem;">{turno.nombre}</span>
                                         </div>
                                         """
                                     
                                     if len(empleados_con_turno) > 3:
-                                        html_dia += f"""
-                                        <div class="mas-turnos">
+                                        html += f"""
+                                        <div style="font-size: 0.55rem; color: #999; text-align: center; margin-top: 3px;">
                                             +{len(empleados_con_turno) - 3} más
                                         </div>
                                         """
                                 else:
-                                    html_dia += """
-                                    <div class="sin-turnos">
-                                        <span>🌙</span>
-                                        Descanso
+                                    html += """
+                                    <div style="text-align: center; padding: 15px 0; color: #aaa; font-size: 0.65rem;">
+                                        🌙 Descanso
                                     </div>
                                     """
                                 
-                                html_dia += """
-                                    </div>
-                                </div>
-                                """
-                                
-                                st.markdown(html_dia, unsafe_allow_html=True)
+                                html += "</div>"
+                                st.markdown(html, unsafe_allow_html=True)
                                 dia_actual += 1
+                            
                             else:
                                 # Día vacío al final
                                 st.markdown("""
-                                <div class="dia-card" style="background: #fafafa; opacity: 0.4; box-shadow: none; border: 1px dashed #ddd;">
-                                    <div style="height: 100%; display: flex; align-items: center; justify-content: center; color: #ccc;">
-                                        <span style="font-size: 1.5rem;">—</span>
-                                    </div>
+                                <div style="background: #f5f5f5; border-radius: 10px; min-height: 120px; 
+                                            border: 1px dashed #ccc; display: flex; align-items: center; justify-content: center;">
+                                    <span style="color: #bbb; font-size: 1.2rem;">—</span>
                                 </div>
                                 """, unsafe_allow_html=True)
                     
