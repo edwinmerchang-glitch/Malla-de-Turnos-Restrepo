@@ -283,6 +283,40 @@ def exportar_calendario_area_pdf(empleados, asignaciones, turnos_dict, mes, año
 # ============ CONFIGURACIÓN DE PÁGINA ============
 st.set_page_config("Malla de Turnos", layout="wide")
 
+st.markdown("""
+<style>
+/* Quita los márgenes feos de Streamlit */
+.block-container {
+    max-width: 100% !important;
+    padding-top: 1rem !important;
+}
+
+/* Evita que el calendario se rompa */
+div[data-testid="stMarkdownContainer"] {
+    width: 100% !important;
+}
+
+/* Arregla las filas del calendario */
+.semana-fila {
+    display: grid !important;
+    grid-template-columns: repeat(7, 1fr) !important;
+    gap: 6px !important;
+}
+
+/* Arregla la cabecera */
+.calendario-cabecera {
+    display: grid !important;
+    grid-template-columns: repeat(7, 1fr) !important;
+    gap: 6px !important;
+}
+
+/* Evita que los días se expandan raro */
+.dia-celda {
+    min-height: 120px !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # Inicializar sesión de base de datos
 session = Session()
 
@@ -713,11 +747,37 @@ if "user" in st.session_state:
                 dias_semana_nombres = ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"]
 
                 for semana in range(6):
-                    st.markdown('<div class="semana-fila">', unsafe_allow_html=True)
+                   fila_html = '<div class="semana-fila">'
 
-                    for d in range(7):
-                        if semana == 0 and d < primer_dia:
-                            st.markdown('<div class="dia-celda"></div>', unsafe_allow_html=True)
+for dia_semana in range(7):
+    if semana == 0 and dia_semana < primer_dia:
+        fila_html += '<div class="dia-celda vacio"></div>'
+
+    elif dia_actual <= dias_mes:
+        fecha_actual = date(año_sel, mes_num, dia_actual)
+
+        empleados_con_turno = []
+        for emp in empleados_area:
+            if emp.id in turnos_por_empleado_dia and dia_actual in turnos_por_empleado_dia[emp.id]:
+                turno = turnos_por_empleado_dia[emp.id][dia_actual]
+                empleados_con_turno.append((emp, turno))
+
+        fila_html += f'<div class="dia-celda"><b>{dia_actual}</b>'
+
+        for emp, turno in empleados_con_turno[:3]:
+            nombre = emp.nombre.split()[0]
+            fila_html += f'<div style="font-size:0.7rem;">{nombre}</div>'
+
+        fila_html += '</div>'
+
+        dia_actual += 1
+
+    else:
+        fila_html += '<div class="dia-celda vacio"></div>'
+
+fila_html += '</div>'
+
+st.markdown(fila_html, unsafe_allow_html=True)
 
                         elif dia_actual <= dias_mes:
                             fecha_actual = date(año_sel, mes_num, dia_actual)
