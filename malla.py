@@ -617,81 +617,12 @@ if "user" in st.session_state:
                 prom = round(len(asignaciones) / len(empleados_area), 1) if empleados_area else 0
                 st.metric("📈 Promedio", prom)
             
-                        if vista == "📅 Grupal":
+            if vista == "📅 Grupal":
                 st.markdown(f"### 📅 Calendario Grupal - {mes_sel} {año_sel}")
                 
                 # CSS simple para el calendario
                 st.markdown("""
                 <style>
-                    .calendario-grid {
-                        display: flex;
-                        flex-direction: column;
-                        gap: 5px;
-                    }
-                    .semana-row {
-                        display: grid;
-                        grid-template-columns: repeat(7, 1fr);
-                        gap: 5px;
-                        margin-bottom: 5px;
-                    }
-                    .dia-card {
-                        background: white;
-                        border-radius: 10px;
-                        padding: 8px 5px;
-                        box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-                        border: 1px solid #ddd;
-                        min-height: 120px;
-                    }
-                    .dia-card.fin-semana {
-                        background: #fff8e7;
-                    }
-                    .dia-header {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        margin-bottom: 5px;
-                        padding-bottom: 3px;
-                        border-bottom: 1.5px solid #667eea;
-                    }
-                    .dia-numero {
-                        font-size: 1.2rem;
-                        font-weight: bold;
-                        color: #333;
-                    }
-                    .dia-semana {
-                        font-size: 0.7rem;
-                        font-weight: 600;
-                        color: #667eea;
-                    }
-                    .turno-item {
-                        display: flex;
-                        align-items: center;
-                        gap: 3px;
-                        padding: 3px 4px;
-                        margin: 2px 0;
-                        border-radius: 5px;
-                        font-size: 0.65rem;
-                        background: #f0f4ff;
-                        border-left: 3px solid #667eea;
-                    }
-                    .turno-item.usuario {
-                        background: #e8f5e9;
-                        border-left-color: #4CAF50;
-                    }
-                    .turno-nombre {
-                        font-weight: bold;
-                        background: white;
-                        padding: 1px 4px;
-                        border-radius: 10px;
-                        margin-left: auto;
-                        font-size: 0.6rem;
-                    }
-                    .sin-turnos {
-                        text-align: center;
-                        padding: 15px 0;
-                        color: #aaa;
-                        font-size: 0.7rem;
-                    }
                     .leyenda {
                         display: flex;
                         flex-wrap: wrap;
