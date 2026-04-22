@@ -620,47 +620,42 @@ if "user" in st.session_state:
             if vista == "📅 Grupal":
                 st.markdown(f"### 📅 Calendario Grupal - {mes_sel} {año_sel}")
                 
-                # Leyenda simple
-                col1, col2, col3, col4, col5 = st.columns(5)
+                # Leyenda
+                col1, col2, col3, col4 = st.columns(4)
                 with col1:
-                    st.write("🟢 Con turno")
+                    st.markdown("🟢 **Con turno**")
                 with col2:
-                    st.write("⚪ Descanso")
+                    st.markdown("⚪ **Descanso**")
                 with col3:
-                    st.write("📌 Tú")
+                    st.markdown("📌 **Tú**")
                 with col4:
-                    st.write("💬 Comentarios")
-                with col5:
-                    st.write("📅 Fin de semana")
+                    st.markdown("💬 **Comentarios**")
                 
                 st.divider()
                 
-                # Cabecera de días
+                # Cabecera
                 dias_semana = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"]
                 cols = st.columns(7)
                 for i, dia in enumerate(dias_semana):
                     with cols[i]:
-                        st.markdown(f"**:blue-background[{dia}]**")
+                        st.markdown(f"##### :blue[{dia}]")
                 
-                # Obtener primer día del mes
+                # Calendario
                 primer_dia = date(año_sel, mes_num, 1).weekday()
                 dia_actual = 1
                 dias_semana_nombres = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
                 
-                # Generar semanas
                 for semana in range(6):
                     cols = st.columns(7)
                     for dia_semana in range(7):
                         with cols[dia_semana]:
                             if semana == 0 and dia_semana < primer_dia:
-                                # Celda vacía al inicio
                                 st.write("")
                             elif dia_actual <= dias_mes:
                                 fecha_actual = date(año_sel, mes_num, dia_actual)
-                                dia_semana_nombre = dias_semana_nombres[fecha_actual.weekday()]
-                                es_fin_semana = fecha_actual.weekday() >= 5
+                                dia_nombre = dias_semana_nombres[fecha_actual.weekday()]
                                 
-                                # Turnos del día
+                                # Turnos
                                 empleados_con_turno = []
                                 for emp in empleados_area:
                                     if emp.id in turnos_por_empleado_dia and dia_actual in turnos_por_empleado_dia[emp.id]:
@@ -671,41 +666,25 @@ if "user" in st.session_state:
                                 comentarios = obtener_comentarios(user.area, fecha_actual)
                                 tiene_comentarios = len(comentarios) > 0
                                 
-                                # Construir el título del día
-                                titulo = f"**{dia_actual} {dia_semana_nombre}**"
-                                if tiene_comentarios:
-                                    titulo += " 💬"
-                                if es_fin_semana:
-                                    titulo = f"📅 {titulo}"
+                                # Mostrar día
+                                st.markdown(f"**{dia_actual} {dia_nombre}**" + (" 💬" if tiene_comentarios else ""))
                                 
-                                # Mostrar en un contenedor
-                                with st.container():
-                                    st.markdown(titulo)
-                                    
-                                    if empleados_con_turno:
-                                        for emp, turno in empleados_con_turno:
-                                            es_usuario = emp.id == user.id
-                                            icono = "📌 " if es_usuario else "  • "
-                                            nombre_corto = emp.nombre[:15] + "..." if len(emp.nombre) > 15 else emp.nombre
-                                            
-                                            if es_usuario:
-                                                st.markdown(f"{icono}**:green[{nombre_corto}]**: :green-background[{turno.nombre}] ({turno.inicio[:5]}-{turno.fin[:5]})")
-                                            else:
-                                                st.markdown(f"{icono}{nombre_corto}: {turno.nombre} ({turno.inicio[:5]}-{turno.fin[:5]})")
-                                    else:
-                                        st.markdown("  • 🌙 *Descanso*")
-                                    
-                                    # Mostrar comentarios si existen
-                                    if tiene_comentarios:
-                                        for usuario, comentario, _ in comentarios[:2]:  # Máximo 2 comentarios
-                                            st.caption(f"💬 {usuario}: {comentario[:30]}...")
-                                    
-                                    st.markdown("---")
+                                if empleados_con_turno:
+                                    for emp, turno in empleados_con_turno:
+                                        if emp.id == user.id:
+                                            st.markdown(f"📌 **{emp.nombre}**: *{turno.nombre}* ({turno.inicio[:5]}-{turno.fin[:5]})")
+                                        else:
+                                            st.markdown(f"• {emp.nombre}: {turno.nombre} ({turno.inicio[:5]}-{turno.fin[:5]})")
+                                else:
+                                    st.markdown("• 🌙 Descanso")
+                                
+                                st.markdown("")  # Espacio
                                 
                                 dia_actual += 1
                             else:
-                                # Celda vacía al final
                                 st.write("")
+                    
+                    st.divider()
                     
                     if dia_actual > dias_mes:
                         break
