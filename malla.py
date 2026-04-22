@@ -827,27 +827,39 @@ if "user" in st.session_state:
                             '''
                             
                             if empleados_con_turno:
-                                for emp, turno in empleados_con_turno[:5]:
-                                    es_usuario = emp.id == user.id
-                                    clase_extra = "usuario" if es_usuario else ""
-                                    icono = "📌 " if es_usuario else ""
-                                    
-                                    # Formatear nombre (primera letra de cada palabra en mayúscula)
-                                    nombre_partes = emp.nombre.split()
-                                    if len(nombre_partes) >= 2:
-                                        nombre_formato = f"{nombre_partes[0]} {nombre_partes[1][0]}." if len(nombre_partes[1]) > 1 else emp.nombre
-                                    else:
-                                        nombre_formato = emp.nombre
-                                    
-                                    html += f'''
-                                        <div class="turno-item {clase_extra}">
-                                            <div class="turno-empleado">{icono}{nombre_formato}</div>
-                                            <div class="turno-detalle">
-                                                <span>{turno.inicio[:5]} - {turno.fin[:5]}</span>
-                                                <span class="turno-nombre-badge">{turno.nombre}</span>
-                                            </div>
-                                        </div>
-                                    '''
+# Dentro del bucle de empleados_con_turno
+for emp, turno in empleados_con_turno[:5]:
+    es_usuario = emp.id == user.id
+    clase_extra = "usuario" if es_usuario else ""
+    icono = "📌 " if es_usuario else ""
+    
+    # Formatear nombre
+    nombre_partes = emp.nombre.split()
+    if len(nombre_partes) >= 2:
+        apellido = nombre_partes[0]
+        inicial_nombre = nombre_partes[1][0] + "." if len(nombre_partes) > 1 else ""
+        nombre_formato = f"{apellido} {inicial_nombre}"
+    else:
+        nombre_formato = emp.nombre
+    
+    # Formatear horario
+    try:
+        from datetime import datetime
+        hora_inicio = datetime.strptime(turno.inicio, "%H:%M").strftime("%I:%M %p").lstrip("0").lower()
+        hora_fin = datetime.strptime(turno.fin, "%H:%M").strftime("%I:%M %p").lstrip("0").lower()
+        horario = f"{hora_inicio} - {hora_fin}"
+    except:
+        horario = f"{turno.inicio} - {turno.fin}"
+    
+    html += f'''
+        <div class="turno-item {clase_extra}">
+            <div class="turno-empleado">{icono}{nombre_formato}</div>
+            <div class="turno-detalle">
+                <span>{horario}</span>
+                <span class="turno-nombre-badge">{turno.nombre}</span>
+            </div>
+        </div>
+    '''
                                 
                                 if len(empleados_con_turno) > 5:
                                     html += f'<div style="font-size:0.7rem; color:#999; text-align:center; padding:5px;">+{len(empleados_con_turno) - 5} más</div>'
