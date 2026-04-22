@@ -20,12 +20,10 @@ from sqlalchemy import create_engine, text
 # ============ FUNCIONES AUXILIARES ============
 
 def get_mes_actual():
-    """Retorna el índice del mes actual (0-11) y el año actual"""
     hoy = datetime.now()
     return hoy.month - 1, hoy.year
 
 def inicializar_tabla_comentarios():
-    """Crear tabla de comentarios si no existe"""
     try:
         engine = create_engine("sqlite:///data.db")
         with engine.connect() as conn:
@@ -40,11 +38,10 @@ def inicializar_tabla_comentarios():
                 )
             """))
             conn.commit()
-    except Exception as e:
+    except:
         pass
 
 def guardar_comentario(area, fecha, usuario, comentario):
-    """Guardar un comentario en la base de datos"""
     try:
         engine = create_engine("sqlite:///data.db")
         with engine.connect() as conn:
@@ -54,11 +51,10 @@ def guardar_comentario(area, fecha, usuario, comentario):
             """), {"area": area, "fecha": fecha, "usuario": usuario, "comentario": comentario})
             conn.commit()
         return True
-    except Exception as e:
+    except:
         return False
 
 def obtener_comentarios(area, fecha):
-    """Obtener comentarios de un área en una fecha específica"""
     try:
         engine = create_engine("sqlite:///data.db")
         with engine.connect() as conn:
@@ -69,11 +65,10 @@ def obtener_comentarios(area, fecha):
                 ORDER BY fecha_creacion DESC
             """), {"area": area, "fecha": fecha})
             return result.fetchall()
-    except Exception as e:
+    except:
         return []
 
 def verificar_notificaciones_area(area):
-    """Verifica si hay nuevas notificaciones en el área"""
     try:
         engine = create_engine("sqlite:///data.db")
         with engine.connect() as conn:
@@ -87,7 +82,6 @@ def verificar_notificaciones_area(area):
         return 0
 
 def exportar_calendario_area_excel(empleados, asignaciones, turnos_dict, mes, año, area):
-    """Exportar calendario del área a Excel"""
     meses_dict = {
         "Enero": 1, "Febrero": 2, "Marzo": 3, "Abril": 4,
         "Mayo": 5, "Junio": 6, "Julio": 7, "Agosto": 8,
@@ -119,33 +113,17 @@ def exportar_calendario_area_excel(empleados, asignaciones, turnos_dict, mes, a�
     worksheet = workbook.add_worksheet(f"Calendario {mes} {año}")
     
     header_format = workbook.add_format({
-        'bold': True,
-        'bg_color': '#667eea',
-        'font_color': 'white',
-        'border': 1,
-        'align': 'center',
-        'valign': 'vcenter',
-        'text_wrap': True
+        'bold': True, 'bg_color': '#667eea', 'font_color': 'white',
+        'border': 1, 'align': 'center', 'valign': 'vcenter', 'text_wrap': True
     })
-    
     descanso_format = workbook.add_format({
-        'border': 1,
-        'align': 'center',
-        'valign': 'vcenter',
-        'bg_color': '#f0f0f0'
+        'border': 1, 'align': 'center', 'valign': 'vcenter', 'bg_color': '#f0f0f0'
     })
-    
     turno_format = workbook.add_format({
-        'border': 1,
-        'align': 'center',
-        'valign': 'vcenter',
-        'bg_color': '#e8f5e9'
+        'border': 1, 'align': 'center', 'valign': 'vcenter', 'bg_color': '#e8f5e9'
     })
-    
     cell_format = workbook.add_format({
-        'border': 1,
-        'align': 'center',
-        'valign': 'vcenter'
+        'border': 1, 'align': 'center', 'valign': 'vcenter'
     })
     
     for row_num, row_data in enumerate(data):
@@ -169,7 +147,6 @@ def exportar_calendario_area_excel(empleados, asignaciones, turnos_dict, mes, a�
     return output
 
 def exportar_calendario_area_pdf(empleados, asignaciones, turnos_dict, mes, año, area):
-    """Exportar calendario del área a PDF con todos los días del mes"""
     meses_dict = {
         "Enero": 1, "Febrero": 2, "Marzo": 3, "Abril": 4,
         "Mayo": 5, "Junio": 6, "Julio": 7, "Agosto": 8,
@@ -179,19 +156,14 @@ def exportar_calendario_area_pdf(empleados, asignaciones, turnos_dict, mes, año
     dias_mes = monthrange(año, mes_num)[1]
     
     buffer = BytesIO()
-    
     doc = SimpleDocTemplate(buffer, pagesize=landscape(A4), 
                            rightMargin=0.5*cm, leftMargin=0.5*cm, 
                            topMargin=1.5*cm, bottomMargin=1*cm)
     
     styles = getSampleStyleSheet()
     title_style = ParagraphStyle(
-        'CustomTitle',
-        parent=styles['Heading1'],
-        fontSize=14,
-        textColor=colors.HexColor('#667eea'),
-        alignment=TA_CENTER,
-        spaceAfter=15
+        'CustomTitle', parent=styles['Heading1'], fontSize=14,
+        textColor=colors.HexColor('#667eea'), alignment=TA_CENTER, spaceAfter=15
     )
     
     elements = []
@@ -200,14 +172,12 @@ def exportar_calendario_area_pdf(empleados, asignaciones, turnos_dict, mes, año
     
     mitad = 15
     partes = []
-    
     for parte_inicio in range(1, dias_mes + 1, mitad):
         parte_fin = min(parte_inicio + mitad - 1, dias_mes)
         partes.append((parte_inicio, parte_fin))
     
     for idx, (parte_inicio, parte_fin) in enumerate(partes):
         table_data = []
-        
         header = ["Empleado"]
         for dia in range(parte_inicio, parte_fin + 1):
             fecha = date(año, mes_num, dia)
@@ -268,10 +238,10 @@ def exportar_calendario_area_pdf(empleados, asignaciones, turnos_dict, mes, año
     empleados_con_turno = len(set([a.empleado_id for a in asignaciones if a.turno_id]))
     stats_text = f"""
     <b>Estadisticas del mes:</b><br/>
-    • Total empleados en el area: {len(empleados)}<br/>
-    • Empleados con turnos asignados: {empleados_con_turno}<br/>
-    • Total turnos asignados: {total_turnos}<br/>
-    • Promedio turnos por empleado: {round(total_turnos/len(empleados), 1) if empleados else 0}
+    • Total empleados: {len(empleados)}<br/>
+    • Con turnos: {empleados_con_turno}<br/>
+    • Total turnos: {total_turnos}<br/>
+    • Promedio: {round(total_turnos/len(empleados), 1) if empleados else 0}
     """
     stats_para = Paragraph(stats_text, styles['Normal'])
     elements.append(stats_para)
@@ -283,44 +253,7 @@ def exportar_calendario_area_pdf(empleados, asignaciones, turnos_dict, mes, año
 # ============ CONFIGURACIÓN DE PÁGINA ============
 st.set_page_config("Malla de Turnos", layout="wide")
 
-st.markdown("""
-<style>
-/* Quita los márgenes feos de Streamlit */
-.block-container {
-    max-width: 100% !important;
-    padding-top: 1rem !important;
-}
-
-/* Evita que el calendario se rompa */
-div[data-testid="stMarkdownContainer"] {
-    width: 100% !important;
-}
-
-/* Arregla las filas del calendario */
-.semana-fila {
-    display: grid !important;
-    grid-template-columns: repeat(7, 1fr) !important;
-    gap: 6px !important;
-}
-
-/* Arregla la cabecera */
-.calendario-cabecera {
-    display: grid !important;
-    grid-template-columns: repeat(7, 1fr) !important;
-    gap: 6px !important;
-}
-
-/* Evita que los días se expandan raro */
-.dia-celda {
-    min-height: 120px !important;
-}
-</style>
-""", unsafe_allow_html=True)
-
-# Inicializar sesión de base de datos
 session = Session()
-
-# Inicializar tabla de comentarios
 inicializar_tabla_comentarios()
 
 # ============ LOGIN ============
@@ -328,46 +261,28 @@ def login():
     st.markdown("""
     <style>
         .login-container {
-            max-width: 400px;
-            margin: 0 auto;
-            padding: 2rem;
-            background: white;
-            border-radius: 20px;
+            max-width: 400px; margin: 0 auto; padding: 2rem;
+            background: white; border-radius: 20px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.1);
         }
-        .login-header {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
+        .login-header { text-align: center; margin-bottom: 2rem; }
         .login-header h1 {
             background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-size: 2.5rem;
-            font-weight: bold;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            font-size: 2.5rem; font-weight: bold;
         }
-        .login-icon {
-            font-size: 4rem;
-            text-align: center;
-            margin-bottom: 1rem;
-        }
+        .login-icon { font-size: 4rem; text-align: center; margin-bottom: 1rem; }
         .stButton button {
             background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%) !important;
-            color: white !important;
-            border: none !important;
-            border-radius: 12px !important;
-            padding: 0.8rem !important;
-            font-size: 1.1rem !important;
-            font-weight: 600 !important;
-            width: 100% !important;
+            color: white !important; border: none !important;
+            border-radius: 12px !important; padding: 0.8rem !important;
+            font-size: 1.1rem !important; font-weight: 600 !important; width: 100% !important;
         }
         .stButton button:hover {
             transform: translateY(-2px) !important;
             box-shadow: 0 5px 20px rgba(46, 204, 113, 0.4) !important;
         }
-        .stApp {
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-        }
+        .stApp { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); }
     </style>
     """, unsafe_allow_html=True)
     
@@ -415,12 +330,9 @@ if "user" in st.session_state:
     <style>
         .stButton button {
             background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%) !important;
-            color: white !important;
-            border: none !important;
-            border-radius: 10px !important;
-            padding: 0.8rem !important;
-            font-size: 1rem !important;
-            font-weight: 500 !important;
+            color: white !important; border: none !important;
+            border-radius: 10px !important; padding: 0.8rem !important;
+            font-size: 1rem !important; font-weight: 500 !important;
             transition: all 0.3s !important;
             box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3) !important;
         }
@@ -430,11 +342,8 @@ if "user" in st.session_state:
             background: linear-gradient(135deg, #45a049 0%, #3d8b40 100%) !important;
         }
         .empleado-card {
-            background: white;
-            border-radius: 15px;
-            padding: 1.5rem;
-            margin-bottom: 1rem;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            background: white; border-radius: 15px; padding: 1.5rem;
+            margin-bottom: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             transition: transform 0.3s;
         }
         .empleado-card:hover {
@@ -442,18 +351,51 @@ if "user" in st.session_state:
             box-shadow: 0 8px 25px rgba(102, 126, 234, 0.2);
         }
         .comentario-card {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 10px;
-            margin: 5px 0;
-            border-left: 4px solid #667eea;
+            background: #f8f9fa; border-radius: 10px; padding: 10px;
+            margin: 5px 0; border-left: 4px solid #667eea;
         }
         .stats-card {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            text-align: center;
+            background: white; padding: 1.5rem; border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center;
+        }
+        .calendario-cabecera {
+            display: grid; grid-template-columns: repeat(7, 1fr);
+            gap: 6px; margin-bottom: 8px;
+        }
+        .cabecera-dia {
+            background: linear-gradient(135deg, #5f9cff 0%, #7b61ff 100%);
+            color: white; padding: 12px; text-align: center;
+            font-weight: 700; border-radius: 10px; font-size: 0.9rem;
+        }
+        .semana-fila {
+            display: grid; grid-template-columns: repeat(7, 1fr);
+            gap: 6px; margin-bottom: 6px;
+        }
+        .dia-celda {
+            background: white; border-radius: 12px; padding: 8px;
+            min-height: 140px; border: 1px solid #eee;
+        }
+        .dia-celda.fin-semana { background: #faf9f6; }
+        .dia-cabecera {
+            display: flex; justify-content: space-between;
+            border-bottom: 1px solid #eee; margin-bottom: 6px;
+        }
+        .dia-numero { font-size: 1.2rem; font-weight: bold; }
+        .dia-semana { font-size: 0.7rem; color: #888; }
+        .turno-mini {
+            font-size: 0.65rem; padding: 4px; margin-bottom: 3px;
+            border-radius: 6px; background: #f4f6fb;
+            border-left: 3px solid #5f9cff;
+        }
+        .turno-mini.usuario {
+            background: #d4fc79; font-weight: 700;
+        }
+        .turno-mini .nombre { font-weight: 600; }
+        .turno-mini .horario { font-size: 0.6rem; color: #666; }
+        .contador { font-size: 0.6rem; color: #999; text-align: right; }
+        .sin-turnos {
+            text-align: center; font-size: 0.7rem; color: #bbb;
+            margin-top: 20px;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -643,97 +585,6 @@ if "user" in st.session_state:
             if vista == "📅 Grupal":
                 st.markdown(f"### 📅 Calendario Grupal - {mes_sel} {año_sel}")
 
-                # CSS para calendario
-                st.markdown("""
-                <style>
-                    .calendario-cabecera {
-                        display: grid;
-                        grid-template-columns: repeat(7, 1fr);
-                        gap: 6px;
-                        margin-bottom: 8px;
-                    }
-                    .cabecera-dia {
-                        background: linear-gradient(135deg, #5f9cff 0%, #7b61ff 100%);
-                        color: white;
-                        padding: 12px;
-                        text-align: center;
-                        font-weight: 700;
-                        border-radius: 10px;
-                        font-size: 0.9rem;
-                    }
-                    .semana-fila {
-                        display: grid;
-                        grid-template-columns: repeat(7, 1fr);
-                        gap: 6px;
-                        margin-bottom: 6px;
-                    }
-                    .dia-celda {
-                        background: rgba(255,255,255,0.9);
-                        border-radius: 12px;
-                        padding: 8px;
-                        min-height: 140px;
-                        backdrop-filter: blur(6px);
-                        transition: all 0.2s ease;
-                        border: 1px solid #eee;
-                    }
-                    .dia-celda:hover {
-                        transform: translateY(-4px);
-                        box-shadow: 0 10px 25px rgba(0,0,0,0.12);
-                    }
-                    .dia-celda.hoy {
-                        border: 2px solid #ff6b6b;
-                        background: #fff5f5;
-                    }
-                    .dia-celda.fin-semana {
-                        background: #faf9f6;
-                    }
-                    .dia-cabecera {
-                        display: flex;
-                        justify-content: space-between;
-                        border-bottom: 1px solid #eee;
-                        margin-bottom: 6px;
-                    }
-                    .dia-numero {
-                        font-size: 1.2rem;
-                        font-weight: bold;
-                    }
-                    .dia-semana {
-                        font-size: 0.7rem;
-                        color: #888;
-                    }
-                    .turno-mini {
-                        font-size: 0.65rem;
-                        padding: 4px;
-                        margin-bottom: 3px;
-                        border-radius: 6px;
-                        background: #f4f6fb;
-                        border-left: 3px solid #5f9cff;
-                    }
-                    .turno-mini.usuario {
-                        background: linear-gradient(135deg, #d4fc79 0%, #96e6a1 100%);
-                        font-weight: 700;
-                    }
-                    .turno-mini .nombre {
-                        font-weight: 600;
-                    }
-                    .turno-mini .horario {
-                        font-size: 0.6rem;
-                        color: #666;
-                    }
-                    .contador {
-                        font-size: 0.6rem;
-                        color: #999;
-                        text-align: right;
-                    }
-                    .sin-turnos {
-                        text-align: center;
-                        font-size: 0.7rem;
-                        color: #bbb;
-                        margin-top: 20px;
-                    }
-                </style>
-                """, unsafe_allow_html=True)
-
                 # Cabecera
                 dias_semana = ["LUN", "MAR", "MIE", "JUE", "VIE", "SAB", "DOM"]
                 st.markdown('<div class="calendario-cabecera">', unsafe_allow_html=True)
@@ -747,41 +598,14 @@ if "user" in st.session_state:
                 dias_semana_nombres = ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"]
 
                 for semana in range(6):
-                   fila_html = '<div class="semana-fila">'
+                    st.markdown('<div class="semana-fila">', unsafe_allow_html=True)
 
-for dia_semana in range(7):
-    if semana == 0 and dia_semana < primer_dia:
-        fila_html += '<div class="dia-celda vacio"></div>'
-
-    elif dia_actual <= dias_mes:
-        fecha_actual = date(año_sel, mes_num, dia_actual)
-
-        empleados_con_turno = []
-        for emp in empleados_area:
-            if emp.id in turnos_por_empleado_dia and dia_actual in turnos_por_empleado_dia[emp.id]:
-                turno = turnos_por_empleado_dia[emp.id][dia_actual]
-                empleados_con_turno.append((emp, turno))
-
-        fila_html += f'<div class="dia-celda"><b>{dia_actual}</b>'
-
-        for emp, turno in empleados_con_turno[:3]:
-            nombre = emp.nombre.split()[0]
-            fila_html += f'<div style="font-size:0.7rem;">{nombre}</div>'
-
-        fila_html += '</div>'
-
-        dia_actual += 1
-
-    else:
-        fila_html += '<div class="dia-celda vacio"></div>'
-
-fila_html += '</div>'
-
-st.markdown(fila_html, unsafe_allow_html=True)
+                    for d in range(7):
+                        if semana == 0 and d < primer_dia:
+                            st.markdown('<div class="dia-celda"></div>', unsafe_allow_html=True)
 
                         elif dia_actual <= dias_mes:
                             fecha_actual = date(año_sel, mes_num, dia_actual)
-                            es_hoy = fecha_actual == date.today()
                             es_fin = fecha_actual.weekday() >= 5
 
                             empleados_con_turno = []
@@ -790,12 +614,7 @@ st.markdown(fila_html, unsafe_allow_html=True)
                                     turno = turnos_por_empleado_dia[emp.id][dia_actual]
                                     empleados_con_turno.append((emp, turno))
 
-                            clase = ""
-                            if es_hoy:
-                                clase += " hoy"
-                            if es_fin:
-                                clase += " fin-semana"
-
+                            clase = " fin-semana" if es_fin else ""
                             html = f'<div class="dia-celda{clase}">'
 
                             dia_nombre = dias_semana_nombres[fecha_actual.weekday()]
