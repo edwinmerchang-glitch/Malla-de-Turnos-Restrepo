@@ -617,304 +617,206 @@ if "user" in st.session_state:
                 prom = round(len(asignaciones) / len(empleados_area), 1) if empleados_area else 0
                 st.metric("📈 Promedio", prom)
             
-            if vista == "📅 Grupal":
-                st.markdown(f"### 📅 Calendario Grupal - {mes_sel} {año_sel}")
-                
-                # CSS para calendario profesional
-                st.markdown("""
-                <style>
-                    /* Contenedor del calendario */
-                    .calendario-mensual {
-                        width: 100%;
-                        border-collapse: separate;
-                        border-spacing: 4px;
-                        margin-top: 10px;
-                    }
-                    
-                    /* Cabecera de días de la semana */
-                    .calendario-cabecera {
-                        display: grid;
-                        grid-template-columns: repeat(7, 1fr);
-                        gap: 4px;
-                        margin-bottom: 4px;
-                    }
-                    
-                    .cabecera-dia {
-                        background: linear-gradient(135deg, #667eea 0%, #5a67d8 100%);
-                        color: white;
-                        padding: 12px 8px;
-                        text-align: center;
-                        font-weight: 600;
-                        font-size: 0.9rem;
-                        border-radius: 8px 8px 0 0;
-                        letter-spacing: 0.5px;
-                    }
-                    
-                    /* Semana */
-                    .semana-fila {
-                        display: grid;
-                        grid-template-columns: repeat(7, 1fr);
-                        gap: 4px;
-                        margin-bottom: 4px;
-                        min-height: 140px;
-                    }
-                    
-                    /* Celda del día */
-                    .dia-celda {
-                        background: white;
-                        border: 1px solid #e8e8e8;
-                        border-radius: 8px;
-                        padding: 8px;
-                        transition: all 0.15s ease;
-                        box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-                        display: flex;
-                        flex-direction: column;
-                    }
-                    
-                    .dia-celda:hover {
-                        box-shadow: 0 4px 8px rgba(0,0,0,0.08);
-                        border-color: #667eea;
-                    }
-                    
-                    .dia-celda.fin-semana {
-                        background: #faf9f6;
-                    }
-                    
-                    .dia-celda.vacio {
-                        background: #f5f5f5;
-                        opacity: 0.5;
-                    }
-                    
-                    /* Cabecera del día */
-                    .dia-cabecera {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: baseline;
-                        margin-bottom: 6px;
-                        padding-bottom: 4px;
-                        border-bottom: 1px solid #eee;
-                    }
-                    
-                    .dia-numero {
-                        font-size: 1.3rem;
-                        font-weight: 700;
-                        color: #333;
-                        line-height: 1;
-                    }
-                    
-                    .dia-semana {
-                        font-size: 0.7rem;
-                        color: #888;
-                        font-weight: 500;
-                        text-transform: uppercase;
-                    }
-                    
-                    .comentario-indicador {
-                        margin-left: 4px;
-                        color: #ff6b6b;
-                        font-size: 0.8rem;
-                    }
-                    
-                    /* Contenido de turnos */
-                    .turnos-contenido {
-                        flex: 1;
-                        overflow-y: auto;
-                        max-height: 120px;
-                    }
-                    
-                    .turno-mini {
-                        font-size: 0.68rem;
-                        padding: 4px 6px;
-                        margin-bottom: 3px;
-                        border-radius: 4px;
-                        background: #f8f9fc;
-                        border-left: 3px solid #667eea;
-                        line-height: 1.3;
-                    }
-                    
-                    .turno-mini.usuario {
-                        background: #e8f5e9;
-                        border-left-color: #4CAF50;
-                    }
-                    
-                    .turno-mini .nombre {
-                        font-weight: 600;
-                        color: #333;
-                    }
-                    
-                    .turno-mini .detalle {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        margin-top: 2px;
-                    }
-                    
-                    .turno-mini .horario {
-                        color: #666;
-                        font-size: 0.6rem;
-                    }
-                    
-                    .turno-mini .turno-badge {
-                        background: #667eea;
-                        color: white;
-                        padding: 1px 5px;
-                        border-radius: 8px;
-                        font-size: 0.55rem;
-                        font-weight: 600;
-                    }
-                    
-                    .turno-mini.usuario .turno-badge {
-                        background: #4CAF50;
-                    }
-                    
-                    .mas-turnos {
-                        font-size: 0.6rem;
-                        color: #999;
-                        text-align: center;
-                        padding: 2px;
-                    }
-                    
-                    .sin-turnos {
-                        text-align: center;
-                        padding: 15px 5px;
-                        color: #bbb;
-                        font-size: 0.7rem;
-                    }
-                    
-                    /* Leyenda */
-                    .leyenda-calendario {
-                        display: flex;
-                        gap: 20px;
-                        padding: 12px 16px;
-                        background: white;
-                        border-radius: 10px;
-                        margin-bottom: 15px;
-                        border: 1px solid #e8e8e8;
-                        flex-wrap: wrap;
-                    }
-                    
-                    .leyenda-item {
-                        display: flex;
-                        align-items: center;
-                        gap: 6px;
-                        font-size: 0.75rem;
-                        color: #555;
-                    }
-                    
-                    .leyenda-color {
-                        width: 16px;
-                        height: 16px;
-                        border-radius: 4px;
-                    }
-                </style>
-                """, unsafe_allow_html=True)
-                
-                # Leyenda
-                st.markdown("""
-                <div class="leyenda-calendario">
-                    <div class="leyenda-item"><span class="leyenda-color" style="background:#f8f9fc; border-left:3px solid #667eea;"></span> Turno normal</div>
-                    <div class="leyenda-item"><span class="leyenda-color" style="background:#e8f5e9; border-left:3px solid #4CAF50;"></span> 📌 Tus turnos</div>
-                    <div class="leyenda-item"><span style="font-size:1.1rem;">💬</span> Tiene comentarios</div>
-                    <div class="leyenda-item"><span class="leyenda-color" style="background:#faf9f6;"></span> Fin de semana</div>
-                    <div class="leyenda-item"><span>🌙</span> Descanso</div>
+if vista == "📅 Grupal":
+    st.markdown(f"### 📅 Calendario Grupal - {mes_sel} {año_sel}")
+
+    # ================== CSS PRO ==================
+    st.markdown("""
+    <style>
+        .calendario-cabecera {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .cabecera-dia {
+            background: linear-gradient(135deg, #5f9cff 0%, #7b61ff 100%);
+            color: white;
+            padding: 12px;
+            text-align: center;
+            font-weight: 700;
+            border-radius: 10px;
+            font-size: 0.9rem;
+        }
+
+        .semana-fila {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+
+        .dia-celda {
+            background: rgba(255,255,255,0.9);
+            border-radius: 12px;
+            padding: 8px;
+            min-height: 140px;
+            backdrop-filter: blur(6px);
+            transition: all 0.2s ease;
+            border: 1px solid #eee;
+        }
+
+        .dia-celda:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.12);
+        }
+
+        .dia-celda.hoy {
+            border: 2px solid #ff6b6b;
+            background: #fff5f5;
+        }
+
+        .dia-celda.fin-semana {
+            background: #faf9f6;
+        }
+
+        .dia-celda.alta-carga {
+            border: 1px solid #ffa726;
+            background: #fff8e1;
+        }
+
+        .dia-cabecera {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 6px;
+        }
+
+        .dia-numero {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .dia-semana {
+            font-size: 0.7rem;
+            color: #888;
+        }
+
+        .turno-mini {
+            font-size: 0.65rem;
+            padding: 4px;
+            margin-bottom: 3px;
+            border-radius: 6px;
+            background: #f4f6fb;
+            border-left: 3px solid #5f9cff;
+        }
+
+        .turno-mini.usuario {
+            background: linear-gradient(135deg, #d4fc79 0%, #96e6a1 100%);
+            font-weight: 700;
+        }
+
+        .turno-mini .nombre {
+            font-weight: 600;
+        }
+
+        .turno-mini .horario {
+            font-size: 0.6rem;
+            color: #666;
+        }
+
+        .contador {
+            font-size: 0.6rem;
+            color: #999;
+            text-align: right;
+        }
+
+        .sin-turnos {
+            text-align: center;
+            font-size: 0.7rem;
+            color: #bbb;
+            margin-top: 20px;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # ================== CABECERA ==================
+    dias_semana = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"]
+    st.markdown('<div class="calendario-cabecera">', unsafe_allow_html=True)
+    for d in dias_semana:
+        st.markdown(f'<div class="cabecera-dia">{d}</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # ================== CALENDARIO ==================
+    primer_dia = date(año_sel, mes_num, 1).weekday()
+    dia_actual = 1
+
+    for semana in range(6):
+        st.markdown('<div class="semana-fila">', unsafe_allow_html=True)
+
+        for d in range(7):
+
+            if semana == 0 and d < primer_dia:
+                st.markdown('<div class="dia-celda"></div>', unsafe_allow_html=True)
+
+            elif dia_actual <= dias_mes:
+
+                fecha_actual = date(año_sel, mes_num, dia_actual)
+                es_hoy = fecha_actual == date.today()
+                es_fin = fecha_actual.weekday() >= 5
+
+                empleados_con_turno = []
+                for emp in empleados_area:
+                    if emp.id in turnos_por_empleado_dia and dia_actual in turnos_por_empleado_dia[emp.id]:
+                        turno = turnos_por_empleado_dia[emp.id][dia_actual]
+                        empleados_con_turno.append((emp, turno))
+
+                # CLASES
+                clase = ""
+                if es_hoy:
+                    clase += " hoy"
+                if es_fin:
+                    clase += " fin-semana"
+                if len(empleados_con_turno) > 6:
+                    clase += " alta-carga"
+
+                html = f'<div class="dia-celda {clase}">'
+
+                # CABECERA
+                html += f'''
+                <div class="dia-cabecera">
+                    <span class="dia-numero">{dia_actual}</span>
+                    <span class="dia-semana">{fecha_actual.strftime("%a")}</span>
                 </div>
-                """, unsafe_allow_html=True)
-                
-                # Cabecera de días
-                dias_semana = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"]
-                st.markdown('<div class="calendario-cabecera">', unsafe_allow_html=True)
-                for dia in dias_semana:
-                    st.markdown(f'<div class="cabecera-dia">{dia}</div>', unsafe_allow_html=True)
-                st.markdown('</div>', unsafe_allow_html=True)
-                
-                # Calendario
-                primer_dia = date(año_sel, mes_num, 1).weekday()
-                dia_actual = 1
-                dias_semana_nombres = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
-                
-                for semana in range(6):
-                    st.markdown('<div class="semana-fila">', unsafe_allow_html=True)
-                    
-                    for dia_semana in range(7):
-                        if semana == 0 and dia_semana < primer_dia:
-                            st.markdown('<div class="dia-celda vacio" style="display:flex; align-items:center; justify-content:center;"><span style="color:#ccc;">—</span></div>', unsafe_allow_html=True)
-                        
-                        elif dia_actual <= dias_mes:
-                            fecha_actual = date(año_sel, mes_num, dia_actual)
-                            dia_nombre = dias_semana_nombres[fecha_actual.weekday()]
-                            es_fin_semana = fecha_actual.weekday() >= 5
-                            
-                            # Turnos del día
-                            empleados_con_turno = []
-                            for emp in empleados_area:
-                                if emp.id in turnos_por_empleado_dia and dia_actual in turnos_por_empleado_dia[emp.id]:
-                                    turno = turnos_por_empleado_dia[emp.id][dia_actual]
-                                    empleados_con_turno.append((emp, turno))
-                            
-                            # Comentarios
-                            comentarios = obtener_comentarios(user.area, fecha_actual)
-                            tiene_comentarios = len(comentarios) > 0
-                            
-                            # Clases
-                            clase_fin = "fin-semana" if es_fin_semana else ""
-                            
-                            html = f'<div class="dia-celda {clase_fin}">'
-                            
-                            # Cabecera del día
-                            comentario_icono = '<span class="comentario-indicador">💬</span>' if tiene_comentarios else ''
-                            html += f'''
-                                <div class="dia-cabecera">
-                                    <span class="dia-numero">{dia_actual}</span>
-                                    <span class="dia-semana">{dia_nombre}{comentario_icono}</span>
-                                </div>
-                                <div class="turnos-contenido">
-                            '''
-                            
-                            if empleados_con_turno:
-                                for emp, turno in empleados_con_turno[:4]:
-                                    es_usuario = emp.id == user.id
-                                    clase_usuario = "usuario" if es_usuario else ""
-                                    icono = "📌 " if es_usuario else ""
-                                    
-                                    # Formatear nombre
-                                    partes = emp.nombre.split()
-                                    nombre_corto = f"{partes[0]} {partes[1][0]}." if len(partes) >= 2 else emp.nombre
-                                    
-                                    # Formatear horario
-                                    try:
-                                        hora_ini = turno.inicio[:5]
-                                        hora_fin = turno.fin[:5]
-                                        horario = f"{hora_ini} - {hora_fin}"
-                                    except:
-                                        horario = f"{turno.inicio} - {turno.fin}"
-                                    
-                                    html += f'''
-                                        <div class="turno-mini {clase_usuario}">
-                                            <span class="nombre">{icono}{nombre_corto}</span>
-                                            <div class="detalle">
-                                                <span class="horario">{horario}</span>
-                                                <span class="turno-badge">{turno.nombre}</span>
-                                            </div>
-                                        </div>
-                                    '''
-                                
-                                if len(empleados_con_turno) > 4:
-                                    html += f'<div class="mas-turnos">+{len(empleados_con_turno) - 4} más</div>'
-                            else:
-                                html += '<div class="sin-turnos">🌙<br>Descanso</div>'
-                            
-                            html += '</div></div>'
-                            st.markdown(html, unsafe_allow_html=True)
-                            
-                            dia_actual += 1
-                        
-                        else:
-                            st.markdown('<div class="dia-celda vacio" style="display:flex; align-items:center; justify-content:center;"><span style="color:#ccc;">—</span></div>', unsafe_allow_html=True)
-                    
-                    st.markdown('</div>', unsafe_allow_html=True)
-                    
-                    if dia_actual > dias_mes:
-                        break
+                '''
+
+                # CONTADOR
+                html += f'<div class="contador">👥 {len(empleados_con_turno)}</div>'
+
+                # TURNOS
+                if empleados_con_turno:
+                    for emp, turno in empleados_con_turno[:4]:
+                        es_usuario = emp.id == user.id
+                        clase_usuario = "usuario" if es_usuario else ""
+
+                        nombre = emp.nombre.split()[0]
+
+                        html += f'''
+                        <div class="turno-mini {clase_usuario}">
+                            <div class="nombre">{nombre}</div>
+                            <div class="horario">{turno.inicio[:5]} - {turno.fin[:5]}</div>
+                        </div>
+                        '''
+
+                    if len(empleados_con_turno) > 4:
+                        html += f'<div class="contador">+{len(empleados_con_turno)-4}</div>'
+
+                else:
+                    html += '<div class="sin-turnos">🌙 Descanso</div>'
+
+                html += '</div>'
+
+                st.markdown(html, unsafe_allow_html=True)
+                dia_actual += 1
+
+            else:
+                st.markdown('<div class="dia-celda"></div>', unsafe_allow_html=True)
+
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        if dia_actual > dias_mes:
+            break
                 
                 # Espacio adicional
                 st.markdown("<br>", unsafe_allow_html=True)
