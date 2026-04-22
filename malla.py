@@ -620,110 +620,101 @@ if "user" in st.session_state:
             if vista == "📅 Grupal":
                 st.markdown(f"### 📅 Calendario Grupal - {mes_sel} {año_sel}")
                 
-                # CSS mejorado para un diseño más profesional
+                # CSS mejorado (escapando llaves para evitar conflicto con Python)
                 st.markdown("""
                 <style>
-                    .calendario-grid {
-                        display: flex;
-                        flex-direction: column;
-                        gap: 10px;
-                        margin-top: 15px;
-                    }
-                # CSS mejorado para un diseño más profesional
-                st.markdown("""
-                <style>
-                    .semana-container {
+                    .semana-container {{
                         display: grid;
                         grid-template-columns: repeat(7, 1fr);
                         gap: 8px;
                         margin-bottom: 8px;
-                    }
-                    .dia-tarjeta {
+                    }}
+                    .dia-tarjeta {{
                         background: white;
                         border-radius: 10px;
                         padding: 10px 8px;
                         box-shadow: 0 1px 3px rgba(0,0,0,0.08);
                         border: 1px solid #e0e0e0;
                         min-height: 160px;
-                    }
-                    .dia-tarjeta.fin-semana {
+                    }}
+                    .dia-tarjeta.fin-semana {{
                         background: #fef9f0;
                         border-color: #ffd699;
-                    }
-                    .dia-tarjeta.con-comentarios {
+                    }}
+                    .dia-tarjeta.con-comentarios {{
                         border-left: 3px solid #ff6b6b;
-                    }
-                    .dia-header {
+                    }}
+                    .dia-header {{
                         display: flex;
                         justify-content: space-between;
                         align-items: center;
                         margin-bottom: 8px;
                         padding-bottom: 5px;
                         border-bottom: 1.5px solid #667eea;
-                    }
-                    .dia-numero {
+                    }}
+                    .dia-numero {{
                         font-size: 1.2rem;
                         font-weight: 700;
                         color: #333;
-                    }
-                    .dia-semana {
+                    }}
+                    .dia-semana {{
                         font-size: 0.7rem;
                         font-weight: 600;
                         color: #667eea;
                         background: #f0f4ff;
                         padding: 2px 8px;
                         border-radius: 12px;
-                    }
-                    .turno-lista {
+                    }}
+                    .turno-lista {{
                         display: flex;
                         flex-direction: column;
                         gap: 4px;
-                    }
-                    .turno-item {
+                    }}
+                    .turno-item {{
                         padding: 5px 6px;
                         border-radius: 6px;
                         background: #f5f7fa;
                         border-left: 3px solid #667eea;
                         font-size: 0.7rem;
-                    }
-                    .turno-item.usuario {
+                    }}
+                    .turno-item.usuario {{
                         background: #e8f5e9;
                         border-left: 3px solid #4CAF50;
-                    }
-                    .turno-empleado {
+                    }}
+                    .turno-empleado {{
                         font-weight: 600;
                         color: #333;
                         margin-bottom: 2px;
                         font-size: 0.7rem;
-                    }
-                    .turno-detalle {
+                    }}
+                    .turno-detalle {{
                         display: flex;
                         justify-content: space-between;
                         align-items: center;
                         color: #555;
                         font-size: 0.65rem;
-                    }
-                    .turno-horario {
+                    }}
+                    .turno-horario {{
                         color: #666;
-                    }
-                    .turno-nombre-badge {
+                    }}
+                    .turno-nombre-badge {{
                         background: #667eea;
                         color: white;
                         padding: 2px 6px;
                         border-radius: 10px;
                         font-weight: 600;
                         font-size: 0.6rem;
-                    }
-                    .usuario .turno-nombre-badge {
+                    }}
+                    .usuario .turno-nombre-badge {{
                         background: #4CAF50;
-                    }
-                    .descanso-item {
+                    }}
+                    .descanso-item {{
                         text-align: center;
                         padding: 12px 0;
                         color: #999;
                         font-size: 0.7rem;
-                    }
-                    .leyenda-container {
+                    }}
+                    .leyenda-container {{
                         display: flex;
                         gap: 16px;
                         padding: 10px 15px;
@@ -732,15 +723,15 @@ if "user" in st.session_state:
                         margin-bottom: 15px;
                         flex-wrap: wrap;
                         border: 1px solid #e0e0e0;
-                    }
-                    .leyenda-item {
+                    }}
+                    .leyenda-item {{
                         display: flex;
                         align-items: center;
                         gap: 5px;
                         font-size: 0.75rem;
                         color: #555;
-                    }
-                    .cabecera-dia {
+                    }}
+                    .cabecera-dia {{
                         text-align: center;
                         font-weight: 700;
                         color: white;
@@ -748,14 +739,14 @@ if "user" in st.session_state:
                         padding: 10px 5px;
                         border-radius: 8px;
                         font-size: 0.8rem;
-                    }
-                    .comentario-mini {
+                    }}
+                    .comentario-mini {{
                         margin-top: 6px;
                         padding-top: 5px;
                         border-top: 1px dashed #ddd;
                         font-size: 0.6rem;
                         color: #ff6b6b;
-                    }
+                    }}
                 </style>
                 """, unsafe_allow_html=True)
                 
