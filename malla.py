@@ -2409,7 +2409,8 @@ if "user" in st.session_state:
                 )
 
         # ============ TAB 5: ESTRATEGIA HORAS PICO ============
-        with st.tabs(["📊 Cubrimiento Diario", "📈 Cubrimiento por Área", "⚠️ Áreas Descubiertas", "📋 Resumen General", "🔥 Estrategia Horas Pico"])[4]:
+        tab5 = st.tabs(["📊 Cubrimiento Diario", "📈 Cubrimiento por Área", "⚠️ Áreas Descubiertas", "📋 Resumen General", "🔥 Estrategia Horas Pico"])[4]
+        with tab5:
             st.markdown("### 🔥 Estrategia de Cobertura - Horas Pico")
             st.caption("Análisis estratégico para maximizar cobertura en horario de alta demanda (10:00 - 19:00)")
             
