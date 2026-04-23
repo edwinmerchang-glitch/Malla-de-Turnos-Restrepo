@@ -436,7 +436,7 @@ if "user" in st.session_state:
         
         if "pagina_actual" not in st.session_state:
             if user.rol == "empleado":
-                st.session_state.pagina_actual = "Mi area"
+                st.session_state.pagina_actual = "Calendario"
             elif user.rol == "supervisor":
                 st.session_state.pagina_actual = "Mi equipo"
             else:
