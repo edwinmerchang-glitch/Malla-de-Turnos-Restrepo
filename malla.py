@@ -1218,6 +1218,7 @@ if "user" in st.session_state:
         fecha_fin = date(año, mes_num, dias_mes)
         
         asignaciones = session.query(Asignacion).filter(
+            Asignacion.empleado_id.in_([e.id for e in empleados]),
             Asignacion.fecha.between(fecha_inicio, fecha_fin)
         ).all()
         
@@ -1227,6 +1228,7 @@ if "user" in st.session_state:
                 matriz[a.empleado_id] = {}
             matriz[a.empleado_id][a.fecha.day] = a.turno_id
         
+        # ============ CONSTRUIR VARIABLE data ============
         data = []
         for emp in empleados:
             fila = {"Empleado": emp.nombre}
@@ -1235,10 +1237,19 @@ if "user" in st.session_state:
                 fila[str(dia)] = turnos_dict.get(turno_id, "—") if turno_id else "—"
             data.append(fila)
         
+        # Calcular total de turnos en el área
+        total = sum(1 for emp_id in matriz for dia in matriz[emp_id])
+        
         if data:
             df = pd.DataFrame(data)
             
             st.markdown("### ✏️ Editor de Matriz de Área")
+            st.caption("Haz clic en las celdas para asignar/quitar turnos (ej: '151', 'Descanso', 'D')")
+            
+            # Guardar estado original
+            key_original_area = f"df_original_area_{mes}_{año}_{user.area}"
+            if key_original_area not in st.session_state:
+                st.session_state[key_original_area] = df.copy()
             
             # Configurar editor
             df_editado = st.data_editor(
@@ -1253,42 +1264,66 @@ if "user" in st.session_state:
                 key=f"editor_area_{mes}_{año}"
             )
             
-            if st.button("💾 Guardar Cambios en Matriz", type="primary"):
-                cambios = 0
-                for index, row in df_editado.iterrows():
-                    emp_id = empleados[index].id
-                    for dia in range(1, dias_mes + 1):
-                        dia_str = str(dia)
-                        nuevo_valor = row[dia_str]
-                        
-                        # Si cambió o si no era "—"
-                        if nuevo_valor != "—":
-                            fecha_asignar = date(año, mes_num, dia)
-                            turno_obj = session.query(Turno).filter_by(nombre=nuevo_valor).first()
-                            
-                            if turno_obj:
-                                asig = session.query(Asignacion).filter_by(
-                                    empleado_id=emp_id, fecha=fecha_asignar
-                                ).first()
-                                
-                                if asig:
-                                    asig.turno_id = turno_obj.id
-                                else:
-                                    session.add(Asignacion(empleado_id=emp_id, fecha=fecha_asignar, turno_id=turno_obj.id))
-                                cambios += 1
-                            elif nuevo_valor in ["Descanso", "D", ""]:
-                                asig = session.query(Asignacion).filter_by(
-                                    empleado_id=emp_id, fecha=fecha_asignar
-                                ).first()
-                                if asig:
-                                    session.delete(asig)
-                                    cambios += 1
-                
-                session.commit()
-                st.success(f"✅ {cambios} cambios guardados")
-                st.rerun()
+            col1, col2, col3 = st.columns([1, 1, 2])
             
-            st.metric("Total turnos en el area", total)
+            with col1:
+                if st.button("💾 Guardar Cambios", type="primary", use_container_width=True, key="guardar_area"):
+                    cambios = 0
+                    for index, row in df_editado.iterrows():
+                        emp_id = empleados[index].id
+                        original_row = st.session_state[key_original_area].iloc[index]
+                        
+                        for dia in range(1, dias_mes + 1):
+                            dia_str = str(dia)
+                            nuevo_valor = row[dia_str]
+                            original_valor = original_row[dia_str]
+                            
+                            # Solo procesar si cambió
+                            if nuevo_valor != original_valor:
+                                fecha_asignar = date(año, mes_num, dia)
+                                
+                                if nuevo_valor in ["Descanso", "D", "", "—"]:
+                                    # Eliminar asignación si existe
+                                    asig = session.query(Asignacion).filter_by(
+                                        empleado_id=emp_id, fecha=fecha_asignar
+                                    ).first()
+                                    if asig:
+                                        session.delete(asig)
+                                        cambios += 1
+                                else:
+                                    # Buscar turno por nombre
+                                    turno_obj = session.query(Turno).filter_by(nombre=nuevo_valor).first()
+                                    if turno_obj:
+                                        asig = session.query(Asignacion).filter_by(
+                                            empleado_id=emp_id, fecha=fecha_asignar
+                                        ).first()
+                                        
+                                        if asig:
+                                            asig.turno_id = turno_obj.id
+                                        else:
+                                            session.add(Asignacion(
+                                                empleado_id=emp_id, 
+                                                fecha=fecha_asignar, 
+                                                turno_id=turno_obj.id
+                                            ))
+                                        cambios += 1
+                    
+                    session.commit()
+                    st.success(f"✅ {cambios} cambios guardados correctamente")
+                    del st.session_state[key_original_area]
+                    st.rerun()
+            
+            with col2:
+                if st.button("🔄 Descartar Cambios", use_container_width=True, key="descartar_area"):
+                    del st.session_state[key_original_area]
+                    st.rerun()
+            
+            # Métricas
+            col_m1, col_m2 = st.columns(2)
+            with col_m1:
+                st.metric("👥 Total empleados", len(empleados))
+            with col_m2:
+                st.metric("📊 Total turnos en el área", total)
 
     # ============ PAGINA: ASIGNAR AREA ============
     elif op == "Asignar area":
@@ -1607,22 +1642,83 @@ if "user" in st.session_state:
 
     # ============ PAGINA: MATRIZ TURNOS (ADMIN) ============
     elif op == "Matriz turnos":
-        # ... (todo el código de arriba igual: imports, título, filtros, etc.) ...
+        if user.rol != "admin":
+            st.error("❌ No tienes permiso")
+            st.stop()
         
-        # Crear DataFrame editable
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                    padding: 1.5rem; border-radius: 15px; margin-bottom: 2rem;">
+            <h2 style="color: white; text-align: center; margin: 0;">📊 Matriz General de Turnos</h2>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
+                     "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+            mes_index, año_actual = get_mes_actual()
+            mes = st.selectbox("Mes", meses, index=mes_index)
+        with col2:
+            año = st.number_input("Año", min_value=2024, max_value=2030, value=año_actual)
+        with col3:
+            areas = list(set([e.area for e in session.query(Empleado).all() if e.area]))
+            areas.sort()
+            area_filtro = st.selectbox("Filtrar por area", ["Todas"] + areas)
+        
+        mes_num = meses.index(mes) + 1
+        dias_mes = monthrange(año, mes_num)[1]
+        
+        empleados = session.query(Empleado).all()
+        if area_filtro != "Todas":
+            empleados = [e for e in empleados if e.area == area_filtro]
+        
+        if not empleados:
+            st.warning("No hay empleados")
+            st.stop()
+        
+        turnos = session.query(Turno).all()
+        turnos_dict = {t.id: t.nombre for t in turnos}
+        
+        fecha_inicio = date(año, mes_num, 1)
+        fecha_fin = date(año, mes_num, dias_mes)
+        
+        asignaciones = session.query(Asignacion).filter(
+            Asignacion.fecha.between(fecha_inicio, fecha_fin)
+        ).all()
+        
+        matriz = {}
+        for a in asignaciones:
+            if a.empleado_id not in matriz:
+                matriz[a.empleado_id] = {}
+            matriz[a.empleado_id][a.fecha.day] = a.turno_id
+        
+        # ============ CONSTRUIR VARIABLE data ============
+        data = []
+        for emp in empleados:
+            fila = {
+                "Empleado": emp.nombre,
+                "Area": emp.area or "N/A",
+                "Cargo": emp.cargo or "N/A",
+            }
+            for dia in range(1, dias_mes + 1):
+                turno_id = matriz.get(emp.id, {}).get(dia)
+                fila[str(dia)] = turnos_dict.get(turno_id, "—") if turno_id else "—"
+            data.append(fila)
+        
+        total = sum(1 for emp in matriz for dia in matriz[emp])
+        
+        # ============ EDITOR DE MATRIZ ============
         if data:
             df = pd.DataFrame(data)
             
-            # Configurar columnas para edición
-            columnas_editable = [str(dia) for dia in range(1, dias_mes + 1)]
-            columnas_fijas = ["Empleado", "Area", "Cargo"]
-            
-            # Guardar el estado original para comparar cambios después
-            if 'df_original' not in st.session_state:
-                st.session_state.df_original = df.copy()
-            
             st.markdown("### ✏️ Editor de Matriz")
             st.caption("Haz clic en las celdas de turno para cambiarlas (ej: '151', 'Descanso', 'D')")
+            
+            # Guardar el estado original para comparar cambios después
+            key_original = f"df_original_{mes}_{año}_{area_filtro}"
+            if key_original not in st.session_state:
+                st.session_state[key_original] = df.copy()
             
             # Usar data_editor en lugar de dataframe
             df_editado = st.data_editor(
@@ -1636,18 +1732,18 @@ if "user" in st.session_state:
                 use_container_width=True,
                 hide_index=True,
                 num_rows="fixed",
-                key=f"editor_matriz_{mes}_{año}"
+                key=f"editor_matriz_{mes}_{año}_{area_filtro}"
             )
             
             col1, col2, col3 = st.columns([1, 1, 2])
             with col1:
-                if st.button("💾 Guardar Cambios", type="primary", use_container_width=True):
+                if st.button("💾 Guardar Cambios", type="primary", use_container_width=True, key="guardar_matriz"):
                     cambios_realizados = 0
                     
                     # Iterar por cada fila del dataframe editado
                     for index, row in df_editado.iterrows():
-                        emp_id = empleados[index].id  # Asumiendo mismo orden
-                        original_row = st.session_state.df_original.iloc[index]
+                        emp_id = empleados[index].id
+                        original_row = st.session_state[key_original].iloc[index]
                         
                         for dia in range(1, dias_mes + 1):
                             dia_str = str(dia)
@@ -1668,7 +1764,7 @@ if "user" in st.session_state:
                                 ).first()
                                 
                                 if not turno_obj:
-                                    # Si el valor es "Descanso" o "D", eliminamos la asignación si existe
+                                    # Si el valor es "Descanso", "D" o vacío, eliminamos la asignación si existe
                                     if asignacion_existente:
                                         session.delete(asignacion_existente)
                                         cambios_realizados += 1
@@ -1688,27 +1784,26 @@ if "user" in st.session_state:
                     session.commit()
                     st.success(f"✅ {cambios_realizados} cambios guardados exitosamente")
                     # Limpiar caché de la sesión para forzar recarga visual
-                    del st.session_state.df_original
+                    del st.session_state[key_original]
                     st.rerun()
             
             with col2:
-                if st.button("🔄 Descartar Cambios", use_container_width=True):
-                    del st.session_state.df_original
+                if st.button("🔄 Descartar Cambios", use_container_width=True, key="descartar_matriz"):
+                    del st.session_state[key_original]
                     st.rerun()
-                    
+            
             st.metric("Total turnos asignados", total)
             
-            if st.button("📥 Exportar a Excel"):
-                # ... (lógica de exportación existente, pero exportando df_editado) ...
+            if st.button("📥 Exportar a Excel", key="exportar_matriz"):
                 output = BytesIO()
                 with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                     df_editado.to_excel(writer, sheet_name=f"Matriz {mes} {año}", index=False)
-                # ... resto igual ...
                 output.seek(0)
                 st.download_button(
                     "📥 Descargar Excel", output,
                     f"matriz_{mes}_{año}.xlsx",
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="descargar_matriz"
                 )
 
     # ============ PAGINA: ASIGNACION MANUAL (ADMIN) ============
