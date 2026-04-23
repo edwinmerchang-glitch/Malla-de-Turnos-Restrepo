@@ -803,8 +803,9 @@ if "user" in st.session_state:
                     st.markdown(html_fila, unsafe_allow_html=True)
                     st.markdown('</div>', unsafe_allow_html=True)
 
-                    if dia_actual > dias_mes:
-                        break
+                 if dia == 0:
+                    html_fila += '<div class="dia-vacio"></div>'
+                     continue
 
             else:
                 empleados_dict = {e.nombre: e for e in empleados_area}
