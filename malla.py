@@ -593,10 +593,9 @@ if "user" in st.session_state:
                     margin-top: 20px;
                 }
                 .calendario-container {
-    overflow-x: auto;
-    width: 100%;
-}
-
+                    overflow-x: auto;
+                    width: 100%;
+                }
                 .calendario-grid {
                     display: grid;
                     grid-template-columns: repeat(7, 1fr);
@@ -707,6 +706,7 @@ if "user" in st.session_state:
                 }
                 </style>
                 """, unsafe_allow_html=True)
+                
                 st.markdown('<div class="calendario-container">', unsafe_allow_html=True)
 
                 # Cabecera con nombres de días
@@ -803,11 +803,6 @@ if "user" in st.session_state:
                     st.markdown(html_fila, unsafe_allow_html=True)
                 
                 st.markdown('</div>', unsafe_allow_html=True)
-
-                             if vista == "📅 Grupal":
-if dia == 0:
-                    html_fila += '<div class="dia-vacio"></div>'
-                     continue
 
             else:
                 empleados_dict = {e.nombre: e for e in empleados_area}
