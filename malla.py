@@ -801,9 +801,11 @@ if "user" in st.session_state:
                     
                     html_fila += '</div>'
                     st.markdown(html_fila, unsafe_allow_html=True)
-                    st.markdown('</div>', unsafe_allow_html=True)
+                
+                st.markdown('</div>', unsafe_allow_html=True)
 
-                 if dia == 0:
+                             if vista == "📅 Grupal":
+if dia == 0:
                     html_fila += '<div class="dia-vacio"></div>'
                      continue
 
