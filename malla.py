@@ -592,11 +592,16 @@ if "user" in st.session_state:
                     overflow-x: auto;
                     margin-top: 20px;
                 }
+                .calendario-container {
+    overflow-x: auto;
+    width: 100%;
+}
+
                 .calendario-grid {
                     display: grid;
-                    grid-template-columns: repeat(7, minmax(140px, 1fr));
-                    gap: 12px;
-                    min-width: 980px;
+                    grid-template-columns: repeat(7, 1fr);
+                    gap: 8px;
+                    width: 100%;
                 }
                 .dia-header {
                     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -702,6 +707,7 @@ if "user" in st.session_state:
                 }
                 </style>
                 """, unsafe_allow_html=True)
+                st.markdown('<div class="calendario-container">', unsafe_allow_html=True)
 
                 # Cabecera con nombres de días
                 dias_semana = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"]
@@ -795,6 +801,7 @@ if "user" in st.session_state:
                     
                     html_fila += '</div>'
                     st.markdown(html_fila, unsafe_allow_html=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
 
                     if dia_actual > dias_mes:
                         break
