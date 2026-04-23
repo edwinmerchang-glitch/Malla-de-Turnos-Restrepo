@@ -2227,11 +2227,17 @@ if "user" in st.session_state:
                     else:
                         return 'background-color: #d4edda; color: #155724'
                 
-                st.dataframe(
-                    df_heatmap.style.applymap(color_val, subset=[f"{h:02d}:00" for h in horas_operativas]),
-                    use_container_width=True,
-                    height=400
-                )
+                # Aplicar estilo condicional (compatible con pandas antiguos y nuevos)
+try:
+    styled_df = df_heatmap.style.applymap(color_val, subset=[f"{h:02d}:00" for h in horas_operativas])
+except AttributeError:
+    styled_df = df_heatmap.style.map(color_val, subset=[f"{h:02d}:00" for h in horas_operativas])
+
+st.dataframe(
+    styled_df,
+    use_container_width=True,
+    height=400
+)
                 
                 # Leyenda
                 st.markdown("""
