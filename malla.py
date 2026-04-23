@@ -2298,7 +2298,7 @@ if "user" in st.session_state:
                         f"cobertura_{fecha_analisis.strftime('%Y%m%d')}.xlsx",
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     )
-                    )
+
         
         # ============ TAB 4: RESUMEN GENERAL ============
         with tab4:
