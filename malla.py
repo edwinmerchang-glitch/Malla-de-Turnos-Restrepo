@@ -1699,20 +1699,558 @@ if "user" in st.session_state:
         
         st.info("Funcion en desarrollo - Generacion automatica de turnos")
 
-    # ============ PAGINA: REPORTES (ADMIN) ============
-    elif op == "Reportes":
-        if user.rol != "admin":
-            st.error("❌ No tienes permiso")
-            st.stop()
+# ============ PAGINA: REPORTES (ADMIN) - VERSIÓN COMPLETA ============
+elif op == "Reportes":
+    if user.rol != "admin":
+        st.error("❌ No tienes permiso")
+        st.stop()
+    
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                padding: 1.5rem; border-radius: 15px; margin-bottom: 2rem;">
+        <h2 style="color: white; text-align: center; margin: 0;">📊 Reportes Generales</h2>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Obtener datos necesarios
+    empleados = session.query(Empleado).all()
+    turnos = session.query(Turno).all()
+    areas_disponibles = list(set([e.area for e in empleados if e.area]))
+    areas_disponibles.sort()
+    
+    if not empleados:
+        st.warning("No hay empleados registrados")
+        st.stop()
+    
+    if not turnos:
+        st.warning("No hay turnos registrados")
+        st.stop()
+    
+    # Filtros de fecha
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        fecha_inicio = st.date_input("📅 Fecha inicio", date.today())
+    with col2:
+        fecha_fin = st.date_input("📅 Fecha fin", date.today() + timedelta(days=30))
+    with col3:
+        area_filtro = st.selectbox("🏢 Filtrar por área", ["Todas"] + areas_disponibles)
+    
+    # Obtener asignaciones en el rango
+    asignaciones = session.query(Asignacion).filter(
+        Asignacion.fecha.between(fecha_inicio, fecha_fin)
+    ).all()
+    
+    # Preparar datos
+    empleados_dict = {e.id: e for e in empleados}
+    turnos_dict = {t.id: t for t in turnos}
+    
+    # Crear estructura para análisis horario
+    horas_del_dia = list(range(0, 24))
+    franjas_horarias = [f"{h:02d}:00 - {h+1:02d}:00" for h in horas_del_dia]
+    
+    # ============ TABS PARA DIFERENTES VISTAS ============
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "📊 Cubrimiento Diario", 
+        "📈 Cubrimiento por Área", 
+        "⚠️ Áreas Descubiertas",
+        "📋 Resumen General"
+    ])
+    
+    # ============ TAB 1: CUBRIMIENTO DIARIO ============
+    with tab1:
+        st.markdown("### 📊 Empleados con Turno Asignado por Día")
         
-        st.markdown("""
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                    padding: 1.5rem; border-radius: 15px; margin-bottom: 2rem;">
-            <h2 style="color: white; text-align: center; margin: 0;">📊 Reportes Generales</h2>
-        </div>
-        """, unsafe_allow_html=True)
+        # Agrupar asignaciones por fecha
+        asignaciones_por_dia = {}
+        for a in asignaciones:
+            fecha_str = a.fecha.strftime("%Y-%m-%d")
+            if fecha_str not in asignaciones_por_dia:
+                asignaciones_por_dia[fecha_str] = {
+                    'total': 0,
+                    'por_area': {},
+                    'empleados_ids': set()
+                }
+            asignaciones_por_dia[fecha_str]['total'] += 1
+            asignaciones_por_dia[fecha_str]['empleados_ids'].add(a.empleado_id)
+            
+            # Por área
+            emp = empleados_dict.get(a.empleado_id)
+            if emp and emp.area:
+                area = emp.area
+                if area not in asignaciones_por_dia[fecha_str]['por_area']:
+                    asignaciones_por_dia[fecha_str]['por_area'][area] = {'turnos': 0, 'empleados': set()}
+                asignaciones_por_dia[fecha_str]['por_area'][area]['turnos'] += 1
+                asignaciones_por_dia[fecha_str]['por_area'][area]['empleados'].add(a.empleado_id)
         
-        st.info("Funcion en desarrollo - Reportes avanzados")
+        # Crear DataFrame para visualización
+        fechas_ordenadas = sorted(asignaciones_por_dia.keys())
+        
+        if fechas_ordenadas:
+            data_diaria = []
+            for fecha_str in fechas_ordenadas:
+                fecha_obj = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+                dia_semana = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"][fecha_obj.weekday()]
+                
+                info = asignaciones_por_dia[fecha_str]
+                total_empleados_area = len([e for e in empleados if e.area and (area_filtro == "Todas" or e.area == area_filtro)])
+                
+                if area_filtro == "Todas":
+                    total_empleados_activos = len([e for e in empleados if e.area])
+                    empleados_con_turno = len(info['empleados_ids'])
+                else:
+                    empleados_con_turno = len(info['por_area'].get(area_filtro, {}).get('empleados', set()))
+                    total_empleados_activos = len([e for e in empleados if e.area == area_filtro])
+                
+                porcentaje = round((empleados_con_turno / total_empleados_activos * 100) if total_empleados_activos > 0 else 0, 1)
+                
+                data_diaria.append({
+                    "Fecha": fecha_obj.strftime("%d/%m/%Y"),
+                    "Día": dia_semana,
+                    "Turnos Asignados": info['total'] if area_filtro == "Todas" else info['por_area'].get(area_filtro, {}).get('turnos', 0),
+                    "Empleados con Turno": empleados_con_turno,
+                    "Total Empleados": total_empleados_activos,
+                    "% Cubrimiento": f"{porcentaje}%"
+                })
+            
+            df_diario = pd.DataFrame(data_diaria)
+            
+            # Métricas resumen
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("📅 Días analizados", len(fechas_ordenadas))
+            with col2:
+                total_turnos = df_diario["Turnos Asignados"].sum()
+                st.metric("📊 Total turnos", total_turnos)
+            with col3:
+                prom_diario = round(df_diario["Turnos Asignados"].mean(), 1)
+                st.metric("📈 Promedio diario", prom_diario)
+            with col4:
+                if area_filtro == "Todas":
+                    prom_cubrimiento = round(df_diario["% Cubrimiento"].str.rstrip('%').astype(float).mean(), 1)
+                else:
+                    prom_cubrimiento = round(df_diario["% Cubrimiento"].str.rstrip('%').astype(float).mean(), 1)
+                st.metric("✅ Cubrimiento promedio", f"{prom_cubrimiento}%")
+            
+            # Mostrar tabla
+            st.dataframe(df_diario, use_container_width=True, hide_index=True)
+            
+            # Gráfico de barras
+            st.markdown("#### 📊 Evolución del Cubrimiento")
+            
+            # Preparar datos para gráfico
+            df_graf = df_diario.copy()
+            df_graf["% Cubrimiento"] = df_graf["% Cubrimiento"].str.rstrip('%').astype(float)
+            df_graf["Fecha"] = pd.to_datetime(df_graf["Fecha"], format="%d/%m/%Y")
+            df_graf = df_graf.sort_values("Fecha")
+            
+            chart_data = pd.DataFrame({
+                "Fecha": df_graf["Fecha"].dt.strftime("%d/%m"),
+                "Empleados con Turno": df_graf["Empleados con Turno"],
+                "Total Empleados": df_graf["Total Empleados"],
+                "% Cubrimiento": df_graf["% Cubrimiento"]
+            })
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.bar_chart(chart_data.set_index("Fecha")[["Empleados con Turno", "Total Empleados"]])
+            with col2:
+                st.line_chart(chart_data.set_index("Fecha")["% Cubrimiento"])
+            
+            # Exportar
+            if st.button("📥 Exportar reporte diario a Excel", key="export_diario"):
+                output = BytesIO()
+                with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                    df_diario.to_excel(writer, sheet_name="Cubrimiento Diario", index=False)
+                    
+                    # Hoja de resumen
+                    resumen = pd.DataFrame({
+                        "Métrica": ["Días analizados", "Total turnos", "Promedio diario", "Cubrimiento promedio"],
+                        "Valor": [len(fechas_ordenadas), total_turnos, prom_diario, f"{prom_cubrimiento}%"]
+                    })
+                    resumen.to_excel(writer, sheet_name="Resumen", index=False)
+                
+                output.seek(0)
+                st.download_button(
+                    "📥 Descargar Excel",
+                    output,
+                    f"reporte_diario_{fecha_inicio.strftime('%Y%m%d')}_{fecha_fin.strftime('%Y%m%d')}.xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+        else:
+            st.info(f"No hay asignaciones en el rango seleccionado ({fecha_inicio} - {fecha_fin})")
+    
+    # ============ TAB 2: CUBRIMIENTO POR ÁREA ============
+    with tab2:
+        st.markdown("### 📈 Cubrimiento por Área")
+        
+        # Calcular estadísticas por área
+        stats_por_area = {}
+        total_empleados_por_area = {}
+        
+        for e in empleados:
+            if e.area:
+                if e.area not in total_empleados_por_area:
+                    total_empleados_por_area[e.area] = 0
+                total_empleados_por_area[e.area] += 1
+        
+        for a in asignaciones:
+            emp = empleados_dict.get(a.empleado_id)
+            if emp and emp.area:
+                area = emp.area
+                if area not in stats_por_area:
+                    stats_por_area[area] = {
+                        'turnos': 0,
+                        'empleados_unicos': set(),
+                        'dias': set()
+                    }
+                stats_por_area[area]['turnos'] += 1
+                stats_por_area[area]['empleados_unicos'].add(a.empleado_id)
+                stats_por_area[area]['dias'].add(a.fecha)
+        
+        if stats_por_area:
+            data_areas = []
+            for area in areas_disponibles:
+                stats = stats_por_area.get(area, {'turnos': 0, 'empleados_unicos': set(), 'dias': set()})
+                total_emp = total_empleados_por_area.get(area, 0)
+                
+                emp_con_turno = len(stats['empleados_unicos'])
+                porcentaje_emp = round((emp_con_turno / total_emp * 100) if total_emp > 0 else 0, 1)
+                
+                dias_con_turno = len(stats['dias'])
+                total_dias = (fecha_fin - fecha_inicio).days + 1
+                porcentaje_dias = round((dias_con_turno / total_dias * 100) if total_dias > 0 else 0, 1)
+                
+                data_areas.append({
+                    "Área": area,
+                    "Total Empleados": total_emp,
+                    "Empleados con Turno": emp_con_turno,
+                    "% Empleados Cubiertos": f"{porcentaje_emp}%",
+                    "Total Turnos": stats['turnos'],
+                    "Días con Turnos": dias_con_turno,
+                    "% Días Cubiertos": f"{porcentaje_dias}%",
+                    "Promedio Turnos/Día": round(stats['turnos'] / dias_con_turno, 1) if dias_con_turno > 0 else 0
+                })
+            
+            df_areas = pd.DataFrame(data_areas)
+            
+            # Métricas generales
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("🏢 Total Áreas", len(areas_disponibles))
+            with col2:
+                areas_con_cobertura = len([a for a in data_areas if float(a["% Empleados Cubiertos"].rstrip('%')) > 0])
+                st.metric("✅ Áreas con cobertura", areas_con_cobertura)
+            with col3:
+                prom_cob = df_areas["% Empleados Cubiertos"].str.rstrip('%').astype(float).mean()
+                st.metric("📊 Cubrimiento promedio", f"{round(prom_cob, 1)}%")
+            
+            # Mostrar tabla
+            st.dataframe(df_areas, use_container_width=True, hide_index=True)
+            
+            # Gráfico comparativo
+            st.markdown("#### 📊 Comparativo de Cubrimiento por Área")
+            
+            df_graf_areas = df_areas.copy()
+            df_graf_areas["% Cubrimiento"] = df_graf_areas["% Empleados Cubiertos"].str.rstrip('%').astype(float)
+            df_graf_areas = df_graf_areas.sort_values("% Cubrimiento", ascending=False)
+            
+            st.bar_chart(df_graf_areas.set_index("Área")[["% Cubrimiento", "Total Turnos"]])
+            
+            # Exportar
+            if st.button("📥 Exportar reporte por área a Excel", key="export_areas"):
+                output = BytesIO()
+                with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                    df_areas.to_excel(writer, sheet_name="Cubrimiento por Área", index=False)
+                output.seek(0)
+                st.download_button(
+                    "📥 Descargar Excel",
+                    output,
+                    f"reporte_areas_{fecha_inicio.strftime('%Y%m%d')}_{fecha_fin.strftime('%Y%m%d')}.xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+        else:
+            st.info("No hay datos de asignaciones en el rango seleccionado")
+    
+    # ============ TAB 3: ÁREAS DESCUBIERTAS ============
+    with tab3:
+        st.markdown("### ⚠️ Detección de Áreas Descubiertas por Hora")
+        st.caption("Análisis de franjas horarias sin empleados asignados por área")
+        
+        # Seleccionar fecha específica para análisis detallado
+        fecha_analisis = st.date_input(
+            "📅 Selecciona fecha para análisis horario",
+            fecha_inicio,
+            min_value=fecha_inicio,
+            max_value=fecha_fin,
+            key="fecha_analisis"
+        )
+        
+        # Filtrar asignaciones para la fecha seleccionada
+        asignaciones_fecha = [a for a in asignaciones if a.fecha == fecha_analisis]
+        
+        if not asignaciones_fecha:
+            st.warning(f"No hay asignaciones para el {fecha_analisis.strftime('%d/%m/%Y')}")
+        else:
+            # Organizar turnos por área y hora
+            cobertura_por_area_hora = {}
+            
+            for area in areas_disponibles:
+                cobertura_por_area_hora[area] = {h: 0 for h in horas_del_dia}
+            
+            for a in asignaciones_fecha:
+                emp = empleados_dict.get(a.empleado_id)
+                turno = turnos_dict.get(a.turno_id)
+                
+                if emp and emp.area and turno:
+                    area = emp.area
+                    try:
+                        hora_inicio = int(turno.inicio.split(':')[0])
+                        hora_fin = int(turno.fin.split(':')[0])
+                        if hora_fin == 0:
+                            hora_fin = 24
+                        
+                        for h in range(hora_inicio, hora_fin):
+                            if h < 24:
+                                cobertura_por_area_hora[area][h] += 1
+                    except:
+                        pass
+            
+            # Identificar áreas descubiertas
+            areas_descubiertas = []
+            umbral_minimo = st.slider("Umbral mínimo de empleados requeridos por hora", 0, 10, 1)
+            
+            for area in areas_disponibles:
+                horas_descubiertas = []
+                for h in horas_del_dia:
+                    if cobertura_por_area_hora[area][h] < umbral_minimo:
+                        horas_descubiertas.append(h)
+                
+                if horas_descubiertas:
+                    # Agrupar horas consecutivas
+                    franjas_descubiertas = []
+                    if horas_descubiertas:
+                        inicio = horas_descubiertas[0]
+                        fin = horas_descubiertas[0]
+                        for h in horas_descubiertas[1:]:
+                            if h == fin + 1:
+                                fin = h
+                            else:
+                                franjas_descubiertas.append((inicio, fin + 1))
+                                inicio = h
+                                fin = h
+                        franjas_descubiertas.append((inicio, fin + 1))
+                    
+                    areas_descubiertas.append({
+                        'area': area,
+                        'total_empleados': total_empleados_por_area.get(area, 0),
+                        'horas_descubiertas': horas_descubiertas,
+                        'franjas': franjas_descubiertas,
+                        'total_horas': len(horas_descubiertas)
+                    })
+            
+            # Mostrar resultados
+            if areas_descubiertas:
+                st.warning(f"⚠️ Se encontraron {len(areas_descubiertas)} áreas con cobertura insuficiente")
+                
+                for info in sorted(areas_descubiertas, key=lambda x: x['total_horas'], reverse=True):
+                    with st.expander(f"🔴 {info['area']} - {info['total_horas']} horas descubiertas"):
+                        st.markdown(f"**Total empleados en el área:** {info['total_empleados']}")
+                        st.markdown(f"**Franjas horarias sin cobertura suficiente:**")
+                        
+                        for inicio, fin in info['franjas']:
+                            st.markdown(f"- 🕐 {inicio:02d}:00 - {fin:02d}:00")
+                        
+                        # Mostrar tabla de cobertura por hora
+                        cobertura_horas = []
+                        for h in horas_del_dia:
+                            empleados = cobertura_por_area_hora[info['area']][h]
+                            estado = "❌ Descubierto" if empleados < umbral_minimo else "✅ Cubierto"
+                            cobertura_horas.append({
+                                "Hora": f"{h:02d}:00 - {h+1:02d}:00",
+                                "Empleados": empleados,
+                                "Estado": estado
+                            })
+                        
+                        df_cobertura = pd.DataFrame(cobertura_horas)
+                        st.dataframe(df_cobertura, use_container_width=True, hide_index=True)
+            else:
+                st.success(f"✅ Todas las áreas tienen al menos {umbral_minimo} empleado(s) por hora")
+            
+            # Mostrar mapa de calor de cobertura
+            st.markdown("#### 🗺️ Mapa de Cobertura por Área y Hora")
+            
+            # Crear matriz para el heatmap
+            data_heatmap = []
+            for area in areas_disponibles:
+                fila = {"Área": area}
+                for h in horas_del_dia:
+                    fila[f"{h:02d}:00"] = cobertura_por_area_hora[area][h]
+                data_heatmap.append(fila)
+            
+            df_heatmap = pd.DataFrame(data_heatmap)
+            
+            # Aplicar estilo condicional
+            def color_val(val):
+                if val == 0:
+                    return 'background-color: #ffcccc; color: #cc0000; font-weight: bold'
+                elif val < umbral_minimo:
+                    return 'background-color: #fff3cd; color: #856404'
+                else:
+                    return 'background-color: #d4edda; color: #155724'
+            
+            st.dataframe(
+                df_heatmap.style.applymap(color_val, subset=[f"{h:02d}:00" for h in horas_del_dia]),
+                use_container_width=True,
+                height=400
+            )
+            
+            # Leyenda
+            st.markdown("""
+            <div style="display: flex; gap: 20px; margin-top: 10px;">
+                <span><span style="background: #ffcccc; padding: 5px 10px; border-radius: 5px;">🔴 0 empleados</span></span>
+                <span><span style="background: #fff3cd; padding: 5px 10px; border-radius: 5px;">🟡 Menos del umbral</span></span>
+                <span><span style="background: #d4edda; padding: 5px 10px; border-radius: 5px;">🟢 Suficiente cobertura</span></span>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Exportar
+            if st.button("📥 Exportar análisis de cobertura", key="export_cobertura"):
+                output = BytesIO()
+                with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                    df_heatmap.to_excel(writer, sheet_name=f"Cobertura_{fecha_analisis}", index=False)
+                    
+                    if areas_descubiertas:
+                        data_desc = []
+                        for info in areas_descubiertas:
+                            franjas_str = "; ".join([f"{i:02d}:00-{f:02d}:00" for i, f in info['franjas']])
+                            data_desc.append({
+                                "Área": info['area'],
+                                "Total Empleados": info['total_empleados'],
+                                "Horas Descubiertas": info['total_horas'],
+                                "Franjas": franjas_str
+                            })
+                        pd.DataFrame(data_desc).to_excel(writer, sheet_name="Áreas Descubiertas", index=False)
+                
+                output.seek(0)
+                st.download_button(
+                    "📥 Descargar Excel",
+                    output,
+                    f"cobertura_{fecha_analisis.strftime('%Y%m%d')}.xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+    
+    # ============ TAB 4: RESUMEN GENERAL ============
+    with tab4:
+        st.markdown("### 📋 Resumen General del Período")
+        
+        # Estadísticas generales
+        total_empleados_sistema = len([e for e in empleados if e.area])
+        empleados_con_turno_periodo = len(set([a.empleado_id for a in asignaciones]))
+        total_turnos_periodo = len(asignaciones)
+        dias_en_periodo = (fecha_fin - fecha_inicio).days + 1
+        
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("📅 Días en período", dias_en_periodo)
+        with col2:
+            st.metric("👥 Total empleados", total_empleados_sistema)
+        with col3:
+            st.metric("✅ Empleados con turno", empleados_con_turno_periodo)
+        with col4:
+            st.metric("📊 Total turnos", total_turnos_periodo)
+        
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            porcentaje_global = round((empleados_con_turno_periodo / total_empleados_sistema * 100) if total_empleados_sistema > 0 else 0, 1)
+            st.metric("📈 Cubrimiento global", f"{porcentaje_global}%")
+        with col2:
+            prom_turnos_dia = round(total_turnos_periodo / dias_en_periodo, 1) if dias_en_periodo > 0 else 0
+            st.metric("📊 Prom. turnos/día", prom_turnos_dia)
+        with col3:
+            prom_turnos_emp = round(total_turnos_periodo / empleados_con_turno_periodo, 1) if empleados_con_turno_periodo > 0 else 0
+            st.metric("👤 Prom. turnos/emp", prom_turnos_emp)
+        with col4:
+            areas_activas = len(set([empleados_dict[a.empleado_id].area for a in asignaciones if empleados_dict.get(a.empleado_id) and empleados_dict[a.empleado_id].area]))
+            st.metric("🏢 Áreas activas", f"{areas_activas}/{len(areas_disponibles)}")
+        
+        # Ranking de empleados con más turnos
+        st.markdown("---")
+        st.markdown("#### 🏆 Ranking de Empleados con Más Turnos")
+        
+        turnos_por_empleado = {}
+        for a in asignaciones:
+            emp = empleados_dict.get(a.empleado_id)
+            if emp:
+                if emp.id not in turnos_por_empleado:
+                    turnos_por_empleado[emp.id] = {
+                        'nombre': emp.nombre,
+                        'area': emp.area or 'N/A',
+                        'turnos': 0
+                    }
+                turnos_por_empleado[emp.id]['turnos'] += 1
+        
+        ranking = sorted(turnos_por_empleado.values(), key=lambda x: x['turnos'], reverse=True)[:10]
+        
+        if ranking:
+            df_ranking = pd.DataFrame(ranking)
+            df_ranking.index = range(1, len(df_ranking) + 1)
+            df_ranking.index.name = "#"
+            st.dataframe(df_ranking, use_container_width=True)
+        
+        # Ranking de áreas con más actividad
+        st.markdown("#### 🏢 Ranking de Áreas por Actividad")
+        
+        turnos_por_area = {}
+        for a in asignaciones:
+            emp = empleados_dict.get(a.empleado_id)
+            if emp and emp.area:
+                area = emp.area
+                turnos_por_area[area] = turnos_por_area.get(area, 0) + 1
+        
+        ranking_areas = sorted(turnos_por_area.items(), key=lambda x: x[1], reverse=True)
+        
+        if ranking_areas:
+            df_ranking_areas = pd.DataFrame(ranking_areas, columns=["Área", "Total Turnos"])
+            df_ranking_areas.index = range(1, len(df_ranking_areas) + 1)
+            df_ranking_areas.index.name = "#"
+            st.dataframe(df_ranking_areas, use_container_width=True)
+        
+        # Exportar resumen completo
+        if st.button("📥 Exportar resumen completo", key="export_resumen"):
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                # Hoja de resumen
+                resumen_data = {
+                    "Métrica": [
+                        "Período", "Días analizados", "Total empleados", 
+                        "Empleados con turno", "Total turnos", "Cubrimiento global",
+                        "Promedio turnos/día", "Promedio turnos/empleado", "Áreas activas"
+                    ],
+                    "Valor": [
+                        f"{fecha_inicio} - {fecha_fin}", dias_en_periodo, total_empleados_sistema,
+                        empleados_con_turno_periodo, total_turnos_periodo, f"{porcentaje_global}%",
+                        prom_turnos_dia, prom_turnos_emp, f"{areas_activas}/{len(areas_disponibles)}"
+                    ]
+                }
+                pd.DataFrame(resumen_data).to_excel(writer, sheet_name="Resumen", index=False)
+                
+                # Ranking empleados
+                if ranking:
+                    pd.DataFrame(ranking).to_excel(writer, sheet_name="Ranking Empleados", index=False)
+                
+                # Ranking áreas
+                if ranking_areas:
+                    pd.DataFrame(ranking_areas, columns=["Área", "Total Turnos"]).to_excel(
+                        writer, sheet_name="Ranking Áreas", index=False
+                    )
+            
+            output.seek(0)
+            st.download_button(
+                "📥 Descargar Excel",
+                output,
+                f"resumen_{fecha_inicio.strftime('%Y%m%d')}_{fecha_fin.strftime('%Y%m%d')}.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
 
     # ============ PAGINA: BACKUP (ADMIN) ============
     elif op == "Backup":
