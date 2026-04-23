@@ -585,7 +585,7 @@ if "user" in st.session_state:
             if vista == "📅 Grupal":
                 st.markdown(f"### 📅 Calendario Grupal - {mes_sel} {año_sel}")
 
-                # Cabecera con nombres de días usando columnas
+                # Cabecera con nombres de días
                 dias_semana = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"]
                 dias_semana_corto = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
                 
@@ -633,15 +633,12 @@ if "user" in st.session_state:
                     for i, dia_num in enumerate(semana):
                         with cols[i]:
                             if dia_num is None:
-                                st.markdown("""
-                                <div style="background: #fafafa; border-radius: 10px; min-height: 180px; 
-                                            opacity: 0.5; border: 1px dashed #ddd;"></div>
-                                """, unsafe_allow_html=True)
+                                # Celda vacía
+                                with st.container():
+                                    st.markdown("<br>", unsafe_allow_html=True)
                                 continue
                             
                             fecha_actual = date(año_sel, mes_num, dia_num)
-                            es_fin = fecha_actual.weekday() >= 5
-                            bg_color = "#fef9e6" if es_fin else "white"
                             dia_nombre = dias_semana_corto[fecha_actual.weekday()]
                             
                             # Obtener empleados con turno este día
@@ -653,62 +650,78 @@ if "user" in st.session_state:
                             
                             empleados_con_turno.sort(key=lambda x: (x[0].id != user.id, x[0].nombre))
                             
-                            # Construir contenido de la celda
-                            celda_html = f"""
-                            <div style="background: {bg_color}; border-radius: 10px; padding: 8px; 
-                                        min-height: 180px; border: 1px solid #e0e0e0; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                                <div style="display: flex; justify-content: space-between; align-items: center; 
-                                            border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 8px;">
-                                    <span style="font-weight: bold; font-size: 1.1rem;">{dia_num}</span>
-                                    <span style="font-size: 0.7rem; color: #888;">{dia_nombre}</span>
-                                </div>
-                                <div style="max-height: 150px; overflow-y: auto;">
-                            """
-                            
-                            if empleados_con_turno:
-                                for emp, turno in empleados_con_turno[:6]:
-                                    es_usuario = emp.id == user.id
-                                    border_color = "#2e7d32" if es_usuario else "#4CAF50"
-                                    bg_item = "#e8f5e9" if es_usuario else "#f4f7fb"
-                                    icono = "⭐" if es_usuario else "👤"
-                                    
-                                    celda_html += f"""
-                                    <div style="background: {bg_item}; border-radius: 8px; padding: 6px 8px; 
-                                                margin-bottom: 6px; border-left: 3px solid {border_color};">
-                                        <div style="font-weight: 600; font-size: 0.75rem; display: flex; align-items: center; gap: 3px;">
-                                            <span>{icono}</span> <span>{emp.nombre}</span>
-                                        </div>
-                                        <div style="display: inline-block; background: #e0e7ff; padding: 1px 8px; 
-                                                    border-radius: 12px; font-size: 0.65rem; font-weight: bold; margin: 3px 0;">
-                                            {turno.nombre}
-                                        </div>
-                                        <div style="font-size: 0.6rem; color: #666; display: flex; align-items: center; gap: 3px;">
-                                            <span>🕒</span> {turno.inicio[:5]} - {turno.fin[:5]}
-                                        </div>
-                                    </div>
-                                    """
+                            # Crear un expander o contenedor para cada día
+                            with st.container():
+                                # Cabecera del día
+                                bg_color = "#fff3e0" if fecha_actual.weekday() >= 5 else "#f8f9fc"
                                 
-                                if len(empleados_con_turno) > 6:
-                                    restantes = len(empleados_con_turno) - 6
-                                    celda_html += f"""
-                                    <div style="font-size: 0.65rem; color: #888; text-align: center; 
-                                                padding-top: 4px; border-top: 1px dashed #ddd;">
-                                        +{restantes} empleado(s) más
+                                st.markdown(f"""
+                                <div style="background: {bg_color}; border-radius: 10px 10px 0 0; 
+                                            padding: 8px; border: 1px solid #e0e0e0; border-bottom: none;">
+                                    <span style="font-weight: bold; font-size: 1.1rem;">{dia_num}</span>
+                                    <span style="font-size: 0.7rem; color: #888; margin-left: 8px;">{dia_nombre}</span>
+                                    <span style="float: right; font-size: 0.7rem; color: #666;">
+                                        {len(empleados_con_turno)} turnos
+                                    </span>
+                                </div>
+                                """, unsafe_allow_html=True)
+                                
+                                # Lista de turnos
+                                if empleados_con_turno:
+                                    for emp, turno in empleados_con_turno[:8]:
+                                        es_usuario = emp.id == user.id
+                                        
+                                        if es_usuario:
+                                            st.markdown(f"""
+                                            <div style="background: #e8f5e9; padding: 6px 8px; 
+                                                        border-left: 4px solid #2e7d32; border-bottom: 1px solid #e0e0e0;
+                                                        border-right: 1px solid #e0e0e0;">
+                                                <span style="font-weight: bold;">⭐ {emp.nombre}</span><br>
+                                                <span style="background: #c8e6c9; padding: 2px 8px; border-radius: 12px; 
+                                                             font-size: 0.7rem; font-weight: bold;">{turno.nombre}</span>
+                                                <span style="font-size: 0.65rem; color: #666; margin-left: 8px;">
+                                                    🕒 {turno.inicio[:5]} - {turno.fin[:5]}
+                                                </span>
+                                            </div>
+                                            """, unsafe_allow_html=True)
+                                        else:
+                                            st.markdown(f"""
+                                            <div style="background: white; padding: 6px 8px; 
+                                                        border-left: 4px solid #4CAF50; border-bottom: 1px solid #e0e0e0;
+                                                        border-right: 1px solid #e0e0e0;">
+                                                <span>👤 {emp.nombre}</span><br>
+                                                <span style="background: #e0e7ff; padding: 2px 8px; border-radius: 12px; 
+                                                             font-size: 0.7rem; font-weight: bold;">{turno.nombre}</span>
+                                                <span style="font-size: 0.65rem; color: #666; margin-left: 8px;">
+                                                    🕒 {turno.inicio[:5]} - {turno.fin[:5]}
+                                                </span>
+                                            </div>
+                                            """, unsafe_allow_html=True)
+                                    
+                                    if len(empleados_con_turno) > 8:
+                                        st.markdown(f"""
+                                        <div style="background: white; padding: 4px; text-align: center; 
+                                                    border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;
+                                                    font-size: 0.7rem; color: #888;">
+                                            +{len(empleados_con_turno) - 8} más
+                                        </div>
+                                        """, unsafe_allow_html=True)
+                                    else:
+                                        # Cerrar el borde inferior
+                                        st.markdown("""
+                                        <div style="border: 1px solid #e0e0e0; border-top: none; 
+                                                    border-radius: 0 0 10px 10px; height: 2px;"></div>
+                                        """, unsafe_allow_html=True)
+                                else:
+                                    st.markdown("""
+                                    <div style="background: white; padding: 15px 8px; text-align: center; 
+                                                border: 1px solid #e0e0e0; border-top: none; 
+                                                border-radius: 0 0 10px 10px; color: #bbb; font-size: 0.75rem;">
+                                        🌙 Descanso
                                     </div>
-                                    """
-                            else:
-                                celda_html += """
-                                <div style="text-align: center; color: #bbb; font-size: 0.7rem; padding: 20px 5px;">
-                                    🌙 Descanso
-                                </div>
-                                """
-                            
-                            celda_html += """
-                                </div>
-                            </div>
-                            """
-                            
-                            st.markdown(celda_html, unsafe_allow_html=True)
+                                    """, unsafe_allow_html=True)
+                                
+                                st.markdown("<br>", unsafe_allow_html=True)
                 
                 st.markdown('</div>', unsafe_allow_html=True)
 
