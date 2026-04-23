@@ -712,32 +712,46 @@ if "user" in st.session_state:
                 st.markdown(html_header, unsafe_allow_html=True)
 
                 # Preparar datos del mes
-                primer_dia = date(año_sel, mes_num, 1).weekday()
+                primer_dia_semana = date(año_sel, mes_num, 1).weekday()  # 0=Lunes, 6=Domingo
                 dias_mes = monthrange(año_sel, mes_num)[1]
-                dia_actual = 1
-                semanas = []
                 
-                # Construir matriz de semanas
+                # Crear matriz de días (6 semanas máximo)
+                calendario = []
+                semana = []
+                dia_actual = 1
+                
+                # Llenar primera semana con espacios vacíos
+                for i in range(7):
+                    if i < primer_dia_semana:
+                        semana.append(None)
+                    else:
+                        semana.append(dia_actual)
+                        dia_actual += 1
+                calendario.append(semana)
+                
+                # Llenar semanas restantes
                 while dia_actual <= dias_mes:
                     semana = []
                     for i in range(7):
-                        if dia_actual <= dias_mes and (len(semanas) > 0 or i >= primer_dia):
+                        if dia_actual <= dias_mes:
                             semana.append(dia_actual)
                             dia_actual += 1
                         else:
                             semana.append(None)
-                    semanas.append(semana)
+                    calendario.append(semana)
 
-                # Mostrar cada semana
-                for semana in semanas:
+                # Mostrar cada semana del calendario
+                for semana in calendario:
                     html_fila = '<div class="calendario-grid" style="margin-top: 12px;">'
+                    
                     for dia_num in semana:
                         if dia_num is None:
-                            html_fila += '<div class="dia-card" style="background: #fafafa; box-shadow: none; min-height: 200px;"></div>'
+                            # Celda vacía
+                            html_fila += '<div class="dia-card" style="background: #fafafa; box-shadow: none; min-height: 200px; opacity: 0.5;"></div>'
                             continue
                         
                         fecha_actual = date(año_sel, mes_num, dia_num)
-                        es_fin = fecha_actual.weekday() >= 5
+                        es_fin = fecha_actual.weekday() >= 5  # Sábado o Domingo
                         dia_semana_nombre = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"][fecha_actual.weekday()]
                         
                         # Obtener empleados con turno este día
@@ -781,6 +795,7 @@ if "user" in st.session_state:
                     
                     html_fila += '</div>'
                     st.markdown(html_fila, unsafe_allow_html=True)
+
                     if dia_actual > dias_mes:
                         break
 
