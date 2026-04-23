@@ -2115,30 +2115,33 @@ if "user" in st.session_state:
                             # Gráfico de barras horizontal para cobertura por hora
                             st.markdown("**📊 Cobertura por hora:**")
                             
-                            # Crear visualización con HTML/CSS
-                            html_barras = '<div style="font-family: monospace; margin: 10px 0;">'
+                            # Crear visualización con HTML/CSS (CORREGIDO)
                             for h in horas_operativas:
                                 empleados = cobertura_area[h]
                                 if empleados >= umbral_minimo:
                                     bar_color = "#2ed573"
+                                    text_color = "#2ed573"
                                 elif empleados > 0:
                                     bar_color = "#ffa502"
+                                    text_color = "#ffa502"
                                 else:
                                     bar_color = "#ff4757"
+                                    text_color = "#ff4757"
                                 
                                 bar_width = min(empleados * 20, 100)
-                                html_barras += f'''
+                                if bar_width == 0:
+                                    bar_width = 5  # Mínimo visible para barras vacías
+                                
+                                st.markdown(f"""
                                 <div style="display: flex; align-items: center; margin: 5px 0;">
                                     <span style="width: 60px; font-weight: bold;">{h:02d}:00</span>
-                                    <div style="flex: 1; height: 20px; background: #f0f0f0; border-radius: 10px; margin: 0 10px;">
-                                        <div style="width: {bar_width}%; height: 100%; background: {bar_color}; border-radius: 10px;"></div>
+                                    <div style="flex: 1; height: 24px; background: #f0f0f0; border-radius: 12px; margin: 0 10px; overflow: hidden;">
+                                        <div style="width: {bar_width}%; height: 100%; background: {bar_color}; border-radius: 12px;"></div>
                                     </div>
-                                    <span style="width: 30px; text-align: right;">{empleados}</span>
-                                    <span style="margin-left: 10px; font-size: 0.8rem; color: {'#2ed573' if empleados >= umbral_minimo else '#ff4757'};">{empleados}/{umbral_minimo}</span>
+                                    <span style="width: 30px; text-align: right; font-weight: 600;">{empleados}</span>
+                                    <span style="margin-left: 10px; font-size: 0.8rem; color: {text_color}; font-weight: 500;">{empleados}/{umbral_minimo}</span>
                                 </div>
-                                '''
-                            html_barras += '</div>'
-                            st.markdown(html_barras, unsafe_allow_html=True)
+                                """, unsafe_allow_html=True)
                         
                         with col2:
                             # Métricas del área
@@ -2275,15 +2278,16 @@ if "user" in st.session_state:
                     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                         df_heatmap.to_excel(writer, sheet_name=f"Cobertura_{fecha_analisis}", index=False)
                         
-                        if areas_descubiertas:
+                        # Usar areas_criticas y areas_riesgo en lugar de areas_descubiertas
+                        todas_area_criticas = areas_criticas + areas_riesgo
+                        if todas_area_criticas:
                             data_desc = []
-                            for info in areas_descubiertas:
-                                franjas_str = "; ".join([f"{i:02d}:00-{f:02d}:00" for i, f in info['franjas']])
+                            for info in todas_area_criticas:
                                 data_desc.append({
                                     "Área": info['area'],
-                                    "Total Empleados": info['total_empleados'],
-                                    "Horas Descubiertas": info['total_horas'],
-                                    "Franjas": franjas_str
+                                    "Total Empleados": info['total_emp'],
+                                    "Horas Descubiertas": info['horas_desc'],
+                                    "% Cubrimiento": f"{info['porcentaje']:.0f}%"
                                 })
                             pd.DataFrame(data_desc).to_excel(writer, sheet_name="Áreas Descubiertas", index=False)
                     
@@ -2293,6 +2297,7 @@ if "user" in st.session_state:
                         output,
                         f"cobertura_{fecha_analisis.strftime('%Y%m%d')}.xlsx",
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
                     )
         
         # ============ TAB 4: RESUMEN GENERAL ============
