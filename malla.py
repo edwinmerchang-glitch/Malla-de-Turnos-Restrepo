@@ -1213,6 +1213,7 @@ if "user" in st.session_state:
         
         turnos = session.query(Turno).all()
         turnos_dict = {t.id: t.nombre for t in turnos}
+        turnos_validos = set([t.nombre for t in turnos] + ["Descanso", "D", "—", ""])
         
         fecha_inicio = date(año, mes_num, 1)
         fecha_fin = date(año, mes_num, dias_mes)
@@ -1228,7 +1229,7 @@ if "user" in st.session_state:
                 matriz[a.empleado_id] = {}
             matriz[a.empleado_id][a.fecha.day] = a.turno_id
         
-        # ============ CONSTRUIR VARIABLE data ============
+        # Construir variable data
         data = []
         for emp in empleados:
             fila = {"Empleado": emp.nombre}
@@ -1237,14 +1238,20 @@ if "user" in st.session_state:
                 fila[str(dia)] = turnos_dict.get(turno_id, "—") if turno_id else "—"
             data.append(fila)
         
-        # Calcular total de turnos en el área
         total = sum(1 for emp_id in matriz for dia in matriz[emp_id])
         
         if data:
             df = pd.DataFrame(data)
             
             st.markdown("### ✏️ Editor de Matriz de Área")
-            st.caption("Haz clic en las celdas para asignar/quitar turnos (ej: '151', 'Descanso', 'D')")
+            
+            # Mostrar turnos disponibles
+            with st.expander("📋 Ver turnos disponibles", expanded=False):
+                cols_turnos = st.columns(5)
+                for i, t in enumerate(turnos):
+                    with cols_turnos[i % 5]:
+                        st.markdown(f"✅ `{t.nombre}` ({t.inicio}-{t.fin})")
+                st.caption("💡 Usa 'Descanso' o 'D' para quitar un turno")
             
             # Guardar estado original
             key_original_area = f"df_original_area_{mes}_{año}_{user.area}"
@@ -1264,11 +1271,34 @@ if "user" in st.session_state:
                 key=f"editor_area_{mes}_{año}"
             )
             
+            # ============ VALIDACIÓN EN TIEMPO REAL ============
+            celdas_invalidas = []
+            for index, row in df_editado.iterrows():
+                for dia in range(1, dias_mes + 1):
+                    dia_str = str(dia)
+                    valor = row[dia_str]
+                    if valor not in turnos_validos:
+                        celdas_invalidas.append({
+                            'empleado': row['Empleado'],
+                            'dia': dia,
+                            'valor': valor
+                        })
+            
             col1, col2, col3 = st.columns([1, 1, 2])
             
             with col1:
-                if st.button("💾 Guardar Cambios", type="primary", use_container_width=True, key="guardar_area"):
+                boton_guardar = st.button(
+                    "💾 Guardar Cambios", 
+                    type="primary", 
+                    use_container_width=True, 
+                    key="guardar_area",
+                    disabled=len(celdas_invalidas) > 0
+                )
+                
+                if boton_guardar:
                     cambios = 0
+                    errores = []
+                    
                     for index, row in df_editado.iterrows():
                         emp_id = empleados[index].id
                         original_row = st.session_state[key_original_area].iloc[index]
@@ -1291,7 +1321,7 @@ if "user" in st.session_state:
                                         session.delete(asig)
                                         cambios += 1
                                 else:
-                                    # Buscar turno por nombre
+                                    # Validar que el turno exista
                                     turno_obj = session.query(Turno).filter_by(nombre=nuevo_valor).first()
                                     if turno_obj:
                                         asig = session.query(Asignacion).filter_by(
@@ -1307,16 +1337,30 @@ if "user" in st.session_state:
                                                 turno_id=turno_obj.id
                                             ))
                                         cambios += 1
+                                    else:
+                                        errores.append(f"❌ Turno '{nuevo_valor}' no existe para {row['Empleado']} el día {dia}")
                     
-                    session.commit()
-                    st.success(f"✅ {cambios} cambios guardados correctamente")
-                    del st.session_state[key_original_area]
-                    st.rerun()
+                    if errores:
+                        for error in errores:
+                            st.error(error)
+                    else:
+                        session.commit()
+                        st.success(f"✅ {cambios} cambios guardados correctamente")
+                        del st.session_state[key_original_area]
+                        st.rerun()
             
             with col2:
                 if st.button("🔄 Descartar Cambios", use_container_width=True, key="descartar_area"):
                     del st.session_state[key_original_area]
                     st.rerun()
+            
+            # Mostrar errores de validación
+            if celdas_invalidas:
+                st.error("⚠️ Se encontraron turnos inválidos. Corrígelos para poder guardar:")
+                for inv in celdas_invalidas[:5]:  # Mostrar máximo 5 errores
+                    st.warning(f"• {inv['empleado']} - Día {inv['dia']}: '{inv['valor']}' no es un turno válido")
+                if len(celdas_invalidas) > 5:
+                    st.warning(f"... y {len(celdas_invalidas) - 5} errores más")
             
             # Métricas
             col_m1, col_m2 = st.columns(2)
@@ -1324,7 +1368,6 @@ if "user" in st.session_state:
                 st.metric("👥 Total empleados", len(empleados))
             with col_m2:
                 st.metric("📊 Total turnos en el área", total)
-
     # ============ PAGINA: ASIGNAR AREA ============
     elif op == "Asignar area":
         if user.rol != "supervisor":
@@ -1679,6 +1722,7 @@ if "user" in st.session_state:
         
         turnos = session.query(Turno).all()
         turnos_dict = {t.id: t.nombre for t in turnos}
+        turnos_validos = set([t.nombre for t in turnos] + ["Descanso", "D", "—", ""])
         
         fecha_inicio = date(año, mes_num, 1)
         fecha_fin = date(año, mes_num, dias_mes)
@@ -1693,7 +1737,7 @@ if "user" in st.session_state:
                 matriz[a.empleado_id] = {}
             matriz[a.empleado_id][a.fecha.day] = a.turno_id
         
-        # ============ CONSTRUIR VARIABLE data ============
+        # Construir variable data
         data = []
         for emp in empleados:
             fila = {
@@ -1708,19 +1752,25 @@ if "user" in st.session_state:
         
         total = sum(1 for emp in matriz for dia in matriz[emp])
         
-        # ============ EDITOR DE MATRIZ ============
         if data:
             df = pd.DataFrame(data)
             
             st.markdown("### ✏️ Editor de Matriz")
-            st.caption("Haz clic en las celdas de turno para cambiarlas (ej: '151', 'Descanso', 'D')")
             
-            # Guardar el estado original para comparar cambios después
+            # Mostrar turnos disponibles
+            with st.expander("📋 Ver turnos disponibles", expanded=False):
+                cols_turnos = st.columns(5)
+                for i, t in enumerate(turnos):
+                    with cols_turnos[i % 5]:
+                        st.markdown(f"✅ `{t.nombre}` ({t.inicio}-{t.fin})")
+                st.caption("💡 Usa 'Descanso' o 'D' para quitar un turno")
+            
+            # Guardar estado original
             key_original = f"df_original_{mes}_{año}_{area_filtro}"
             if key_original not in st.session_state:
                 st.session_state[key_original] = df.copy()
             
-            # Usar data_editor en lugar de dataframe
+            # Usar data_editor
             df_editado = st.data_editor(
                 df,
                 column_config={
@@ -1735,12 +1785,35 @@ if "user" in st.session_state:
                 key=f"editor_matriz_{mes}_{año}_{area_filtro}"
             )
             
+            # ============ VALIDACIÓN EN TIEMPO REAL ============
+            celdas_invalidas = []
+            for index, row in df_editado.iterrows():
+                for dia in range(1, dias_mes + 1):
+                    dia_str = str(dia)
+                    valor = row[dia_str]
+                    if valor not in turnos_validos:
+                        celdas_invalidas.append({
+                            'empleado': row['Empleado'],
+                            'area': row['Area'],
+                            'dia': dia,
+                            'valor': valor
+                        })
+            
             col1, col2, col3 = st.columns([1, 1, 2])
+            
             with col1:
-                if st.button("💾 Guardar Cambios", type="primary", use_container_width=True, key="guardar_matriz"):
+                boton_guardar = st.button(
+                    "💾 Guardar Cambios", 
+                    type="primary", 
+                    use_container_width=True, 
+                    key="guardar_matriz",
+                    disabled=len(celdas_invalidas) > 0
+                )
+                
+                if boton_guardar:
                     cambios_realizados = 0
+                    errores = []
                     
-                    # Iterar por cada fila del dataframe editado
                     for index, row in df_editado.iterrows():
                         emp_id = empleados[index].id
                         original_row = st.session_state[key_original].iloc[index]
@@ -1750,47 +1823,60 @@ if "user" in st.session_state:
                             nuevo_valor = row[dia_str]
                             original_valor = original_row[dia_str]
                             
-                            # Solo procesar si cambió
                             if nuevo_valor != original_valor:
                                 fecha_asignar = date(año, mes_num, dia)
                                 
-                                # 1. Buscar turno por nombre
-                                turno_obj = session.query(Turno).filter_by(nombre=nuevo_valor).first()
-                                
-                                # 2. Buscar asignación existente
-                                asignacion_existente = session.query(Asignacion).filter_by(
-                                    empleado_id=emp_id,
-                                    fecha=fecha_asignar
-                                ).first()
-                                
-                                if not turno_obj:
-                                    # Si el valor es "Descanso", "D" o vacío, eliminamos la asignación si existe
+                                if nuevo_valor in ["Descanso", "D", "", "—"]:
+                                    asignacion_existente = session.query(Asignacion).filter_by(
+                                        empleado_id=emp_id,
+                                        fecha=fecha_asignar
+                                    ).first()
                                     if asignacion_existente:
                                         session.delete(asignacion_existente)
                                         cambios_realizados += 1
                                 else:
-                                    # Si hay turno, creamos o actualizamos
-                                    if asignacion_existente:
-                                        asignacion_existente.turno_id = turno_obj.id
-                                    else:
-                                        nueva_asig = Asignacion(
+                                    turno_obj = session.query(Turno).filter_by(nombre=nuevo_valor).first()
+                                    
+                                    if turno_obj:
+                                        asignacion_existente = session.query(Asignacion).filter_by(
                                             empleado_id=emp_id,
-                                            fecha=fecha_asignar,
-                                            turno_id=turno_obj.id
-                                        )
-                                        session.add(nueva_asig)
-                                    cambios_realizados += 1
+                                            fecha=fecha_asignar
+                                        ).first()
+                                        
+                                        if asignacion_existente:
+                                            asignacion_existente.turno_id = turno_obj.id
+                                        else:
+                                            nueva_asig = Asignacion(
+                                                empleado_id=emp_id,
+                                                fecha=fecha_asignar,
+                                                turno_id=turno_obj.id
+                                            )
+                                            session.add(nueva_asig)
+                                        cambios_realizados += 1
+                                    else:
+                                        errores.append(f"❌ Turno '{nuevo_valor}' no existe para {row['Empleado']} el día {dia}")
                     
-                    session.commit()
-                    st.success(f"✅ {cambios_realizados} cambios guardados exitosamente")
-                    # Limpiar caché de la sesión para forzar recarga visual
-                    del st.session_state[key_original]
-                    st.rerun()
+                    if errores:
+                        for error in errores:
+                            st.error(error)
+                    else:
+                        session.commit()
+                        st.success(f"✅ {cambios_realizados} cambios guardados exitosamente")
+                        del st.session_state[key_original]
+                        st.rerun()
             
             with col2:
                 if st.button("🔄 Descartar Cambios", use_container_width=True, key="descartar_matriz"):
                     del st.session_state[key_original]
                     st.rerun()
+            
+            # Mostrar errores de validación
+            if celdas_invalidas:
+                st.error("⚠️ Se encontraron turnos inválidos. Corrígelos para poder guardar:")
+                for inv in celdas_invalidas[:5]:
+                    st.warning(f"• {inv['empleado']} ({inv['area']}) - Día {inv['dia']}: '{inv['valor']}' no es un turno válido")
+                if len(celdas_invalidas) > 5:
+                    st.warning(f"... y {len(celdas_invalidas) - 5} errores más")
             
             st.metric("Total turnos asignados", total)
             
