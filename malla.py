@@ -1966,73 +1966,43 @@ if "user" in st.session_state:
             else:
                 st.info("No hay datos de asignaciones en el rango seleccionado")
         
-        # ============ TAB 3: ÁREAS DESCUBIERTAS ============
+        # ============ TAB 3: ÁREAS DESCUBIERTAS (VERSIÓN MODERNA) ============
         with tab3:
-            st.markdown("### ⚠️ Detección de Áreas Descubiertas por Hora")
-            st.caption("Análisis de franjas horarias sin empleados asignados por área durante el horario de operación")
+            st.markdown("### ⚠️ Análisis de Cobertura en Horas Pico")
+            st.caption("Estrategia de cobertura para horario de alta demanda (10:00 - 19:00)")
             
-            # Seleccionar fecha específica para análisis detallado
-            col1, col2 = st.columns(2)
+            # Configuración de horas pico
+            HORA_PICO_INICIO = 10
+            HORA_PICO_FIN = 19
+            
+            col1, col2, col3 = st.columns(3)
             with col1:
                 fecha_analisis = st.date_input(
-                    "📅 Selecciona fecha para análisis horario",
+                    "📅 Fecha análisis",
                     fecha_inicio,
                     min_value=fecha_inicio,
                     max_value=fecha_fin,
-                    key="fecha_analisis"
+                    key="fecha_analisis_v2"
                 )
             with col2:
-                # Definir horario de operación del punto de venta
-                st.markdown("**🏪 Horario de Operación**")
-                col_h1, col_h2 = st.columns(2)
-                with col_h1:
-                    hora_apertura = st.selectbox("Apertura", list(range(0, 24)), index=8, format_func=lambda x: f"{x:02d}:00", key="hora_apertura")
-                with col_h2:
-                    hora_cierre = st.selectbox("Cierre", list(range(1, 25)), index=20, format_func=lambda x: f"{x:02d}:00", key="hora_cierre")
+                umbral_minimo = st.slider("🎯 Mínimo empleados requeridos", 1, 10, 2)
+            with col3:
+                st.markdown(f"""
+                <div style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); 
+                            padding: 10px; border-radius: 10px; text-align: center;">
+                    <span style="color: white; font-size: 0.9rem;">🔥 Horas Pico</span><br>
+                    <span style="color: white; font-weight: bold;">{HORA_PICO_INICIO}:00 - {HORA_PICO_FIN}:00</span>
+                </div>
+                """, unsafe_allow_html=True)
             
-            # Ajustar horas_del_dia al horario de operación
-            if hora_cierre <= hora_apertura:
-                hora_cierre = 24
-            horas_operativas = list(range(hora_apertura, hora_cierre))
-            
-            st.info(f"🕐 Horario de operación: {hora_apertura:02d}:00 - {hora_cierre:02d}:00 ({len(horas_operativas)} horas)")
+            # Definir horas de análisis (enfocado en horas pico + márgenes)
+            horas_operativas = list(range(HORA_PICO_INICIO, HORA_PICO_FIN))
             
             # Filtrar asignaciones para la fecha seleccionada
             asignaciones_fecha = [a for a in asignaciones if a.fecha == fecha_analisis]
             
             if not asignaciones_fecha:
                 st.warning(f"No hay asignaciones para el {fecha_analisis.strftime('%d/%m/%Y')}")
-                
-                # Opción para asignar turnos rápidamente
-                st.markdown("---")
-                st.markdown("### ✏️ Asignación Rápida")
-                
-                area_sel = st.selectbox("Seleccionar área", areas_disponibles, key="asig_area_vacia")
-                empleados_area = [e for e in empleados if e.area == area_sel]
-                
-                if empleados_area:
-                    with st.form("asignacion_rapida"):
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            emp_sel = st.selectbox("Empleado", [e.nombre for e in empleados_area])
-                        with col2:
-                            turno_sel = st.selectbox("Turno", [t.nombre for t in turnos])
-                        
-                        if st.form_submit_button("✅ Asignar turno", use_container_width=True):
-                            emp = next(e for e in empleados_area if e.nombre == emp_sel)
-                            turno = next(t for t in turnos if t.nombre == turno_sel)
-                            
-                            nueva = Asignacion(
-                                empleado_id=emp.id,
-                                fecha=fecha_analisis,
-                                turno_id=turno.id
-                            )
-                            session.add(nueva)
-                            session.commit()
-                            st.success(f"✅ Turno asignado a {emp.nombre}")
-                            st.rerun()
-                else:
-                    st.warning(f"No hay empleados en el área {area_sel}")
             else:
                 # Organizar turnos por área y hora
                 cobertura_por_area_hora = {}
@@ -2067,108 +2037,175 @@ if "user" in st.session_state:
                         except:
                             pass
                 
-                # Identificar áreas descubiertas
-                areas_descubiertas = []
-                umbral_minimo = st.slider("Umbral mínimo de empleados requeridos por hora", 0, 10, 1)
+                # ============ MÉTRICAS PRINCIPALES ============
+                st.markdown("---")
+                st.markdown("#### 📊 Estado de Cobertura en Horas Pico")
+                
+                # Calcular estadísticas
+                areas_criticas = []
+                areas_optimas = []
+                areas_riesgo = []
                 
                 for area in areas_disponibles:
-                    horas_descubiertas = []
-                    for h in horas_operativas:
-                        if cobertura_por_area_hora[area][h] < umbral_minimo:
-                            horas_descubiertas.append(h)
+                    total_empleados_area = total_empleados_por_area.get(area, 0)
+                    if total_empleados_area == 0:
+                        continue
                     
-                    if horas_descubiertas:
-                        # Agrupar horas consecutivas
-                        franjas_descubiertas = []
-                        if horas_descubiertas:
-                            inicio = horas_descubiertas[0]
-                            fin = horas_descubiertas[0]
-                            for h in horas_descubiertas[1:]:
+                    # Promedio de cobertura en horas pico
+                    cobertura_promedio = sum(cobertura_por_area_hora[area].values()) / len(horas_operativas)
+                    horas_descubiertas = sum(1 for h in horas_operativas if cobertura_por_area_hora[area][h] < umbral_minimo)
+                    porcentaje_cob = ((len(horas_operativas) - horas_descubiertas) / len(horas_operativas)) * 100
+                    
+                    estado = {
+                        'area': area,
+                        'total_emp': total_empleados_area,
+                        'cobertura_prom': cobertura_promedio,
+                        'horas_desc': horas_descubiertas,
+                        'porcentaje': porcentaje_cob
+                    }
+                    
+                    if horas_descubiertas > len(horas_operativas) * 0.3:  # Más del 30% descubierto
+                        areas_criticas.append(estado)
+                    elif horas_descubiertas > 0:
+                        areas_riesgo.append(estado)
+                    else:
+                        areas_optimas.append(estado)
+                
+                # Mostrar tarjetas de resumen
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("🏢 Total Áreas", len(areas_disponibles))
+                with col2:
+                    st.metric("🔴 Áreas Críticas", len(areas_criticas))
+                with col3:
+                    st.metric("🟡 En Riesgo", len(areas_riesgo))
+                with col4:
+                    st.metric("🟢 Óptimas", len(areas_optimas))
+                
+                # ============ VISUALIZACIÓN MODERNA POR ÁREA ============
+                st.markdown("---")
+                st.markdown("#### 🏪 Cobertura por Área en Horas Pico")
+                
+                for area in areas_disponibles:
+                    total_emp = total_empleados_por_area.get(area, 0)
+                    if total_emp == 0:
+                        continue
+                    
+                    cobertura_area = cobertura_por_area_hora[area]
+                    horas_criticas = [h for h in horas_operativas if cobertura_area[h] < umbral_minimo]
+                    
+                    # Determinar estado
+                    if len(horas_criticas) > len(horas_operativas) * 0.3:
+                        estado_color = "#ff4757"
+                        estado_emoji = "🔴"
+                        estado_texto = "CRÍTICO"
+                    elif len(horas_criticas) > 0:
+                        estado_color = "#ffa502"
+                        estado_emoji = "🟡"
+                        estado_texto = "EN RIESGO"
+                    else:
+                        estado_color = "#2ed573"
+                        estado_emoji = "🟢"
+                        estado_texto = "ÓPTIMO"
+                    
+                    with st.expander(f"{estado_emoji} {area} - {estado_texto} ({len(horas_criticas)} horas descubiertas)", expanded=(len(horas_criticas) > 0)):
+                        col1, col2 = st.columns([2, 1])
+                        
+                        with col1:
+                            # Gráfico de barras horizontal para cobertura por hora
+                            st.markdown("**📊 Cobertura por hora:**")
+                            
+                            # Crear visualización con HTML/CSS
+                            html_barras = '<div style="font-family: monospace; margin: 10px 0;">'
+                            for h in horas_operativas:
+                                empleados = cobertura_area[h]
+                                if empleados >= umbral_minimo:
+                                    bar_color = "#2ed573"
+                                elif empleados > 0:
+                                    bar_color = "#ffa502"
+                                else:
+                                    bar_color = "#ff4757"
+                                
+                                bar_width = min(empleados * 20, 100)
+                                html_barras += f'''
+                                <div style="display: flex; align-items: center; margin: 5px 0;">
+                                    <span style="width: 60px; font-weight: bold;">{h:02d}:00</span>
+                                    <div style="flex: 1; height: 20px; background: #f0f0f0; border-radius: 10px; margin: 0 10px;">
+                                        <div style="width: {bar_width}%; height: 100%; background: {bar_color}; border-radius: 10px;"></div>
+                                    </div>
+                                    <span style="width: 30px; text-align: right;">{empleados}</span>
+                                    <span style="margin-left: 10px; font-size: 0.8rem; color: {'#2ed573' if empleados >= umbral_minimo else '#ff4757'};">{empleados}/{umbral_minimo}</span>
+                                </div>
+                                '''
+                            html_barras += '</div>'
+                            st.markdown(html_barras, unsafe_allow_html=True)
+                        
+                        with col2:
+                            # Métricas del área
+                            cobertura_prom = sum(cobertura_area.values()) / len(horas_operativas)
+                            st.markdown(f"""
+                            <div style="background: {estado_color}15; padding: 15px; border-radius: 15px; 
+                                        border: 1px solid {estado_color}30;">
+                                <h4 style="margin: 0 0 10px 0; color: {estado_color};">📈 Estadísticas</h4>
+                                <p><strong>Total empleados:</strong> {total_emp}</p>
+                                <p><strong>Cobertura promedio:</strong> {cobertura_prom:.1f} emp/hora</p>
+                                <p><strong>Horas críticas:</strong> {len(horas_criticas)}/{len(horas_operativas)}</p>
+                                <p><strong>% Cubrimiento:</strong> {((len(horas_operativas) - len(horas_criticas)) / len(horas_operativas) * 100):.0f}%</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
+                        # Si hay horas críticas, mostrar franjas y opción de asignación
+                        if horas_criticas:
+                            st.markdown("**⚠️ Franjas horarias con baja cobertura:**")
+                            
+                            # Agrupar horas consecutivas
+                            franjas = []
+                            inicio = horas_criticas[0]
+                            fin = horas_criticas[0]
+                            for h in horas_criticas[1:]:
                                 if h == fin + 1:
                                     fin = h
                                 else:
-                                    franjas_descubiertas.append((inicio, fin + 1))
+                                    franjas.append((inicio, fin + 1))
                                     inicio = h
                                     fin = h
-                            franjas_descubiertas.append((inicio, fin + 1))
-                        
-                        areas_descubiertas.append({
-                            'area': area,
-                            'total_empleados': total_empleados_por_area.get(area, 0),
-                            'horas_descubiertas': horas_descubiertas,
-                            'franjas': franjas_descubiertas,
-                            'total_horas': len(horas_descubiertas)
-                        })
-                
-                # Mostrar resultados
-                if areas_descubiertas:
-                    st.warning(f"⚠️ Se encontraron {len(areas_descubiertas)} áreas con cobertura insuficiente")
-                    
-                    for info in sorted(areas_descubiertas, key=lambda x: x['total_horas'], reverse=True):
-                        with st.expander(f"🔴 {info['area']} - {info['total_horas']} horas descubiertas", expanded=True):
-                            st.markdown(f"**Total empleados en el área:** {info['total_empleados']}")
-                            st.markdown(f"**Franjas horarias sin cobertura suficiente:**")
+                            franjas.append((inicio, fin + 1))
                             
-                            for idx, (inicio, fin) in enumerate(info['franjas']):
+                            for idx, (inicio, fin) in enumerate(franjas):
                                 col1, col2, col3 = st.columns([2, 1, 1])
                                 with col1:
-                                    st.markdown(f"### 🕐 {inicio:02d}:00 - {fin:02d}:00")
+                                    st.markdown(f"🔥 **{inicio:02d}:00 - {fin:02d}:00**")
                                 with col2:
-                                    st.markdown(f"**Horas:** {fin - inicio}")
+                                    deficit = umbral_minimo * (fin - inicio)
+                                    actual = sum(cobertura_area[h] for h in range(inicio, fin))
+                                    st.markdown(f"📉 Déficit: {max(0, deficit - actual)} empleados")
                                 with col3:
-                                    # Botón para asignar cobertura a esta franja
-                                    if st.button(f"✏️ Asignar cobertura", key=f"asig_{info['area']}_{idx}_{fecha_analisis}"):
-                                        st.session_state[f"mostrar_form_{info['area']}_{idx}"] = True
+                                    if st.button(f"➕ Reforzar", key=f"refuerzo_{area}_{idx}"):
+                                        st.session_state[f"show_assign_{area}_{idx}"] = True
                                 
-                                # Mostrar formulario de asignación si se activó
-                                if st.session_state.get(f"mostrar_form_{info['area']}_{idx}", False):
+                                if st.session_state.get(f"show_assign_{area}_{idx}", False):
                                     with st.container():
                                         st.markdown("---")
-                                        st.markdown(f"#### Asignar turno para {info['area']} - {inicio:02d}:00 a {fin:02d}:00")
+                                        st.markdown(f"#### 🚀 Asignar refuerzo - {area}")
                                         
-                                        # Obtener empleados del área
-                                        empleados_area = [e for e in empleados if e.area == info['area']]
-                                        
+                                        empleados_area = [e for e in empleados if e.area == area]
                                         if empleados_area:
-                                            col_f1, col_f2, col_f3 = st.columns(3)
-                                            with col_f1:
+                                            col_a, col_b, col_c = st.columns(3)
+                                            with col_a:
                                                 emp_sel = st.selectbox(
-                                                    "Empleado", 
+                                                    "Empleado",
                                                     [e.nombre for e in empleados_area],
-                                                    key=f"emp_{info['area']}_{idx}"
+                                                    key=f"emp_{area}_{idx}"
                                                 )
-                                            with col_f2:
-                                                # Filtrar turnos que cubran al menos parcialmente la franja
-                                                turnos_disponibles = []
-                                                for t in turnos:
-                                                    try:
-                                                        t_inicio = int(t.inicio.split(':')[0])
-                                                        t_fin = int(t.fin.split(':')[0])
-                                                        if t_fin == 0:
-                                                            t_fin = 24
-                                                        # Verificar si el turno se solapa con la franja descubierta
-                                                        if t_inicio < fin and t_fin > inicio:
-                                                            turnos_disponibles.append(t.nombre)
-                                                    except:
-                                                        pass
-                                                
-                                                if turnos_disponibles:
-                                                    turno_sel = st.selectbox(
-                                                        "Turno", 
-                                                        turnos_disponibles,
-                                                        key=f"turno_{info['area']}_{idx}"
-                                                    )
-                                                else:
-                                                    turno_sel = st.selectbox(
-                                                        "Turno", 
-                                                        [t.nombre for t in turnos],
-                                                        key=f"turno_{info['area']}_{idx}"
-                                                    )
-                                                    st.caption("⚠️ Ningún turno cubre exactamente esta franja")
-                                            
-                                            with col_f3:
+                                            with col_b:
+                                                turno_sel = st.selectbox(
+                                                    "Turno",
+                                                    [t.nombre for t in turnos],
+                                                    key=f"turno_{area}_{idx}"
+                                                )
+                                            with col_c:
                                                 st.markdown("<br>", unsafe_allow_html=True)
-                                                if st.button("✅ Confirmar asignación", key=f"confirm_{info['area']}_{idx}", use_container_width=True):
+                                                if st.button("✅ Confirmar", key=f"conf_{area}_{idx}"):
                                                     emp = next(e for e in empleados_area if e.nombre == emp_sel)
                                                     turno = next(t for t in turnos if t.nombre == turno_sel)
                                                     
@@ -2179,36 +2216,21 @@ if "user" in st.session_state:
                                                     )
                                                     session.add(nueva)
                                                     session.commit()
-                                                    st.success(f"✅ Turno asignado a {emp.nombre} para cubrir franja")
-                                                    st.session_state[f"mostrar_form_{info['area']}_{idx}"] = False
+                                                    st.success(f"✅ {emp.nombre} asignado como refuerzo")
+                                                    st.session_state[f"show_assign_{area}_{idx}"] = False
                                                     st.rerun()
                                             
-                                            if st.button("❌ Cancelar", key=f"cancel_{info['area']}_{idx}"):
-                                                st.session_state[f"mostrar_form_{info['area']}_{idx}"] = False
+                                            if st.button("❌ Cancelar", key=f"cancel_{area}_{idx}"):
+                                                st.session_state[f"show_assign_{area}_{idx}"] = False
                                                 st.rerun()
                                         else:
-                                            st.error(f"No hay empleados registrados en el área {info['area']}")
-                            
-                            # Mostrar empleados ya asignados en esta área
-                            st.markdown("#### 👥 Empleados asignados hoy:")
-                            empleados_hoy = {}
-                            for h in horas_operativas:
-                                for emp_info in empleados_por_area_hora[info['area']][h]:
-                                    if emp_info['empleado_id'] not in empleados_hoy:
-                                        empleados_hoy[emp_info['empleado_id']] = emp_info
-                            
-                            if empleados_hoy:
-                                for emp_info in empleados_hoy.values():
-                                    st.markdown(f"- **{emp_info['empleado']}**: {emp_info['turno']} ({emp_info['horario']})")
-                            else:
-                                st.markdown("*Ningún empleado asignado hoy*")
-                else:
-                    st.success(f"✅ Todas las áreas tienen al menos {umbral_minimo} empleado(s) por hora durante el horario de operación")
+                                            st.warning(f"No hay empleados en {area}")
                 
-                # Mostrar mapa de calor de cobertura
-                st.markdown("#### 🗺️ Mapa de Cobertura por Área y Hora")
+                # ============ MAPA DE CALOR MEJORADO ============
+                st.markdown("---")
+                st.markdown("#### 🗺️ Mapa de Calor - Cobertura en Horas Pico")
                 
-                # Crear matriz para el heatmap
+                # Crear datos para el heatmap
                 data_heatmap = []
                 for area in areas_disponibles:
                     fila = {"Área": area}
@@ -2218,45 +2240,32 @@ if "user" in st.session_state:
                 
                 df_heatmap = pd.DataFrame(data_heatmap)
                 
-                # Aplicar estilo condicional
-                def color_val(val):
-                    if val == 0:
-                        return 'background-color: #ffcccc; color: #cc0000; font-weight: bold'
-                    elif val < umbral_minimo:
-                        return 'background-color: #fff3cd; color: #856404'
+                # Función de color mejorada
+                def color_val_pico(val):
+                    if val >= umbral_minimo:
+                        return 'background-color: #2ed573; color: white; font-weight: bold'
+                    elif val >= umbral_minimo * 0.5:
+                        return 'background-color: #ffa502; color: white; font-weight: bold'
+                    elif val > 0:
+                        return 'background-color: #ff6b6b; color: white; font-weight: bold'
                     else:
-                        return 'background-color: #d4edda; color: #155724'
+                        return 'background-color: #c0392b; color: white; font-weight: bold'
                 
-                # Aplicar estilo condicional
-                def color_val(val):
-                    if val == 0:
-                        return 'background-color: #ffcccc; color: #cc0000; font-weight: bold'
-                    elif val < umbral_minimo:
-                        return 'background-color: #fff3cd; color: #856404'
-                    else:
-                        return 'background-color: #d4edda; color: #155724'
-                
-                # Versión compatible con todas las versiones de pandas
                 subset_cols = [f"{h:02d}:00" for h in horas_operativas]
                 try:
-                    # Para pandas >= 1.3.0
-                    styled_df = df_heatmap.style.map(color_val, subset=subset_cols)
+                    styled_df = df_heatmap.style.map(color_val_pico, subset=subset_cols)
                 except AttributeError:
-                    # Para pandas < 1.3.0
-                    styled_df = df_heatmap.style.applymap(color_val, subset=subset_cols)
+                    styled_df = df_heatmap.style.applymap(color_val_pico, subset=subset_cols)
                 
-                st.dataframe(
-                    styled_df,
-                    use_container_width=True,
-                    height=400
-                )
+                st.dataframe(styled_df, use_container_width=True, height=400)
                 
-                # Leyenda
+                # Leyenda mejorada
                 st.markdown("""
-                <div style="display: flex; gap: 20px; margin-top: 10px;">
-                    <span><span style="background: #ffcccc; padding: 5px 10px; border-radius: 5px;">🔴 0 empleados</span></span>
-                    <span><span style="background: #fff3cd; padding: 5px 10px; border-radius: 5px;">🟡 Menos del umbral</span></span>
-                    <span><span style="background: #d4edda; padding: 5px 10px; border-radius: 5px;">🟢 Suficiente cobertura</span></span>
+                <div style="display: flex; gap: 15px; margin-top: 15px; justify-content: center;">
+                    <span style="display: flex; align-items: center;"><span style="background: #c0392b; width: 20px; height: 20px; border-radius: 5px; margin-right: 8px;"></span> 0 empleados</span>
+                    <span style="display: flex; align-items: center;"><span style="background: #ff6b6b; width: 20px; height: 20px; border-radius: 5px; margin-right: 8px;"></span> Insuficiente</span>
+                    <span style="display: flex; align-items: center;"><span style="background: #ffa502; width: 20px; height: 20px; border-radius: 5px; margin-right: 8px;"></span> En riesgo</span>
+                    <span style="display: flex; align-items: center;"><span style="background: #2ed573; width: 20px; height: 20px; border-radius: 5px; margin-right: 8px;"></span> Óptimo</span>
                 </div>
                 """, unsafe_allow_html=True)
                 
@@ -2398,6 +2407,171 @@ if "user" in st.session_state:
                     f"resumen_{fecha_inicio.strftime('%Y%m%d')}_{fecha_fin.strftime('%Y%m%d')}.xlsx",
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
+
+        # ============ TAB 5: ESTRATEGIA HORAS PICO ============
+        with st.tabs(["📊 Cubrimiento Diario", "📈 Cubrimiento por Área", "⚠️ Áreas Descubiertas", "📋 Resumen General", "🔥 Estrategia Horas Pico"])[4]:
+            st.markdown("### 🔥 Estrategia de Cobertura - Horas Pico")
+            st.caption("Análisis estratégico para maximizar cobertura en horario de alta demanda (10:00 - 19:00)")
+            
+            HORA_PICO_INICIO = 10
+            HORA_PICO_FIN = 19
+            
+            # Filtros
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                fecha_estrategia = st.date_input(
+                    "📅 Fecha de análisis",
+                    fecha_inicio,
+                    key="fecha_estrategia"
+                )
+            with col2:
+                umbral_optimo = st.slider("🎯 Objetivo empleados/hora", 2, 10, 3, key="umbral_estrategia")
+            with col3:
+                st.markdown(f"""
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                            padding: 10px; border-radius: 10px; text-align: center;">
+                    <span style="color: white; font-size: 0.9rem;">🎯 Meta de Cobertura</span><br>
+                    <span style="color: white; font-weight: bold;">{umbral_optimo} empleados/hora</span>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            # Obtener asignaciones del día
+            asignaciones_dia = [a for a in asignaciones if a.fecha == fecha_estrategia]
+            
+            # Calcular cobertura actual
+            cobertura_actual = {}
+            for area in areas_disponibles:
+                cobertura_actual[area] = {h: 0 for h in range(HORA_PICO_INICIO, HORA_PICO_FIN)}
+            
+            for a in asignaciones_dia:
+                emp = empleados_dict.get(a.empleado_id)
+                turno = turnos_dict.get(a.turno_id)
+                if emp and emp.area and turno:
+                    area = emp.area
+                    try:
+                        h_ini = int(turno.inicio.split(':')[0])
+                        h_fin = int(turno.fin.split(':')[0])
+                        if h_fin == 0:
+                            h_fin = 24
+                        for h in range(max(h_ini, HORA_PICO_INICIO), min(h_fin, HORA_PICO_FIN)):
+                            cobertura_actual[area][h] += 1
+                    except:
+                        pass
+            
+            # ============ ANÁLISIS DE BRECHA ============
+            st.markdown("---")
+            st.markdown("#### 📊 Brecha de Cobertura por Área")
+            
+            brechas = []
+            for area in areas_disponibles:
+                total_emp = total_empleados_por_area.get(area, 0)
+                if total_emp == 0:
+                    continue
+                
+                horas_deficit = []
+                deficit_total = 0
+                for h in range(HORA_PICO_INICIO, HORA_PICO_FIN):
+                    actual = cobertura_actual[area][h]
+                    if actual < umbral_optimo:
+                        horas_deficit.append(h)
+                        deficit_total += (umbral_optimo - actual)
+                
+                if horas_deficit:
+                    brechas.append({
+                        'area': area,
+                        'total_emp': total_emp,
+                        'horas_deficit': len(horas_deficit),
+                        'deficit_total': deficit_total,
+                        'deficit_prom': deficit_total / len(horas_deficit) if horas_deficit else 0,
+                        'horas': horas_deficit
+                    })
+            
+            if brechas:
+                # Ordenar por gravedad
+                brechas.sort(key=lambda x: x['deficit_total'], reverse=True)
+                
+                # Mostrar tarjetas de brecha
+                for b in brechas[:5]:  # Top 5 áreas con mayor brecha
+                    with st.container():
+                        col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
+                        with col1:
+                            st.markdown(f"**🏢 {b['area']}**")
+                            st.caption(f"Total empleados: {b['total_emp']}")
+                        with col2:
+                            st.metric("Horas con déficit", b['horas_deficit'])
+                        with col3:
+                            st.metric("Déficit total", f"{b['deficit_total']} emp-hora")
+                        with col4:
+                            st.metric("Déficit promedio", f"{b['deficit_prom']:.1f} emp/hora")
+                        
+                        # Recomendación
+                        st.info(f"💡 **Recomendación:** Agregar {int(b['deficit_prom']) + 1} empleado(s) adicional(es) en {b['area']} durante horas pico")
+                        st.markdown("---")
+                
+                # ============ GRÁFICO DE BRECHA ============
+                st.markdown("#### 📈 Visualización de Brecha por Área")
+                
+                data_brecha = pd.DataFrame([{
+                    'Área': b['area'],
+                    'Déficit Total (emp-hora)': b['deficit_total'],
+                    'Horas con Déficit': b['horas_deficit']
+                } for b in brechas])
+                
+                st.bar_chart(data_brecha.set_index('Área')[['Déficit Total (emp-hora)']])
+                
+                # ============ PLAN DE ACCIÓN ============
+                st.markdown("---")
+                st.markdown("#### 🎯 Plan de Acción Recomendado")
+                
+                total_deficit = sum(b['deficit_total'] for b in brechas)
+                
+                st.markdown(f"""
+                <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); 
+                            padding: 20px; border-radius: 15px; color: white;">
+                    <h3 style="margin: 0 0 15px 0;">📋 Resumen Ejecutivo</h3>
+                    <p><strong>Total déficit identificado:</strong> {total_deficit} empleados-hora</p>
+                    <p><strong>Áreas críticas:</strong> {len(brechas)}</p>
+                    <p><strong>Horario pico analizado:</strong> {HORA_PICO_INICIO}:00 - {HORA_PICO_FIN}:00</p>
+                    <hr style="border-color: rgba(255,255,255,0.3);">
+                    <p><strong>🚀 Acciones prioritarias:</strong></p>
+                    <ol>
+                """, unsafe_allow_html=True)
+                
+                for i, b in enumerate(brechas[:3]):
+                    st.markdown(f"<li><strong>{b['area']}:</strong> Reforzar con {int(b['deficit_prom']) + 1} empleado(s) adicional(es)</li>", unsafe_allow_html=True)
+                
+                st.markdown("""
+                    </ol>
+                    <p style="margin-top: 15px;">💡 <em>Implementar estas acciones mejorará significativamente la experiencia del cliente en horas pico.</em></p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Exportar plan de acción
+                if st.button("📥 Exportar Plan de Acción", key="export_plan"):
+                    output = BytesIO()
+                    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                        # Datos de brecha
+                        pd.DataFrame(brechas).to_excel(writer, sheet_name="Análisis de Brecha", index=False)
+                        
+                        # Plan de acción
+                        plan = pd.DataFrame([{
+                            'Área': b['area'],
+                            'Acción Recomendada': f"Agregar {int(b['deficit_prom']) + 1} empleado(s)",
+                            'Horas Críticas': ', '.join([f"{h}:00" for h in b['horas'][:5]]) + ('...' if len(b['horas']) > 5 else ''),
+                            'Prioridad': 'ALTA' if b['deficit_total'] > total_deficit/len(brechas) else 'MEDIA'
+                        } for b in brechas])
+                        plan.to_excel(writer, sheet_name="Plan de Acción", index=False)
+                    
+                    output.seek(0)
+                    st.download_button(
+                        "📥 Descargar Plan de Acción",
+                        output,
+                        f"plan_accion_{fecha_estrategia.strftime('%Y%m%d')}.xlsx",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
+            else:
+                st.success(f"🎉 ¡Excelente! Todas las áreas cumplen con el objetivo de {umbral_optimo} empleados/hora en horario pico")
+                st.balloons()
 
     # ============ PAGINA: BACKUP (ADMIN) ============
     elif op == "Backup":
