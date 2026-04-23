@@ -718,9 +718,7 @@ if "user" in st.session_state:
                 cols_header = st.columns(7)
                 for i, dia in enumerate(dias_semana):
                     with cols_header[i]:
-                        st.markdown(f"""
-                        <div class="dia-header">{dia}</div>
-                        """, unsafe_allow_html=True)
+                        st.markdown(f'<div class="dia-header">{dia}</div>', unsafe_allow_html=True)
 
                 # Preparar datos del mes
                 primer_dia_semana = date(año_sel, mes_num, 1).weekday()  # 0=Lunes, 6=Domingo
@@ -757,12 +755,11 @@ if "user" in st.session_state:
                     for i, dia_num in enumerate(semana):
                         with cols[i]:
                             if dia_num is None:
-                                # Celda vacía
                                 st.markdown('<div class="dia-vacio"></div>', unsafe_allow_html=True)
                                 continue
                             
                             fecha_actual = date(año_sel, mes_num, dia_num)
-                            es_fin = fecha_actual.weekday() >= 5  # Sábado o Domingo
+                            es_fin = fecha_actual.weekday() >= 5
                             dia_semana_nombre = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"][fecha_actual.weekday()]
                             
                             # Obtener empleados con turno este día
@@ -772,40 +769,42 @@ if "user" in st.session_state:
                                     turno = turnos_por_empleado_dia[emp.id][dia_num]
                                     empleados_con_turno.append((emp, turno))
                             
-                            # Ordenar: primero el usuario actual si está, luego por nombre
+                            # Ordenar: primero el usuario actual, luego por nombre
                             empleados_con_turno.sort(key=lambda x: (x[0].id != user.id, x[0].nombre))
                             
+                            # Construir HTML
                             clase_fin = " dia-fin-semana" if es_fin else ""
-                            
-                            # Construir HTML para la celda
-                            html_celda = f'<div class="dia-card{clase_fin}">'
-                            html_celda += f'<div class="dia-numero">{dia_num}<small>{dia_semana_nombre}</small></div>'
-                            html_celda += '<div class="turnos-lista">'
+                            html_parts = [f'<div class="dia-card{clase_fin}">']
+                            html_parts.append(f'<div class="dia-numero">{dia_num}<small>{dia_semana_nombre}</small></div>')
+                            html_parts.append('<div class="turnos-lista">')
                             
                             if empleados_con_turno:
-                                for emp, turno in empleados_con_turno[:8]:  # Mostrar máximo 8 por celda
+                                for emp, turno in empleados_con_turno[:8]:
                                     es_usuario = emp.id == user.id
                                     clase_usuario = " usuario-actual" if es_usuario else ""
-                                    icono = "⭐ " if es_usuario else "👤 "
+                                    icono = "⭐" if es_usuario else "👤"
                                     
-                                    html_celda += f'''
+                                    # Usar triple comillas simples para evitar problemas de escape
+                                    html_parts.append(f'''
                                     <div class="turno-item{clase_usuario}">
-                                        <div class="turno-empleado">{icono}{emp.nombre}</div>
+                                        <div class="turno-empleado">{icono} {emp.nombre}</div>
                                         <div class="turno-nombre">{turno.nombre}</div>
                                         <div class="turno-horario">
                                             <i>🕒</i> {turno.inicio[:5]} - {turno.fin[:5]}
                                         </div>
                                     </div>
-                                    '''
+                                    ''')
                                 
                                 if len(empleados_con_turno) > 8:
                                     restantes = len(empleados_con_turno) - 8
-                                    html_celda += f'<div class="contador-turnos">+{restantes} empleado(s) más</div>'
+                                    html_parts.append(f'<div class="contador-turnos">+{restantes} más</div>')
                             else:
-                                html_celda += '<div class="sin-turnos">🌙 Descanso</div>'
+                                html_parts.append('<div class="sin-turnos">🌙 Descanso</div>')
                             
-                            html_celda += '</div></div>'
+                            html_parts.append('</div></div>')
                             
+                            # Unir todo y renderizar
+                            html_celda = "".join(html_parts)
                             st.markdown(html_celda, unsafe_allow_html=True)
                 
                 st.markdown('</div>', unsafe_allow_html=True)
