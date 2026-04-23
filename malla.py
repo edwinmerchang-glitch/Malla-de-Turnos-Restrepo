@@ -1969,28 +1969,78 @@ if "user" in st.session_state:
         # ============ TAB 3: ÁREAS DESCUBIERTAS ============
         with tab3:
             st.markdown("### ⚠️ Detección de Áreas Descubiertas por Hora")
-            st.caption("Análisis de franjas horarias sin empleados asignados por área")
+            st.caption("Análisis de franjas horarias sin empleados asignados por área durante el horario de operación")
             
             # Seleccionar fecha específica para análisis detallado
-            fecha_analisis = st.date_input(
-                "📅 Selecciona fecha para análisis horario",
-                fecha_inicio,
-                min_value=fecha_inicio,
-                max_value=fecha_fin,
-                key="fecha_analisis"
-            )
+            col1, col2 = st.columns(2)
+            with col1:
+                fecha_analisis = st.date_input(
+                    "📅 Selecciona fecha para análisis horario",
+                    fecha_inicio,
+                    min_value=fecha_inicio,
+                    max_value=fecha_fin,
+                    key="fecha_analisis"
+                )
+            with col2:
+                # Definir horario de operación del punto de venta
+                st.markdown("**🏪 Horario de Operación**")
+                col_h1, col_h2 = st.columns(2)
+                with col_h1:
+                    hora_apertura = st.selectbox("Apertura", list(range(0, 24)), index=8, format_func=lambda x: f"{x:02d}:00", key="hora_apertura")
+                with col_h2:
+                    hora_cierre = st.selectbox("Cierre", list(range(1, 25)), index=20, format_func=lambda x: f"{x:02d}:00", key="hora_cierre")
+            
+            # Ajustar horas_del_dia al horario de operación
+            if hora_cierre <= hora_apertura:
+                hora_cierre = 24
+            horas_operativas = list(range(hora_apertura, hora_cierre))
+            
+            st.info(f"🕐 Horario de operación: {hora_apertura:02d}:00 - {hora_cierre:02d}:00 ({len(horas_operativas)} horas)")
             
             # Filtrar asignaciones para la fecha seleccionada
             asignaciones_fecha = [a for a in asignaciones if a.fecha == fecha_analisis]
             
             if not asignaciones_fecha:
                 st.warning(f"No hay asignaciones para el {fecha_analisis.strftime('%d/%m/%Y')}")
+                
+                # Opción para asignar turnos rápidamente
+                st.markdown("---")
+                st.markdown("### ✏️ Asignación Rápida")
+                
+                area_sel = st.selectbox("Seleccionar área", areas_disponibles, key="asig_area_vacia")
+                empleados_area = [e for e in empleados if e.area == area_sel]
+                
+                if empleados_area:
+                    with st.form("asignacion_rapida"):
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            emp_sel = st.selectbox("Empleado", [e.nombre for e in empleados_area])
+                        with col2:
+                            turno_sel = st.selectbox("Turno", [t.nombre for t in turnos])
+                        
+                        if st.form_submit_button("✅ Asignar turno", use_container_width=True):
+                            emp = next(e for e in empleados_area if e.nombre == emp_sel)
+                            turno = next(t for t in turnos if t.nombre == turno_sel)
+                            
+                            nueva = Asignacion(
+                                empleado_id=emp.id,
+                                fecha=fecha_analisis,
+                                turno_id=turno.id
+                            )
+                            session.add(nueva)
+                            session.commit()
+                            st.success(f"✅ Turno asignado a {emp.nombre}")
+                            st.rerun()
+                else:
+                    st.warning(f"No hay empleados en el área {area_sel}")
             else:
                 # Organizar turnos por área y hora
                 cobertura_por_area_hora = {}
+                empleados_por_area_hora = {}
                 
                 for area in areas_disponibles:
-                    cobertura_por_area_hora[area] = {h: 0 for h in horas_del_dia}
+                    cobertura_por_area_hora[area] = {h: 0 for h in horas_operativas}
+                    empleados_por_area_hora[area] = {h: [] for h in horas_operativas}
                 
                 for a in asignaciones_fecha:
                     emp = empleados_dict.get(a.empleado_id)
@@ -2005,8 +2055,15 @@ if "user" in st.session_state:
                                 hora_fin = 24
                             
                             for h in range(hora_inicio, hora_fin):
-                                if h < 24:
+                                if h in horas_operativas:
                                     cobertura_por_area_hora[area][h] += 1
+                                    empleados_por_area_hora[area][h].append({
+                                        'empleado': emp.nombre,
+                                        'empleado_id': emp.id,
+                                        'turno': turno.nombre,
+                                        'turno_id': turno.id,
+                                        'horario': f"{turno.inicio} - {turno.fin}"
+                                    })
                         except:
                             pass
                 
@@ -2016,7 +2073,7 @@ if "user" in st.session_state:
                 
                 for area in areas_disponibles:
                     horas_descubiertas = []
-                    for h in horas_del_dia:
+                    for h in horas_operativas:
                         if cobertura_por_area_hora[area][h] < umbral_minimo:
                             horas_descubiertas.append(h)
                     
@@ -2048,28 +2105,105 @@ if "user" in st.session_state:
                     st.warning(f"⚠️ Se encontraron {len(areas_descubiertas)} áreas con cobertura insuficiente")
                     
                     for info in sorted(areas_descubiertas, key=lambda x: x['total_horas'], reverse=True):
-                        with st.expander(f"🔴 {info['area']} - {info['total_horas']} horas descubiertas"):
+                        with st.expander(f"🔴 {info['area']} - {info['total_horas']} horas descubiertas", expanded=True):
                             st.markdown(f"**Total empleados en el área:** {info['total_empleados']}")
                             st.markdown(f"**Franjas horarias sin cobertura suficiente:**")
                             
-                            for inicio, fin in info['franjas']:
-                                st.markdown(f"- 🕐 {inicio:02d}:00 - {fin:02d}:00")
+                            for idx, (inicio, fin) in enumerate(info['franjas']):
+                                col1, col2, col3 = st.columns([2, 1, 1])
+                                with col1:
+                                    st.markdown(f"### 🕐 {inicio:02d}:00 - {fin:02d}:00")
+                                with col2:
+                                    st.markdown(f"**Horas:** {fin - inicio}")
+                                with col3:
+                                    # Botón para asignar cobertura a esta franja
+                                    if st.button(f"✏️ Asignar cobertura", key=f"asig_{info['area']}_{idx}_{fecha_analisis}"):
+                                        st.session_state[f"mostrar_form_{info['area']}_{idx}"] = True
+                                
+                                # Mostrar formulario de asignación si se activó
+                                if st.session_state.get(f"mostrar_form_{info['area']}_{idx}", False):
+                                    with st.container():
+                                        st.markdown("---")
+                                        st.markdown(f"#### Asignar turno para {info['area']} - {inicio:02d}:00 a {fin:02d}:00")
+                                        
+                                        # Obtener empleados del área
+                                        empleados_area = [e for e in empleados if e.area == info['area']]
+                                        
+                                        if empleados_area:
+                                            col_f1, col_f2, col_f3 = st.columns(3)
+                                            with col_f1:
+                                                emp_sel = st.selectbox(
+                                                    "Empleado", 
+                                                    [e.nombre for e in empleados_area],
+                                                    key=f"emp_{info['area']}_{idx}"
+                                                )
+                                            with col_f2:
+                                                # Filtrar turnos que cubran al menos parcialmente la franja
+                                                turnos_disponibles = []
+                                                for t in turnos:
+                                                    try:
+                                                        t_inicio = int(t.inicio.split(':')[0])
+                                                        t_fin = int(t.fin.split(':')[0])
+                                                        if t_fin == 0:
+                                                            t_fin = 24
+                                                        # Verificar si el turno se solapa con la franja descubierta
+                                                        if t_inicio < fin and t_fin > inicio:
+                                                            turnos_disponibles.append(t.nombre)
+                                                    except:
+                                                        pass
+                                                
+                                                if turnos_disponibles:
+                                                    turno_sel = st.selectbox(
+                                                        "Turno", 
+                                                        turnos_disponibles,
+                                                        key=f"turno_{info['area']}_{idx}"
+                                                    )
+                                                else:
+                                                    turno_sel = st.selectbox(
+                                                        "Turno", 
+                                                        [t.nombre for t in turnos],
+                                                        key=f"turno_{info['area']}_{idx}"
+                                                    )
+                                                    st.caption("⚠️ Ningún turno cubre exactamente esta franja")
+                                            
+                                            with col_f3:
+                                                st.markdown("<br>", unsafe_allow_html=True)
+                                                if st.button("✅ Confirmar asignación", key=f"confirm_{info['area']}_{idx}", use_container_width=True):
+                                                    emp = next(e for e in empleados_area if e.nombre == emp_sel)
+                                                    turno = next(t for t in turnos if t.nombre == turno_sel)
+                                                    
+                                                    nueva = Asignacion(
+                                                        empleado_id=emp.id,
+                                                        fecha=fecha_analisis,
+                                                        turno_id=turno.id
+                                                    )
+                                                    session.add(nueva)
+                                                    session.commit()
+                                                    st.success(f"✅ Turno asignado a {emp.nombre} para cubrir franja")
+                                                    st.session_state[f"mostrar_form_{info['area']}_{idx}"] = False
+                                                    st.rerun()
+                                            
+                                            if st.button("❌ Cancelar", key=f"cancel_{info['area']}_{idx}"):
+                                                st.session_state[f"mostrar_form_{info['area']}_{idx}"] = False
+                                                st.rerun()
+                                        else:
+                                            st.error(f"No hay empleados registrados en el área {info['area']}")
                             
-                            # Mostrar tabla de cobertura por hora
-                            cobertura_horas = []
-                            for h in horas_del_dia:
-                                empleados_hora = cobertura_por_area_hora[info['area']][h]
-                                estado = "❌ Descubierto" if empleados_hora < umbral_minimo else "✅ Cubierto"
-                                cobertura_horas.append({
-                                    "Hora": f"{h:02d}:00 - {h+1:02d}:00",
-                                    "Empleados": empleados_hora,
-                                    "Estado": estado
-                                })
+                            # Mostrar empleados ya asignados en esta área
+                            st.markdown("#### 👥 Empleados asignados hoy:")
+                            empleados_hoy = {}
+                            for h in horas_operativas:
+                                for emp_info in empleados_por_area_hora[info['area']][h]:
+                                    if emp_info['empleado_id'] not in empleados_hoy:
+                                        empleados_hoy[emp_info['empleado_id']] = emp_info
                             
-                            df_cobertura = pd.DataFrame(cobertura_horas)
-                            st.dataframe(df_cobertura, use_container_width=True, hide_index=True)
+                            if empleados_hoy:
+                                for emp_info in empleados_hoy.values():
+                                    st.markdown(f"- **{emp_info['empleado']}**: {emp_info['turno']} ({emp_info['horario']})")
+                            else:
+                                st.markdown("*Ningún empleado asignado hoy*")
                 else:
-                    st.success(f"✅ Todas las áreas tienen al menos {umbral_minimo} empleado(s) por hora")
+                    st.success(f"✅ Todas las áreas tienen al menos {umbral_minimo} empleado(s) por hora durante el horario de operación")
                 
                 # Mostrar mapa de calor de cobertura
                 st.markdown("#### 🗺️ Mapa de Cobertura por Área y Hora")
@@ -2078,7 +2212,7 @@ if "user" in st.session_state:
                 data_heatmap = []
                 for area in areas_disponibles:
                     fila = {"Área": area}
-                    for h in horas_del_dia:
+                    for h in horas_operativas:
                         fila[f"{h:02d}:00"] = cobertura_por_area_hora[area][h]
                     data_heatmap.append(fila)
                 
@@ -2094,7 +2228,7 @@ if "user" in st.session_state:
                         return 'background-color: #d4edda; color: #155724'
                 
                 st.dataframe(
-                    df_heatmap.style.applymap(color_val, subset=[f"{h:02d}:00" for h in horas_del_dia]),
+                    df_heatmap.style.applymap(color_val, subset=[f"{h:02d}:00" for h in horas_operativas]),
                     use_container_width=True,
                     height=400
                 )
