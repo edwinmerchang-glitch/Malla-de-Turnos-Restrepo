@@ -585,150 +585,29 @@ if "user" in st.session_state:
             if vista == "📅 Grupal":
                 st.markdown(f"### 📅 Calendario Grupal - {mes_sel} {año_sel}")
 
-                # --- Estilos CSS mejorados para el calendario grupal ---
-                st.markdown("""
-                <style>
-                .calendario-container {
-                    overflow-x: auto;
-                    width: 100%;
-                    margin-top: 20px;
-                }
-                .calendario-grid {
-                    display: grid;
-                    grid-template-columns: repeat(7, 1fr);
-                    gap: 8px;
-                    width: 100%;
-                    min-width: 900px;
-                }
-                .dia-header {
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white;
-                    padding: 12px 8px;
-                    text-align: center;
-                    font-weight: 700;
-                    border-radius: 12px 12px 8px 8px;
-                    font-size: 0.9rem;
-                    margin-bottom: 4px;
-                }
-                .dia-card {
-                    background: white;
-                    border-radius: 12px;
-                    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-                    overflow: hidden;
-                    transition: transform 0.2s, box-shadow 0.2s;
-                    border: 1px solid #f0f0f0;
-                    min-height: 200px;
-                }
-                .dia-card:hover {
-                    transform: translateY(-2px);
-                    box-shadow: 0 6px 14px rgba(0,0,0,0.1);
-                }
-                .dia-fin-semana {
-                    background: #fef9e6;
-                }
-                .dia-numero {
-                    background: #f8f9fc;
-                    padding: 8px;
-                    text-align: center;
-                    font-weight: bold;
-                    font-size: 1.2rem;
-                    border-bottom: 1px solid #eee;
-                    color: #333;
-                }
-                .dia-numero small {
-                    font-size: 0.7rem;
-                    font-weight: normal;
-                    color: #888;
-                    margin-left: 6px;
-                }
-                .turnos-lista {
-                    padding: 8px;
-                    max-height: 280px;
-                    overflow-y: auto;
-                }
-                .turno-item {
-                    background: #f4f7fb;
-                    border-radius: 10px;
-                    padding: 8px 10px;
-                    margin-bottom: 8px;
-                    border-left: 4px solid #4CAF50;
-                    transition: all 0.2s;
-                }
-                .turno-item.usuario-actual {
-                    background: #e8f5e9;
-                    border-left-color: #2e7d32;
-                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-                }
-                .turno-nombre {
-                    font-weight: 700;
-                    font-size: 0.75rem;
-                    color: #1e293b;
-                    display: inline-block;
-                    background: #e0e7ff;
-                    padding: 2px 8px;
-                    border-radius: 20px;
-                    margin-bottom: 6px;
-                }
-                .turno-empleado {
-                    font-weight: 600;
-                    font-size: 0.8rem;
-                    color: #0f172a;
-                    display: flex;
-                    align-items: center;
-                    gap: 4px;
-                    margin-bottom: 4px;
-                }
-                .turno-horario {
-                    font-size: 0.7rem;
-                    color: #475569;
-                    display: flex;
-                    align-items: center;
-                    gap: 4px;
-                }
-                .turno-horario i {
-                    font-style: normal;
-                    font-size: 0.65rem;
-                }
-                .sin-turnos {
-                    text-align: center;
-                    color: #94a3b8;
-                    font-size: 0.75rem;
-                    padding: 15px 5px;
-                }
-                .contador-turnos {
-                    font-size: 0.7rem;
-                    color: #64748b;
-                    text-align: center;
-                    margin-top: 6px;
-                    padding-top: 4px;
-                    border-top: 1px dashed #e2e8f0;
-                }
-                .dia-vacio {
-                    background: #fafafa;
-                    border-radius: 12px;
-                    min-height: 200px;
-                    opacity: 0.5;
-                    border: 1px dashed #ddd;
-                }
-                </style>
-                """, unsafe_allow_html=True)
-                
-                # Cabecera con nombres de días
+                # Cabecera con nombres de días usando columnas
                 dias_semana = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"]
+                dias_semana_corto = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
+                
                 cols_header = st.columns(7)
                 for i, dia in enumerate(dias_semana):
                     with cols_header[i]:
-                        st.markdown(f'<div class="dia-header">{dia}</div>', unsafe_allow_html=True)
+                        st.markdown(f"""
+                        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                                    color: white; padding: 10px 5px; text-align: center; 
+                                    font-weight: bold; border-radius: 10px; font-size: 0.85rem;">
+                            {dia}
+                        </div>
+                        """, unsafe_allow_html=True)
 
                 # Preparar datos del mes
-                primer_dia_semana = date(año_sel, mes_num, 1).weekday()  # 0=Lunes, 6=Domingo
+                primer_dia_semana = date(año_sel, mes_num, 1).weekday()
                 
-                # Crear matriz de días (6 semanas máximo)
+                # Crear matriz de días
                 calendario = []
                 semana = []
                 dia_actual = 1
                 
-                # Llenar primera semana con espacios vacíos
                 for i in range(7):
                     if i < primer_dia_semana:
                         semana.append(None)
@@ -737,7 +616,6 @@ if "user" in st.session_state:
                         dia_actual += 1
                 calendario.append(semana)
                 
-                # Llenar semanas restantes
                 while dia_actual <= dias_mes:
                     semana = []
                     for i in range(7):
@@ -748,19 +626,23 @@ if "user" in st.session_state:
                             semana.append(None)
                     calendario.append(semana)
 
-                # Mostrar cada semana del calendario
+                # Mostrar cada semana
                 for semana in calendario:
                     cols = st.columns(7)
                     
                     for i, dia_num in enumerate(semana):
                         with cols[i]:
                             if dia_num is None:
-                                st.markdown('<div class="dia-vacio"></div>', unsafe_allow_html=True)
+                                st.markdown("""
+                                <div style="background: #fafafa; border-radius: 10px; min-height: 180px; 
+                                            opacity: 0.5; border: 1px dashed #ddd;"></div>
+                                """, unsafe_allow_html=True)
                                 continue
                             
                             fecha_actual = date(año_sel, mes_num, dia_num)
                             es_fin = fecha_actual.weekday() >= 5
-                            dia_semana_nombre = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"][fecha_actual.weekday()]
+                            bg_color = "#fef9e6" if es_fin else "white"
+                            dia_nombre = dias_semana_corto[fecha_actual.weekday()]
                             
                             # Obtener empleados con turno este día
                             empleados_con_turno = []
@@ -769,43 +651,64 @@ if "user" in st.session_state:
                                     turno = turnos_por_empleado_dia[emp.id][dia_num]
                                     empleados_con_turno.append((emp, turno))
                             
-                            # Ordenar: primero el usuario actual, luego por nombre
                             empleados_con_turno.sort(key=lambda x: (x[0].id != user.id, x[0].nombre))
                             
-                            # Construir HTML
-                            clase_fin = " dia-fin-semana" if es_fin else ""
-                            html_parts = [f'<div class="dia-card{clase_fin}">']
-                            html_parts.append(f'<div class="dia-numero">{dia_num}<small>{dia_semana_nombre}</small></div>')
-                            html_parts.append('<div class="turnos-lista">')
+                            # Construir contenido de la celda
+                            celda_html = f"""
+                            <div style="background: {bg_color}; border-radius: 10px; padding: 8px; 
+                                        min-height: 180px; border: 1px solid #e0e0e0; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                                <div style="display: flex; justify-content: space-between; align-items: center; 
+                                            border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 8px;">
+                                    <span style="font-weight: bold; font-size: 1.1rem;">{dia_num}</span>
+                                    <span style="font-size: 0.7rem; color: #888;">{dia_nombre}</span>
+                                </div>
+                                <div style="max-height: 150px; overflow-y: auto;">
+                            """
                             
                             if empleados_con_turno:
-                                for emp, turno in empleados_con_turno[:8]:
+                                for emp, turno in empleados_con_turno[:6]:
                                     es_usuario = emp.id == user.id
-                                    clase_usuario = " usuario-actual" if es_usuario else ""
+                                    border_color = "#2e7d32" if es_usuario else "#4CAF50"
+                                    bg_item = "#e8f5e9" if es_usuario else "#f4f7fb"
                                     icono = "⭐" if es_usuario else "👤"
                                     
-                                    # Usar triple comillas simples para evitar problemas de escape
-                                    html_parts.append(f'''
-                                    <div class="turno-item{clase_usuario}">
-                                        <div class="turno-empleado">{icono} {emp.nombre}</div>
-                                        <div class="turno-nombre">{turno.nombre}</div>
-                                        <div class="turno-horario">
-                                            <i>🕒</i> {turno.inicio[:5]} - {turno.fin[:5]}
+                                    celda_html += f"""
+                                    <div style="background: {bg_item}; border-radius: 8px; padding: 6px 8px; 
+                                                margin-bottom: 6px; border-left: 3px solid {border_color};">
+                                        <div style="font-weight: 600; font-size: 0.75rem; display: flex; align-items: center; gap: 3px;">
+                                            <span>{icono}</span> <span>{emp.nombre}</span>
+                                        </div>
+                                        <div style="display: inline-block; background: #e0e7ff; padding: 1px 8px; 
+                                                    border-radius: 12px; font-size: 0.65rem; font-weight: bold; margin: 3px 0;">
+                                            {turno.nombre}
+                                        </div>
+                                        <div style="font-size: 0.6rem; color: #666; display: flex; align-items: center; gap: 3px;">
+                                            <span>🕒</span> {turno.inicio[:5]} - {turno.fin[:5]}
                                         </div>
                                     </div>
-                                    ''')
+                                    """
                                 
-                                if len(empleados_con_turno) > 8:
-                                    restantes = len(empleados_con_turno) - 8
-                                    html_parts.append(f'<div class="contador-turnos">+{restantes} más</div>')
+                                if len(empleados_con_turno) > 6:
+                                    restantes = len(empleados_con_turno) - 6
+                                    celda_html += f"""
+                                    <div style="font-size: 0.65rem; color: #888; text-align: center; 
+                                                padding-top: 4px; border-top: 1px dashed #ddd;">
+                                        +{restantes} empleado(s) más
+                                    </div>
+                                    """
                             else:
-                                html_parts.append('<div class="sin-turnos">🌙 Descanso</div>')
+                                celda_html += """
+                                <div style="text-align: center; color: #bbb; font-size: 0.7rem; padding: 20px 5px;">
+                                    🌙 Descanso
+                                </div>
+                                """
                             
-                            html_parts.append('</div></div>')
+                            celda_html += """
+                                </div>
+                            </div>
+                            """
                             
-                            # Unir todo y renderizar
-                            html_celda = "".join(html_parts)
-                            st.markdown(html_celda, unsafe_allow_html=True)
+                            st.markdown(celda_html, unsafe_allow_html=True)
                 
                 st.markdown('</div>', unsafe_allow_html=True)
 
