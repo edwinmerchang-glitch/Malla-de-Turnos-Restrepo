@@ -1217,15 +1217,7 @@ if "user" in st.session_state:
         
         turnos = session.query(Turno).all()
         turnos_dict = {t.id: t.nombre for t in turnos}
-        turnos_validos = set([t.nombre for t in turnos] + ["Descanso", "D", "—", ""])
-        
-        fecha_inicio = date(año, mes_num, 1)
-        fecha_fin = date(año, mes_num, dias_mes)
-        
-        asignaciones = session.query(Asignacion).filter(
-            Asignacion.empleado_id.in_([e.id for e in empleados]),
-            Asignacion.fecha.between(fecha_inicio, fecha_fin)
-        ).all()
+        turnos_validos = set([t.nombre for t in turnos] + ["Descanso", "D", "—", "", None])
         
         matriz = {}
         for a in asignaciones:
@@ -1290,7 +1282,8 @@ if "user" in st.session_state:
                 for idx, dia in enumerate(range(1, dias_mes + 1)):
                     col_label = cols_dias[idx]
                     valor = row[col_label]
-                    if valor not in turnos_validos:
+                    valor_limpio = str(valor).strip() if valor is not None else ""
+                    if valor_limpio not in turnos_validos and valor not in turnos_validos:
                         celdas_invalidas.append({
                             'empleado': row['Empleado'],
                             'dia': dia,
@@ -1667,7 +1660,7 @@ if "user" in st.session_state:
 
                     # Extraer empleados y sus asignaciones
                     empleados_detectados = []
-                    CODIGOS_NO_TURNO = {"70", "df", "vc", "cp", "-1", "nan", ""}  # descanso/ausencia/vacaciones
+                    CODIGOS_NO_TURNO = {"df", "vc", "cp", "-1", "nan", ""}  # ausencias/vacaciones (70 es turno válido)
 
                     for i in range(primera_fila_emp, len(df_raw)):
                         fila = df_raw.iloc[i]
@@ -2021,7 +2014,7 @@ if "user" in st.session_state:
         
         turnos = session.query(Turno).all()
         turnos_dict = {t.id: t.nombre for t in turnos}
-        turnos_validos = set([t.nombre for t in turnos] + ["Descanso", "D", "—", ""])
+        turnos_validos = set([t.nombre for t in turnos] + ["Descanso", "D", "—", "", None])
         
         fecha_inicio = date(año, mes_num, 1)
         fecha_fin = date(año, mes_num, dias_mes)
@@ -2093,7 +2086,8 @@ if "user" in st.session_state:
             for index, row in df_editado.iterrows():
                 for idx, dia in enumerate(range(1, dias_mes + 1)):
                     valor = row[cols_dias_g[idx]]
-                    if valor not in turnos_validos:
+                    valor_limpio = str(valor).strip() if valor is not None else ""
+                    if valor_limpio not in turnos_validos and valor not in turnos_validos:
                         celdas_invalidas.append({
                             'empleado': row['Empleado'],
                             'area': row['Area'],
