@@ -1229,13 +1229,22 @@ if "user" in st.session_state:
                 matriz[a.empleado_id] = {}
             matriz[a.empleado_id][a.fecha.day] = a.turno_id
         
+        # Nombres de día de semana abreviados
+        dias_semana_abrev = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"]
+        
+        def col_dia_label(anio, mes_n, dia):
+            """Retorna etiqueta de columna: '01\nlun'"""
+            nombre_dia = dias_semana_abrev[date(anio, mes_n, dia).weekday()]
+            return f"{dia:02d}\n{nombre_dia}"
+        
         # Construir variable data
         data = []
+        cols_dias = [col_dia_label(año, mes_num, d) for d in range(1, dias_mes + 1)]
         for emp in empleados:
             fila = {"Empleado": emp.nombre}
-            for dia in range(1, dias_mes + 1):
+            for idx, dia in enumerate(range(1, dias_mes + 1)):
                 turno_id = matriz.get(emp.id, {}).get(dia)
-                fila[str(dia)] = turnos_dict.get(turno_id, "—") if turno_id else "—"
+                fila[cols_dias[idx]] = turnos_dict.get(turno_id, "—") if turno_id else "—"
             data.append(fila)
         
         total = sum(1 for emp_id in matriz for dia in matriz[emp_id])
@@ -1263,7 +1272,7 @@ if "user" in st.session_state:
                 df,
                 column_config={
                     "Empleado": st.column_config.TextColumn(disabled=True),
-                    **{str(d): st.column_config.TextColumn(default="—") for d in range(1, dias_mes+1)}
+                    **{c: st.column_config.TextColumn(default="—") for c in cols_dias}
                 },
                 use_container_width=True,
                 hide_index=True,
@@ -1274,9 +1283,9 @@ if "user" in st.session_state:
             # ============ VALIDACIÓN EN TIEMPO REAL ============
             celdas_invalidas = []
             for index, row in df_editado.iterrows():
-                for dia in range(1, dias_mes + 1):
-                    dia_str = str(dia)
-                    valor = row[dia_str]
+                for idx, dia in enumerate(range(1, dias_mes + 1)):
+                    col_label = cols_dias[idx]
+                    valor = row[col_label]
                     if valor not in turnos_validos:
                         celdas_invalidas.append({
                             'empleado': row['Empleado'],
@@ -1303,10 +1312,10 @@ if "user" in st.session_state:
                         emp_id = empleados[index].id
                         original_row = st.session_state[key_original_area].iloc[index]
                         
-                        for dia in range(1, dias_mes + 1):
-                            dia_str = str(dia)
-                            nuevo_valor = row[dia_str]
-                            original_valor = original_row[dia_str]
+                        for idx, dia in enumerate(range(1, dias_mes + 1)):
+                            col_label = cols_dias[idx]
+                            nuevo_valor = row[col_label]
+                            original_valor = original_row[col_label]
                             
                             # Solo procesar si cambió
                             if nuevo_valor != original_valor:
@@ -2023,6 +2032,10 @@ if "user" in st.session_state:
                 matriz[a.empleado_id] = {}
             matriz[a.empleado_id][a.fecha.day] = a.turno_id
         
+        # Nombres de día de semana abreviados (para matriz general)
+        dias_semana_abrev_g = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"]
+        cols_dias_g = [f"{d:02d}\n{dias_semana_abrev_g[date(año, mes_num, d).weekday()]}" for d in range(1, dias_mes + 1)]
+
         # Construir variable data
         data = []
         for emp in empleados:
@@ -2031,9 +2044,9 @@ if "user" in st.session_state:
                 "Area": emp.area or "N/A",
                 "Cargo": emp.cargo or "N/A",
             }
-            for dia in range(1, dias_mes + 1):
+            for idx, dia in enumerate(range(1, dias_mes + 1)):
                 turno_id = matriz.get(emp.id, {}).get(dia)
-                fila[str(dia)] = turnos_dict.get(turno_id, "—") if turno_id else "—"
+                fila[cols_dias_g[idx]] = turnos_dict.get(turno_id, "—") if turno_id else "—"
             data.append(fila)
         
         total = sum(1 for emp in matriz for dia in matriz[emp])
@@ -2063,7 +2076,7 @@ if "user" in st.session_state:
                     "Empleado": st.column_config.TextColumn(disabled=True),
                     "Area": st.column_config.TextColumn(disabled=True),
                     "Cargo": st.column_config.TextColumn(disabled=True),
-                    **{str(d): st.column_config.TextColumn(default="—") for d in range(1, dias_mes+1)}
+                    **{c: st.column_config.TextColumn(default="—") for c in cols_dias_g}
                 },
                 use_container_width=True,
                 hide_index=True,
@@ -2074,9 +2087,8 @@ if "user" in st.session_state:
             # ============ VALIDACIÓN EN TIEMPO REAL ============
             celdas_invalidas = []
             for index, row in df_editado.iterrows():
-                for dia in range(1, dias_mes + 1):
-                    dia_str = str(dia)
-                    valor = row[dia_str]
+                for idx, dia in enumerate(range(1, dias_mes + 1)):
+                    valor = row[cols_dias_g[idx]]
                     if valor not in turnos_validos:
                         celdas_invalidas.append({
                             'empleado': row['Empleado'],
@@ -2104,10 +2116,10 @@ if "user" in st.session_state:
                         emp_id = empleados[index].id
                         original_row = st.session_state[key_original].iloc[index]
                         
-                        for dia in range(1, dias_mes + 1):
-                            dia_str = str(dia)
-                            nuevo_valor = row[dia_str]
-                            original_valor = original_row[dia_str]
+                        for idx, dia in enumerate(range(1, dias_mes + 1)):
+                            col_label_g = cols_dias_g[idx]
+                            nuevo_valor = row[col_label_g]
+                            original_valor = original_row[col_label_g]
                             
                             if nuevo_valor != original_valor:
                                 fecha_asignar = date(año, mes_num, dia)
