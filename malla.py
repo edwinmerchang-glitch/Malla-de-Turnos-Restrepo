@@ -296,10 +296,14 @@ def login():
             </div>
         """, unsafe_allow_html=True)
         
-        user_input = st.text_input("👤 Usuario", placeholder="Ingresa tu usuario", key="login_user")
-        pwd_input = st.text_input("🔒 Contraseña", type="password", placeholder="Ingresa tu contraseña", key="login_pwd")
+        user_input = ""
+        pwd_input = ""
+        with st.form("login_form", clear_on_submit=False):
+            user_input = st.text_input("👤 Usuario", placeholder="Ingresa tu usuario", key="login_user")
+            pwd_input = st.text_input("🔒 Contraseña", type="password", placeholder="Ingresa tu contraseña", key="login_pwd")
+            submitted = st.form_submit_button("🚀 Ingresar", use_container_width=True)
         
-        if st.button("🚀 Ingresar", use_container_width=True, key="login_btn"):
+        if submitted:
             if user_input and pwd_input:
                 session_db = Session()
                 emp = session_db.query(Empleado).filter_by(usuario=user_input, password=pwd_input).first()
