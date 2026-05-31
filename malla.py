@@ -1607,115 +1607,193 @@ if "user" in st.session_state:
                             st.error("❌ No puedes eliminarte a ti mismo")
         
         with tab4:
-            st.markdown("### 📥 Importar empleados desde Excel")
-            st.info("El archivo puede tener las columnas en cualquier orden y con nombres variados. La app detecta automáticamente cuál es cuál.")
-            
-            # Plantilla de descarga
-            with st.expander("📄 Ver formato esperado / Descargar plantilla"):
-                st.markdown("""
-                **Columnas reconocidas** (el nombre exacto no importa, se detectan por similitud):
-                - **Nombre**: nombre, name, empleado, trabajador
-                - **Usuario**: usuario, user, login, username
-                - **Contraseña**: password, contraseña, clave, pass
-                - **Área**: area, área, departamento, dept
-                - **Cargo**: cargo, puesto, posicion, posición, job
-                - **Rol**: rol, role, perfil (valores: admin, supervisor, empleado)
-                """)
-                plantilla_data = {
-                    "nombre": ["Juan Pérez", "Ana García"],
-                    "usuario": ["jperez", "agarcia"],
-                    "password": ["123456", "123456"],
-                    "area": ["Urgencias", "UCI"],
-                    "cargo": ["Enfermero", "Médico"],
-                    "rol": ["empleado", "supervisor"]
-                }
-                output_plantilla = BytesIO()
-                pd.DataFrame(plantilla_data).to_excel(output_plantilla, index=False)
-                st.download_button("📥 Descargar plantilla", output_plantilla.getvalue(), "plantilla_empleados.xlsx")
-            
-            archivo_emp = st.file_uploader("Seleccionar archivo Excel", type=["xlsx", "xls"], key="upload_empleados")
-            
-            if archivo_emp:
+            st.markdown("### 📥 Importar desde malla de turnos Excel")
+            st.info("Sube tu archivo de malla de turnos (formato Restrepo). La app detecta automáticamente los empleados, cargos y asignaciones sin importar el orden de las columnas.")
+
+            archivo_malla = st.file_uploader("Seleccionar archivo Excel de malla", type=["xlsx", "xls"], key="upload_malla")
+
+            if archivo_malla:
                 try:
-                    df_emp = pd.read_excel(archivo_emp)
-                    df_emp.columns = [str(c).strip() for c in df_emp.columns]
-                    
-                    # Mapeo flexible de columnas por similitud
-                    def encontrar_columna(df, variantes):
-                        cols_lower = {c.lower().strip(): c for c in df.columns}
-                        for v in variantes:
-                            if v.lower() in cols_lower:
-                                return cols_lower[v.lower()]
-                        return None
-                    
-                    col_nombre   = encontrar_columna(df_emp, ["nombre","name","empleado","trabajador","full name","fullname"])
-                    col_usuario  = encontrar_columna(df_emp, ["usuario","user","login","username","user name"])
-                    col_password = encontrar_columna(df_emp, ["password","contraseña","clave","pass","contrasena"])
-                    col_area     = encontrar_columna(df_emp, ["area","área","departamento","dept","department"])
-                    col_cargo    = encontrar_columna(df_emp, ["cargo","puesto","posicion","posición","job","position","rol_cargo"])
-                    col_rol      = encontrar_columna(df_emp, ["rol","role","perfil","profile","tipo","tipo_usuario"])
-                    
-                    st.markdown("**Mapeo de columnas detectado:**")
-                    mapeo_info = {
-                        "Nombre *": col_nombre or "❌ No encontrada",
-                        "Usuario *": col_usuario or "❌ No encontrada",
-                        "Contraseña *": col_password or "❌ No encontrada",
-                        "Área": col_area or "— (opcional)",
-                        "Cargo": col_cargo or "— (opcional)",
-                        "Rol": col_rol or "— (usa 'empleado' por defecto)",
-                    }
-                    for campo, col in mapeo_info.items():
-                        icono = "✅" if ("❌" not in str(col) and "—" not in str(col)) else ("⚠️" if "—" in str(col) else "❌")
-                        st.write(f"{icono} **{campo}** → `{col}`")
-                    
-                    st.markdown("**Vista previa del archivo:**")
-                    st.dataframe(df_emp.head(5), use_container_width=True)
-                    
-                    if not col_nombre or not col_usuario or not col_password:
-                        st.error("❌ Faltan columnas obligatorias: Nombre, Usuario o Contraseña. Verifica el archivo.")
-                    else:
-                        roles_validos = ["admin", "supervisor", "empleado"]
-                        omitidos = []
-                        a_importar = []
-                        
-                        for _, fila in df_emp.iterrows():
-                            nombre_val = str(fila[col_nombre]).strip() if pd.notna(fila[col_nombre]) else ""
-                            usuario_val = str(fila[col_usuario]).strip() if pd.notna(fila[col_usuario]) else ""
-                            password_val = str(fila[col_password]).strip() if pd.notna(fila[col_password]) else ""
-                            area_val = str(fila[col_area]).strip() if col_area and pd.notna(fila[col_area]) else None
-                            cargo_val = str(fila[col_cargo]).strip() if col_cargo and pd.notna(fila[col_cargo]) else None
-                            rol_val_raw = str(fila[col_rol]).strip().lower() if col_rol and pd.notna(fila[col_rol]) else "empleado"
-                            rol_val = rol_val_raw if rol_val_raw in roles_validos else "empleado"
-                            
-                            if not nombre_val or not usuario_val or not password_val:
-                                omitidos.append(f"Fila {_ + 2}: datos incompletos")
-                                continue
-                            
-                            existe = session.query(Empleado).filter_by(usuario=usuario_val).first()
-                            if existe:
-                                omitidos.append(f"'{usuario_val}': usuario ya existe")
-                                continue
-                            
-                            a_importar.append({
-                                "nombre": nombre_val, "usuario": usuario_val, "password": password_val,
-                                "area": area_val, "cargo": cargo_val, "rol": rol_val
-                            })
-                        
-                        st.info(f"✅ {len(a_importar)} empleados listos para importar" + (f" | ⚠️ {len(omitidos)} omitidos" if omitidos else ""))
-                        if omitidos:
-                            with st.expander("Ver filas omitidas"):
-                                for o in omitidos:
-                                    st.write(f"- {o}")
-                        
-                        if a_importar and st.button("✅ Confirmar importación", type="primary", key="confirmar_imp_emp"):
-                            for emp_data in a_importar:
-                                session.add(Empleado(**emp_data))
+                    # Leer sin encabezado para acceder a la estructura real
+                    df_raw = pd.read_excel(archivo_malla, header=None)
+
+                    # Detectar fila de fechas: la primera fila que tenga objetos datetime en columnas >3
+                    fila_fechas = None
+                    fila_dias = None
+                    for i in range(min(5, len(df_raw))):
+                        fila = df_raw.iloc[i]
+                        fechas_en_fila = [v for v in fila[4:] if isinstance(v, (pd.Timestamp, datetime)) or (hasattr(v, 'year'))]
+                        if len(fechas_en_fila) >= 20:
+                            fila_fechas = i
+                            fila_dias = i + 1
+                            primera_col_dia = next(j for j in range(4, len(fila)) if isinstance(fila[j], (pd.Timestamp, datetime)) or hasattr(fila[j], 'year'))
+                            break
+
+                    if fila_fechas is None:
+                        st.error("❌ No se encontró la fila de fechas. Verifica que el archivo tenga el formato de malla de turnos.")
+                        st.stop()
+
+                    # Extraer fechas del encabezado
+                    fila_enc = df_raw.iloc[fila_fechas]
+                    columnas_fecha = {}  # col_index -> date
+                    for j in range(primera_col_dia, len(fila_enc)):
+                        val = fila_enc[j]
+                        if isinstance(val, (pd.Timestamp, datetime)) or hasattr(val, 'year'):
+                            try:
+                                columnas_fecha[j] = pd.Timestamp(val).date()
+                            except Exception:
+                                pass
+
+                    # Detectar primera fila de datos (empleados): fila tras fila_dias con nombre no vacío en col 2
+                    primera_fila_emp = fila_dias + 1
+                    for i in range(fila_dias + 1, len(df_raw)):
+                        val_nombre = df_raw.iloc[i, 2]
+                        if pd.notna(val_nombre) and str(val_nombre).strip():
+                            primera_fila_emp = i
+                            break
+
+                    # Extraer empleados y sus asignaciones
+                    empleados_detectados = []
+                    CODIGOS_NO_TURNO = {"70", "df", "vc", "cp", "-1", "nan", ""}  # descanso/ausencia/vacaciones
+
+                    for i in range(primera_fila_emp, len(df_raw)):
+                        fila = df_raw.iloc[i]
+                        nombre_val = fila[2]
+                        cargo_val  = fila[1]
+                        cedula_val = fila[3]
+
+                        # Parar cuando ya no hay más empleados (filas de totales/leyenda)
+                        if pd.isna(nombre_val) or not str(nombre_val).strip():
+                            continue
+                        nombre_str = str(nombre_val).strip()
+                        # Ignorar filas de leyenda (TIENDA, DOMI, TOTAL, Madrugon, etc.)
+                        if nombre_str.upper() in ["TIENDA", "DOMI", "TOTAL", "MADRUGON"] or nombre_str.startswith("#"):
+                            continue
+                        cargo_str  = str(cargo_val).strip() if pd.notna(cargo_val) else ""
+                        if not cargo_str or cargo_str.upper() in ["NAN"]:
+                            continue
+
+                        # Determinar área a partir del cargo
+                        area_str = cargo_str
+
+                        # Recopilar turnos por fecha
+                        turnos_emp = {}
+                        for j, fecha in columnas_fecha.items():
+                            cod = fila[j] if j < len(fila) else None
+                            if pd.notna(cod):
+                                cod_str = str(cod).strip()
+                                # Intentar convertir a entero (ej: 151.0 -> "151")
+                                try:
+                                    cod_str = str(int(float(cod_str)))
+                                except (ValueError, OverflowError):
+                                    pass
+                                if cod_str.lower() not in CODIGOS_NO_TURNO:
+                                    turnos_emp[fecha] = cod_str
+
+                        empleados_detectados.append({
+                            "nombre": nombre_str,
+                            "cargo": cargo_str,
+                            "area": area_str,
+                            "cedula": str(int(float(cedula_val))) if pd.notna(cedula_val) and str(cedula_val).replace('.','').isdigit() else "",
+                            "turnos": turnos_emp
+                        })
+
+                    if not empleados_detectados:
+                        st.error("❌ No se encontraron empleados en el archivo.")
+                        st.stop()
+
+                    st.success(f"✅ Se detectaron **{len(empleados_detectados)} empleados** y **{len(columnas_fecha)} días** en la malla.")
+
+                    # Vista previa
+                    preview = [{"Nombre": e["nombre"], "Cargo": e["cargo"], "Cédula": e["cedula"],
+                                "Turnos detectados": len(e["turnos"])} for e in empleados_detectados]
+                    st.dataframe(pd.DataFrame(preview), use_container_width=True)
+
+                    # Identificar turnos nuevos que habrá que crear
+                    turnos_en_excel = set()
+                    for e in empleados_detectados:
+                        turnos_en_excel.update(e["turnos"].values())
+                    turnos_existentes_db = {t.nombre: t for t in session.query(Turno).all()}
+                    turnos_nuevos = turnos_en_excel - set(turnos_existentes_db.keys())
+
+                    if turnos_nuevos:
+                        st.warning(f"⚠️ Se encontraron **{len(turnos_nuevos)} códigos de turno nuevos** que no están registrados: `{'`, `'.join(sorted(turnos_nuevos))}`. Se crearán automáticamente sin hora (puedes editarlas luego en Gestión de Turnos).")
+
+                    # Contraseña para empleados nuevos
+                    pass_default = st.text_input("Contraseña para empleados nuevos", value="123456", type="password",
+                                                  help="Se asignará a todos los empleados que se creen nuevos")
+
+                    col_btn1, col_btn2 = st.columns(2)
+                    imp_solo_emp = col_btn1.button("👥 Importar solo empleados", type="secondary", key="imp_solo_emp")
+                    imp_todo     = col_btn2.button("👥📅 Importar empleados + asignaciones", type="primary", key="imp_todo")
+
+                    if imp_solo_emp or imp_todo:
+                        creados_emp = 0
+                        creados_tur = 0
+                        creadas_asig = 0
+                        omitidos_emp = []
+
+                        # Crear turnos nuevos si hace falta
+                        if imp_todo and turnos_nuevos:
+                            for cod in turnos_nuevos:
+                                session.add(Turno(nombre=cod, inicio="", fin=""))
+                                creados_tur += 1
                             session.commit()
-                            st.success(f"🎉 {len(a_importar)} empleados importados correctamente")
-                            st.rerun()
-                
+                            # Refrescar mapa de turnos
+                            turnos_existentes_db = {t.nombre: t for t in session.query(Turno).all()}
+
+                        for emp_data in empleados_detectados:
+                            # Generar usuario desde cédula o nombre
+                            if emp_data["cedula"]:
+                                usuario_gen = emp_data["cedula"]
+                            else:
+                                usuario_gen = emp_data["nombre"].lower().replace(" ", ".")[:20]
+
+                            emp_obj = session.query(Empleado).filter_by(usuario=usuario_gen).first()
+                            if not emp_obj:
+                                emp_obj = Empleado(
+                                    nombre=emp_data["nombre"],
+                                    usuario=usuario_gen,
+                                    password=pass_default,
+                                    rol="empleado",
+                                    area=emp_data["area"],
+                                    cargo=emp_data["cargo"]
+                                )
+                                session.add(emp_obj)
+                                session.flush()
+                                creados_emp += 1
+                            
+                            # Crear asignaciones
+                            if imp_todo:
+                                for fecha, cod_turno in emp_data["turnos"].items():
+                                    turno_obj = turnos_existentes_db.get(cod_turno)
+                                    if turno_obj:
+                                        existe_asig = session.query(Asignacion).filter_by(
+                                            empleado_id=emp_obj.id, fecha=fecha
+                                        ).first()
+                                        if not existe_asig:
+                                            session.add(Asignacion(
+                                                empleado_id=emp_obj.id,
+                                                fecha=fecha,
+                                                turno_id=turno_obj.id
+                                            ))
+                                            creadas_asig += 1
+
+                        session.commit()
+                        msg = f"🎉 Importación completa: **{creados_emp} empleados** creados"
+                        if creados_tur:
+                            msg += f", **{creados_tur} turnos** creados"
+                        if creadas_asig:
+                            msg += f", **{creadas_asig} asignaciones** registradas"
+                        st.success(msg)
+                        if imp_todo and creados_tur:
+                            st.info("💡 Recuerda ir a **Gestión de Turnos** para completar las horas de inicio y fin de los turnos nuevos.")
+                        st.rerun()
+
                 except Exception as ex:
-                    st.error(f"❌ Error al leer el archivo: {ex}")
+                    st.error(f"❌ Error al procesar el archivo: {ex}")
+                    import traceback
+                    st.code(traceback.format_exc())
 
     # ============ PAGINA: TURNOS (ADMIN) ============
     elif op == "Turnos":
