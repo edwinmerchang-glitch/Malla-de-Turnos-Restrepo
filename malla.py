@@ -1529,7 +1529,7 @@ if "user" in st.session_state:
         </div>
         """, unsafe_allow_html=True)
         
-        tab1, tab2, tab3 = st.tabs(["📋 Lista", "➕ Nuevo", "✏️ Editar"])
+        tab1, tab2, tab3, tab4 = st.tabs(["📋 Lista", "➕ Nuevo", "✏️ Editar", "📥 Importar Excel"])
         
         with tab1:
             empleados = session.query(Empleado).all()
@@ -1605,6 +1605,117 @@ if "user" in st.session_state:
                             st.rerun()
                         else:
                             st.error("❌ No puedes eliminarte a ti mismo")
+        
+        with tab4:
+            st.markdown("### 📥 Importar empleados desde Excel")
+            st.info("El archivo puede tener las columnas en cualquier orden y con nombres variados. La app detecta automáticamente cuál es cuál.")
+            
+            # Plantilla de descarga
+            with st.expander("📄 Ver formato esperado / Descargar plantilla"):
+                st.markdown("""
+                **Columnas reconocidas** (el nombre exacto no importa, se detectan por similitud):
+                - **Nombre**: nombre, name, empleado, trabajador
+                - **Usuario**: usuario, user, login, username
+                - **Contraseña**: password, contraseña, clave, pass
+                - **Área**: area, área, departamento, dept
+                - **Cargo**: cargo, puesto, posicion, posición, job
+                - **Rol**: rol, role, perfil (valores: admin, supervisor, empleado)
+                """)
+                plantilla_data = {
+                    "nombre": ["Juan Pérez", "Ana García"],
+                    "usuario": ["jperez", "agarcia"],
+                    "password": ["123456", "123456"],
+                    "area": ["Urgencias", "UCI"],
+                    "cargo": ["Enfermero", "Médico"],
+                    "rol": ["empleado", "supervisor"]
+                }
+                output_plantilla = BytesIO()
+                pd.DataFrame(plantilla_data).to_excel(output_plantilla, index=False)
+                st.download_button("📥 Descargar plantilla", output_plantilla.getvalue(), "plantilla_empleados.xlsx")
+            
+            archivo_emp = st.file_uploader("Seleccionar archivo Excel", type=["xlsx", "xls"], key="upload_empleados")
+            
+            if archivo_emp:
+                try:
+                    df_emp = pd.read_excel(archivo_emp)
+                    df_emp.columns = [str(c).strip() for c in df_emp.columns]
+                    
+                    # Mapeo flexible de columnas por similitud
+                    def encontrar_columna(df, variantes):
+                        cols_lower = {c.lower().strip(): c for c in df.columns}
+                        for v in variantes:
+                            if v.lower() in cols_lower:
+                                return cols_lower[v.lower()]
+                        return None
+                    
+                    col_nombre   = encontrar_columna(df_emp, ["nombre","name","empleado","trabajador","full name","fullname"])
+                    col_usuario  = encontrar_columna(df_emp, ["usuario","user","login","username","user name"])
+                    col_password = encontrar_columna(df_emp, ["password","contraseña","clave","pass","contrasena"])
+                    col_area     = encontrar_columna(df_emp, ["area","área","departamento","dept","department"])
+                    col_cargo    = encontrar_columna(df_emp, ["cargo","puesto","posicion","posición","job","position","rol_cargo"])
+                    col_rol      = encontrar_columna(df_emp, ["rol","role","perfil","profile","tipo","tipo_usuario"])
+                    
+                    st.markdown("**Mapeo de columnas detectado:**")
+                    mapeo_info = {
+                        "Nombre *": col_nombre or "❌ No encontrada",
+                        "Usuario *": col_usuario or "❌ No encontrada",
+                        "Contraseña *": col_password or "❌ No encontrada",
+                        "Área": col_area or "— (opcional)",
+                        "Cargo": col_cargo or "— (opcional)",
+                        "Rol": col_rol or "— (usa 'empleado' por defecto)",
+                    }
+                    for campo, col in mapeo_info.items():
+                        icono = "✅" if ("❌" not in str(col) and "—" not in str(col)) else ("⚠️" if "—" in str(col) else "❌")
+                        st.write(f"{icono} **{campo}** → `{col}`")
+                    
+                    st.markdown("**Vista previa del archivo:**")
+                    st.dataframe(df_emp.head(5), use_container_width=True)
+                    
+                    if not col_nombre or not col_usuario or not col_password:
+                        st.error("❌ Faltan columnas obligatorias: Nombre, Usuario o Contraseña. Verifica el archivo.")
+                    else:
+                        roles_validos = ["admin", "supervisor", "empleado"]
+                        omitidos = []
+                        a_importar = []
+                        
+                        for _, fila in df_emp.iterrows():
+                            nombre_val = str(fila[col_nombre]).strip() if pd.notna(fila[col_nombre]) else ""
+                            usuario_val = str(fila[col_usuario]).strip() if pd.notna(fila[col_usuario]) else ""
+                            password_val = str(fila[col_password]).strip() if pd.notna(fila[col_password]) else ""
+                            area_val = str(fila[col_area]).strip() if col_area and pd.notna(fila[col_area]) else None
+                            cargo_val = str(fila[col_cargo]).strip() if col_cargo and pd.notna(fila[col_cargo]) else None
+                            rol_val_raw = str(fila[col_rol]).strip().lower() if col_rol and pd.notna(fila[col_rol]) else "empleado"
+                            rol_val = rol_val_raw if rol_val_raw in roles_validos else "empleado"
+                            
+                            if not nombre_val or not usuario_val or not password_val:
+                                omitidos.append(f"Fila {_ + 2}: datos incompletos")
+                                continue
+                            
+                            existe = session.query(Empleado).filter_by(usuario=usuario_val).first()
+                            if existe:
+                                omitidos.append(f"'{usuario_val}': usuario ya existe")
+                                continue
+                            
+                            a_importar.append({
+                                "nombre": nombre_val, "usuario": usuario_val, "password": password_val,
+                                "area": area_val, "cargo": cargo_val, "rol": rol_val
+                            })
+                        
+                        st.info(f"✅ {len(a_importar)} empleados listos para importar" + (f" | ⚠️ {len(omitidos)} omitidos" if omitidos else ""))
+                        if omitidos:
+                            with st.expander("Ver filas omitidas"):
+                                for o in omitidos:
+                                    st.write(f"- {o}")
+                        
+                        if a_importar and st.button("✅ Confirmar importación", type="primary", key="confirmar_imp_emp"):
+                            for emp_data in a_importar:
+                                session.add(Empleado(**emp_data))
+                            session.commit()
+                            st.success(f"🎉 {len(a_importar)} empleados importados correctamente")
+                            st.rerun()
+                
+                except Exception as ex:
+                    st.error(f"❌ Error al leer el archivo: {ex}")
 
     # ============ PAGINA: TURNOS (ADMIN) ============
     elif op == "Turnos":
@@ -1619,7 +1730,7 @@ if "user" in st.session_state:
         </div>
         """, unsafe_allow_html=True)
         
-        tab1, tab2, tab3 = st.tabs(["📋 Lista", "➕ Nuevo", "✏️ Editar"])
+        tab1, tab2, tab3, tab4 = st.tabs(["📋 Lista", "➕ Nuevo", "✏️ Editar", "📥 Importar Excel"])
         
         with tab1:
             turnos = session.query(Turno).all()
@@ -1682,6 +1793,103 @@ if "user" in st.session_state:
                                     session.commit()
                                     st.success("✅ Eliminado")
                                     st.rerun()
+        
+        with tab4:
+            st.markdown("### 📥 Importar turnos desde Excel")
+            st.info("El archivo puede tener las columnas en cualquier orden y con nombres variados. La app detecta automáticamente cuál es cuál.")
+            
+            with st.expander("📄 Ver formato esperado / Descargar plantilla"):
+                st.markdown("""
+                **Columnas reconocidas** (el nombre exacto no importa):
+                - **Nombre**: nombre, name, turno, codigo, code
+                - **Hora inicio**: inicio, start, hora_inicio, hora inicio, entrada, from
+                - **Hora fin**: fin, end, hora_fin, hora fin, salida, to
+                
+                El formato de hora puede ser `08:00` o `08:00:00`.
+                """)
+                plantilla_tur = {
+                    "nombre": ["151", "152", "Nocturno"],
+                    "inicio": ["06:00", "14:00", "22:00"],
+                    "fin": ["14:00", "22:00", "06:00"],
+                }
+                output_plt = BytesIO()
+                pd.DataFrame(plantilla_tur).to_excel(output_plt, index=False)
+                st.download_button("📥 Descargar plantilla", output_plt.getvalue(), "plantilla_turnos.xlsx")
+            
+            archivo_tur = st.file_uploader("Seleccionar archivo Excel", type=["xlsx", "xls"], key="upload_turnos")
+            
+            if archivo_tur:
+                try:
+                    df_tur = pd.read_excel(archivo_tur)
+                    df_tur.columns = [str(c).strip() for c in df_tur.columns]
+                    
+                    def encontrar_col_t(df, variantes):
+                        cols_lower = {c.lower().strip(): c for c in df.columns}
+                        for v in variantes:
+                            if v.lower() in cols_lower:
+                                return cols_lower[v.lower()]
+                        return None
+                    
+                    col_t_nombre = encontrar_col_t(df_tur, ["nombre","name","turno","codigo","code","id_turno"])
+                    col_t_inicio = encontrar_col_t(df_tur, ["inicio","start","hora_inicio","hora inicio","entrada","from","hora de inicio"])
+                    col_t_fin    = encontrar_col_t(df_tur, ["fin","end","hora_fin","hora fin","salida","to","hora de fin"])
+                    
+                    st.markdown("**Mapeo de columnas detectado:**")
+                    for campo, col in [("Nombre *", col_t_nombre), ("Hora inicio *", col_t_inicio), ("Hora fin *", col_t_fin)]:
+                        icono = "✅" if col else "❌"
+                        st.write(f"{icono} **{campo}** → `{col or 'No encontrada'}`")
+                    
+                    st.markdown("**Vista previa:**")
+                    st.dataframe(df_tur.head(5), use_container_width=True)
+                    
+                    if not col_t_nombre or not col_t_inicio or not col_t_fin:
+                        st.error("❌ Faltan columnas obligatorias. Verifica el archivo.")
+                    else:
+                        def formatear_hora(val):
+                            """Convierte distintos formatos de hora a HH:MM"""
+                            if pd.isna(val):
+                                return ""
+                            s = str(val).strip()
+                            # Si viene como datetime (Excel a veces lo hace)
+                            if ":" in s:
+                                partes = s.split(":")
+                                return f"{partes[0].zfill(2)}:{partes[1].zfill(2)}"
+                            return s
+                        
+                        omitidos_t = []
+                        a_importar_t = []
+                        nombres_existentes = {t.nombre for t in session.query(Turno).all()}
+                        
+                        for _, fila in df_tur.iterrows():
+                            nombre_val = str(fila[col_t_nombre]).strip() if pd.notna(fila[col_t_nombre]) else ""
+                            inicio_val = formatear_hora(fila[col_t_inicio])
+                            fin_val    = formatear_hora(fila[col_t_fin])
+                            
+                            if not nombre_val or not inicio_val or not fin_val:
+                                omitidos_t.append(f"Fila {_ + 2}: datos incompletos")
+                                continue
+                            if nombre_val in nombres_existentes:
+                                omitidos_t.append(f"'{nombre_val}': turno ya existe")
+                                continue
+                            
+                            a_importar_t.append({"nombre": nombre_val, "inicio": inicio_val, "fin": fin_val})
+                            nombres_existentes.add(nombre_val)
+                        
+                        st.info(f"✅ {len(a_importar_t)} turnos listos para importar" + (f" | ⚠️ {len(omitidos_t)} omitidos" if omitidos_t else ""))
+                        if omitidos_t:
+                            with st.expander("Ver filas omitidas"):
+                                for o in omitidos_t:
+                                    st.write(f"- {o}")
+                        
+                        if a_importar_t and st.button("✅ Confirmar importación", type="primary", key="confirmar_imp_tur"):
+                            for t_data in a_importar_t:
+                                session.add(Turno(**t_data))
+                            session.commit()
+                            st.success(f"🎉 {len(a_importar_t)} turnos importados correctamente")
+                            st.rerun()
+                
+                except Exception as ex:
+                    st.error(f"❌ Error al leer el archivo: {ex}")
 
     # ============ PAGINA: MATRIZ TURNOS (ADMIN) ============
     elif op == "Matriz turnos":
