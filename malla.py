@@ -1650,13 +1650,23 @@ if "user" in st.session_state:
                             except Exception:
                                 pass
 
-                    # Detectar primera fila de datos (empleados): fila tras fila_dias con nombre no vacío en col 2
-                    primera_fila_emp = fila_dias + 1
-                    for i in range(fila_dias + 1, len(df_raw)):
+                    # Detectar primera fila de empleados: debe tener número en col 0 Y nombre en col 2
+                    primera_fila_emp = fila_fechas + 2  # mínimo seguro
+                    for i in range(fila_fechas + 1, min(fila_fechas + 6, len(df_raw))):
+                        val_num    = df_raw.iloc[i, 0]
                         val_nombre = df_raw.iloc[i, 2]
-                        if pd.notna(val_nombre) and str(val_nombre).strip():
-                            primera_fila_emp = i
-                            break
+                        val_cargo  = df_raw.iloc[i, 1]
+                        # Fila de empleado: col 0 es número, col 1 y 2 son texto real (no nan, no días de semana)
+                        try:
+                            float(val_num)  # col 0 debe ser numérico
+                            nombre_str_test = str(val_nombre).strip()
+                            cargo_str_test  = str(val_cargo).strip()
+                            if (nombre_str_test and nombre_str_test.upper() not in ["NAN", "CC"]
+                                    and cargo_str_test and cargo_str_test.upper() not in ["NAN", "CC"]):
+                                primera_fila_emp = i
+                                break
+                        except (ValueError, TypeError):
+                            continue
 
                     # Extraer empleados y sus asignaciones
                     empleados_detectados = []
@@ -1668,12 +1678,17 @@ if "user" in st.session_state:
                         cargo_val  = fila[1]
                         cedula_val = fila[3]
 
-                        # Parar cuando ya no hay más empleados (filas de totales/leyenda)
+                        # Solo procesar filas con índice numérico en col 0 (filas de empleado reales)
+                        try:
+                            float(fila[0])
+                        except (ValueError, TypeError):
+                            continue
+
                         if pd.isna(nombre_val) or not str(nombre_val).strip():
                             continue
                         nombre_str = str(nombre_val).strip()
-                        # Ignorar filas de leyenda (TIENDA, DOMI, TOTAL, Madrugon, etc.)
-                        if nombre_str.upper() in ["TIENDA", "DOMI", "TOTAL", "MADRUGON"] or nombre_str.startswith("#"):
+                        # Ignorar filas de leyenda (TIENDA, DOMI, TOTAL, Madrugon, VACANTE, etc.)
+                        if nombre_str.upper() in ["TIENDA", "DOMI", "TOTAL", "MADRUGON", "VACANTE", "NAN"] or nombre_str.startswith("#"):
                             continue
                         cargo_str  = str(cargo_val).strip() if pd.notna(cargo_val) else ""
                         if not cargo_str or cargo_str.upper() in ["NAN"]:
