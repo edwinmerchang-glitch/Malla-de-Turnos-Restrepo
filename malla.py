@@ -1786,13 +1786,29 @@ if "user" in st.session_state:
                             
                             # Crear asignaciones
                             if imp_todo:
+                                # Borrar asignaciones del mes que ya no existen en el nuevo Excel
+                                fechas_en_excel = set(emp_data["turnos"].keys())
+                                fechas_del_mes = set(columnas_fecha.values())
+                                fechas_a_borrar = fechas_del_mes - fechas_en_excel
+                                for fecha_borrar in fechas_a_borrar:
+                                    asig_vieja = session.query(Asignacion).filter_by(
+                                        empleado_id=emp_obj.id, fecha=fecha_borrar
+                                    ).first()
+                                    if asig_vieja:
+                                        session.delete(asig_vieja)
+
                                 for fecha, cod_turno in emp_data["turnos"].items():
                                     turno_obj = turnos_existentes_db.get(cod_turno)
                                     if turno_obj:
                                         existe_asig = session.query(Asignacion).filter_by(
                                             empleado_id=emp_obj.id, fecha=fecha
                                         ).first()
-                                        if not existe_asig:
+                                        if existe_asig:
+                                            # Reemplazar si el turno cambió
+                                            if existe_asig.turno_id != turno_obj.id:
+                                                existe_asig.turno_id = turno_obj.id
+                                                creadas_asig += 1
+                                        else:
                                             session.add(Asignacion(
                                                 empleado_id=emp_obj.id,
                                                 fecha=fecha,
@@ -1801,11 +1817,11 @@ if "user" in st.session_state:
                                             creadas_asig += 1
 
                         session.commit()
-                        msg = f"🎉 Importación completa: **{creados_emp} empleados** creados"
+                        msg = f"🎉 Sincronización completa: **{creados_emp} empleados** nuevos"
                         if creados_tur:
                             msg += f", **{creados_tur} turnos** creados"
                         if creadas_asig:
-                            msg += f", **{creadas_asig} asignaciones** registradas"
+                            msg += f", **{creadas_asig} asignaciones** creadas o actualizadas"
                         st.success(msg)
                         if imp_todo and creados_tur:
                             st.info("💡 Recuerda ir a **Gestión de Turnos** para completar las horas de inicio y fin de los turnos nuevos.")
