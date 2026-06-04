@@ -18,7 +18,7 @@ from reportlab.lib.enums import TA_CENTER
 from sqlalchemy import create_engine, text
 
 # ============ SINCRONIZACIÓN AUTOMÁTICA CON GOOGLE DRIVE ============
-DRIVE_FILE_ID = os.environ.get("DRIVE_FILE_ID", "")
+DRIVE_FILE_ID = os.environ.get("DRIVE_FILE_ID", "").strip()
 
 def _iniciar_scheduler_drive():
     """Inicia el scheduler de sincronización con Drive (solo una vez por proceso)."""

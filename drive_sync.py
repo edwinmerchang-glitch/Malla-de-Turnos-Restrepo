@@ -22,10 +22,25 @@ SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
 
 # ── Cargar credenciales desde variable de entorno ──────────────────────────
 def _get_credentials():
-    raw = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
+    raw = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "").strip()
     if not raw:
         raise RuntimeError("Variable de entorno GOOGLE_SERVICE_ACCOUNT_JSON no configurada.")
-    info = json.loads(raw)
+    
+    # Railway a veces escapa las comillas o agrega comillas externas
+    # Intentar múltiples formas de parsear
+    try:
+        info = json.loads(raw)
+    except json.JSONDecodeError:
+        try:
+            # Puede venir con comillas externas escapadas
+            info = json.loads(raw.strip('"').replace('\\"', '"'))
+        except json.JSONDecodeError:
+            try:
+                # Puede venir con \\n en lugar de \n
+                info = json.loads(raw.replace('\\n', '\n'))
+            except json.JSONDecodeError as e:
+                raise RuntimeError(f"JSON inválido en GOOGLE_SERVICE_ACCOUNT_JSON: {e}. Primeros 100 chars: {raw[:100]}")
+    
     return service_account.Credentials.from_service_account_info(info, scopes=SCOPES)
 
 
@@ -36,6 +51,7 @@ def _get_drive_service():
 # ── Descargar el Excel desde Drive como bytes ──────────────────────────────
 def descargar_excel_drive(file_id: str) -> bytes:
     service = _get_drive_service()
+    file_id = file_id.strip()  # Limpiar espacios o saltos de línea
     # Si es un Google Sheet hay que exportarlo; si es .xlsx se descarga directo
     meta = service.files().get(fileId=file_id, fields="mimeType,name").execute()
     mime = meta.get("mimeType", "")
