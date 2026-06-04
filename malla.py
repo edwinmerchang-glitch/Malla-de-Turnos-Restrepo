@@ -1748,84 +1748,152 @@ if "user" in st.session_state:
                     imp_solo_emp = col_btn1.button("👥 Importar solo empleados", type="secondary", key="imp_solo_emp")
                     imp_todo     = col_btn2.button("👥📅 Importar empleados + asignaciones", type="primary", key="imp_todo")
 
+                    # Al presionar cualquier botón, mostrar resumen y pedir confirmación
                     if imp_solo_emp or imp_todo:
-                        creados_emp = 0
-                        creados_tur = 0
-                        creadas_asig = 0
-                        omitidos_emp = []
-
-                        # Crear turnos nuevos si hace falta
-                        if imp_todo and turnos_nuevos:
-                            for cod in turnos_nuevos:
-                                session.add(Turno(nombre=cod, inicio="", fin=""))
-                                creados_tur += 1
-                            session.commit()
-                            # Refrescar mapa de turnos
-                            turnos_existentes_db = {t.nombre: t for t in session.query(Turno).all()}
+                        # Calcular resumen de cambios sin aplicar aún
+                        emp_nuevos_prev = []
+                        asig_nuevas_prev = 0
+                        asig_actualizadas_prev = 0
+                        asig_borradas_prev = 0
+                        turnos_nuevos_prev = list(turnos_nuevos) if imp_todo else []
 
                         for emp_data in empleados_detectados:
-                            # Generar usuario desde cédula o nombre
-                            if emp_data["cedula"]:
-                                usuario_gen = emp_data["cedula"]
-                            else:
-                                usuario_gen = emp_data["nombre"].lower().replace(" ", ".")[:20]
-
+                            usuario_gen = emp_data["cedula"] if emp_data["cedula"] else emp_data["nombre"].lower().replace(" ", ".")[:20]
                             emp_obj = session.query(Empleado).filter_by(usuario=usuario_gen).first()
                             if not emp_obj:
-                                emp_obj = Empleado(
-                                    nombre=emp_data["nombre"],
-                                    usuario=usuario_gen,
-                                    password=pass_default,
-                                    rol="empleado",
-                                    area=emp_data["area"],
-                                    cargo=emp_data["cargo"]
-                                )
-                                session.add(emp_obj)
-                                session.flush()
-                                creados_emp += 1
-                            
-                            # Crear asignaciones
+                                emp_nuevos_prev.append(emp_data["nombre"])
+
                             if imp_todo:
-                                # Borrar asignaciones del mes que ya no existen en el nuevo Excel
                                 fechas_en_excel = set(emp_data["turnos"].keys())
                                 fechas_del_mes = set(columnas_fecha.values())
-                                fechas_a_borrar = fechas_del_mes - fechas_en_excel
-                                for fecha_borrar in fechas_a_borrar:
-                                    asig_vieja = session.query(Asignacion).filter_by(
-                                        empleado_id=emp_obj.id, fecha=fecha_borrar
-                                    ).first()
-                                    if asig_vieja:
-                                        session.delete(asig_vieja)
+
+                                # Asignaciones a borrar
+                                for fecha_borrar in fechas_del_mes - fechas_en_excel:
+                                    if emp_obj:
+                                        asig_vieja = session.query(Asignacion).filter_by(empleado_id=emp_obj.id, fecha=fecha_borrar).first()
+                                        if asig_vieja:
+                                            asig_borradas_prev += 1
 
                                 for fecha, cod_turno in emp_data["turnos"].items():
                                     turno_obj = turnos_existentes_db.get(cod_turno)
-                                    if turno_obj:
-                                        existe_asig = session.query(Asignacion).filter_by(
-                                            empleado_id=emp_obj.id, fecha=fecha
-                                        ).first()
+                                    if turno_obj and emp_obj:
+                                        existe_asig = session.query(Asignacion).filter_by(empleado_id=emp_obj.id, fecha=fecha).first()
                                         if existe_asig:
-                                            # Reemplazar si el turno cambió
                                             if existe_asig.turno_id != turno_obj.id:
-                                                existe_asig.turno_id = turno_obj.id
-                                                creadas_asig += 1
+                                                asig_actualizadas_prev += 1
                                         else:
-                                            session.add(Asignacion(
-                                                empleado_id=emp_obj.id,
-                                                fecha=fecha,
-                                                turno_id=turno_obj.id
-                                            ))
-                                            creadas_asig += 1
+                                            asig_nuevas_prev += 1
 
-                        session.commit()
-                        msg = f"🎉 Sincronización completa: **{creados_emp} empleados** nuevos"
-                        if creados_tur:
-                            msg += f", **{creados_tur} turnos** creados"
-                        if creadas_asig:
-                            msg += f", **{creadas_asig} asignaciones** creadas o actualizadas"
-                        st.success(msg)
-                        if imp_todo and creados_tur:
-                            st.info("💡 Recuerda ir a **Gestión de Turnos** para completar las horas de inicio y fin de los turnos nuevos.")
-                        st.rerun()
+                        # Mostrar resumen de confirmación
+                        st.markdown("---")
+                        st.markdown("### ⚠️ Confirmar sincronización")
+                        st.markdown("Se realizarán los siguientes cambios en la base de datos:")
+
+                        col_r1, col_r2 = st.columns(2)
+                        with col_r1:
+                            if emp_nuevos_prev:
+                                st.info(f"👥 **{len(emp_nuevos_prev)} empleados nuevos** serán creados")
+                            else:
+                                st.success("👥 Sin empleados nuevos")
+                            if turnos_nuevos_prev:
+                                st.info(f"🕐 **{len(turnos_nuevos_prev)} turnos nuevos** serán creados: `{'`, `'.join(sorted(turnos_nuevos_prev))}`")
+                        with col_r2:
+                            if imp_todo:
+                                st.info(f"✅ **{asig_nuevas_prev} asignaciones** nuevas")
+                                st.warning(f"🔄 **{asig_actualizadas_prev} asignaciones** serán actualizadas")
+                                if asig_borradas_prev:
+                                    st.error(f"🗑️ **{asig_borradas_prev} asignaciones** serán eliminadas")
+
+                        if emp_nuevos_prev:
+                            with st.expander("Ver empleados nuevos"):
+                                for n in emp_nuevos_prev:
+                                    st.write(f"- {n}")
+
+                        st.session_state["confirmar_sync_pendiente"] = True
+                        st.session_state["sync_es_todo"] = imp_todo
+
+                    if st.session_state.get("confirmar_sync_pendiente"):
+                        col_c1, col_c2 = st.columns(2)
+                        confirmar = col_c1.button("✅ Sí, sincronizar ahora", type="primary", key="btn_confirmar_sync")
+                        cancelar  = col_c2.button("❌ Cancelar", type="secondary", key="btn_cancelar_sync")
+
+                        if cancelar:
+                            st.session_state["confirmar_sync_pendiente"] = False
+                            st.session_state["sync_es_todo"] = False
+                            st.info("Sincronización cancelada.")
+                            st.rerun()
+
+                        if confirmar:
+                            st.session_state["confirmar_sync_pendiente"] = False
+                            imp_todo = st.session_state.get("sync_es_todo", False)
+
+                            creados_emp = 0
+                            creados_tur = 0
+                            creadas_asig = 0
+
+                            # Crear turnos nuevos si hace falta
+                            if imp_todo and turnos_nuevos:
+                                for cod in turnos_nuevos:
+                                    session.add(Turno(nombre=cod, inicio="", fin=""))
+                                    creados_tur += 1
+                                session.commit()
+                                turnos_existentes_db = {t.nombre: t for t in session.query(Turno).all()}
+
+                            for emp_data in empleados_detectados:
+                                usuario_gen = emp_data["cedula"] if emp_data["cedula"] else emp_data["nombre"].lower().replace(" ", ".")[:20]
+
+                                emp_obj = session.query(Empleado).filter_by(usuario=usuario_gen).first()
+                                if not emp_obj:
+                                    emp_obj = Empleado(
+                                        nombre=emp_data["nombre"],
+                                        usuario=usuario_gen,
+                                        password=pass_default,
+                                        rol="empleado",
+                                        area=emp_data["area"],
+                                        cargo=emp_data["cargo"]
+                                    )
+                                    session.add(emp_obj)
+                                    session.flush()
+                                    creados_emp += 1
+
+                                if imp_todo:
+                                    fechas_en_excel = set(emp_data["turnos"].keys())
+                                    fechas_del_mes = set(columnas_fecha.values())
+                                    for fecha_borrar in fechas_del_mes - fechas_en_excel:
+                                        asig_vieja = session.query(Asignacion).filter_by(
+                                            empleado_id=emp_obj.id, fecha=fecha_borrar
+                                        ).first()
+                                        if asig_vieja:
+                                            session.delete(asig_vieja)
+
+                                    for fecha, cod_turno in emp_data["turnos"].items():
+                                        turno_obj = turnos_existentes_db.get(cod_turno)
+                                        if turno_obj:
+                                            existe_asig = session.query(Asignacion).filter_by(
+                                                empleado_id=emp_obj.id, fecha=fecha
+                                            ).first()
+                                            if existe_asig:
+                                                if existe_asig.turno_id != turno_obj.id:
+                                                    existe_asig.turno_id = turno_obj.id
+                                                    creadas_asig += 1
+                                            else:
+                                                session.add(Asignacion(
+                                                    empleado_id=emp_obj.id,
+                                                    fecha=fecha,
+                                                    turno_id=turno_obj.id
+                                                ))
+                                                creadas_asig += 1
+
+                            session.commit()
+                            msg = f"🎉 Sincronización completa: **{creados_emp} empleados** nuevos"
+                            if creados_tur:
+                                msg += f", **{creados_tur} turnos** creados"
+                            if creadas_asig:
+                                msg += f", **{creadas_asig} asignaciones** creadas o actualizadas"
+                            st.success(msg)
+                            if imp_todo and creados_tur:
+                                st.info("💡 Recuerda ir a **Gestión de Turnos** para completar las horas de inicio y fin de los turnos nuevos.")
+                            st.rerun()
 
                 except Exception as ex:
                     st.error(f"❌ Error al procesar el archivo: {ex}")
@@ -1845,7 +1913,7 @@ if "user" in st.session_state:
         </div>
         """, unsafe_allow_html=True)
         
-        tab1, tab2, tab3, tab4 = st.tabs(["📋 Lista", "➕ Nuevo", "✏️ Editar", "📥 Importar Excel"])
+        tab1, tab2, tab3 = st.tabs(["📋 Lista", "➕ Nuevo", "✏️ Editar"])
         
         with tab1:
             turnos = session.query(Turno).all()
@@ -1908,103 +1976,6 @@ if "user" in st.session_state:
                                     session.commit()
                                     st.success("✅ Eliminado")
                                     st.rerun()
-        
-        with tab4:
-            st.markdown("### 📥 Importar turnos desde Excel")
-            st.info("El archivo puede tener las columnas en cualquier orden y con nombres variados. La app detecta automáticamente cuál es cuál.")
-            
-            with st.expander("📄 Ver formato esperado / Descargar plantilla"):
-                st.markdown("""
-                **Columnas reconocidas** (el nombre exacto no importa):
-                - **Nombre**: nombre, name, turno, codigo, code
-                - **Hora inicio**: inicio, start, hora_inicio, hora inicio, entrada, from
-                - **Hora fin**: fin, end, hora_fin, hora fin, salida, to
-                
-                El formato de hora puede ser `08:00` o `08:00:00`.
-                """)
-                plantilla_tur = {
-                    "nombre": ["151", "152", "Nocturno"],
-                    "inicio": ["06:00", "14:00", "22:00"],
-                    "fin": ["14:00", "22:00", "06:00"],
-                }
-                output_plt = BytesIO()
-                pd.DataFrame(plantilla_tur).to_excel(output_plt, index=False)
-                st.download_button("📥 Descargar plantilla", output_plt.getvalue(), "plantilla_turnos.xlsx")
-            
-            archivo_tur = st.file_uploader("Seleccionar archivo Excel", type=["xlsx", "xls"], key="upload_turnos")
-            
-            if archivo_tur:
-                try:
-                    df_tur = pd.read_excel(archivo_tur)
-                    df_tur.columns = [str(c).strip() for c in df_tur.columns]
-                    
-                    def encontrar_col_t(df, variantes):
-                        cols_lower = {c.lower().strip(): c for c in df.columns}
-                        for v in variantes:
-                            if v.lower() in cols_lower:
-                                return cols_lower[v.lower()]
-                        return None
-                    
-                    col_t_nombre = encontrar_col_t(df_tur, ["nombre","name","turno","codigo","code","id_turno"])
-                    col_t_inicio = encontrar_col_t(df_tur, ["inicio","start","hora_inicio","hora inicio","entrada","from","hora de inicio"])
-                    col_t_fin    = encontrar_col_t(df_tur, ["fin","end","hora_fin","hora fin","salida","to","hora de fin"])
-                    
-                    st.markdown("**Mapeo de columnas detectado:**")
-                    for campo, col in [("Nombre *", col_t_nombre), ("Hora inicio *", col_t_inicio), ("Hora fin *", col_t_fin)]:
-                        icono = "✅" if col else "❌"
-                        st.write(f"{icono} **{campo}** → `{col or 'No encontrada'}`")
-                    
-                    st.markdown("**Vista previa:**")
-                    st.dataframe(df_tur.head(5), use_container_width=True)
-                    
-                    if not col_t_nombre or not col_t_inicio or not col_t_fin:
-                        st.error("❌ Faltan columnas obligatorias. Verifica el archivo.")
-                    else:
-                        def formatear_hora(val):
-                            """Convierte distintos formatos de hora a HH:MM"""
-                            if pd.isna(val):
-                                return ""
-                            s = str(val).strip()
-                            # Si viene como datetime (Excel a veces lo hace)
-                            if ":" in s:
-                                partes = s.split(":")
-                                return f"{partes[0].zfill(2)}:{partes[1].zfill(2)}"
-                            return s
-                        
-                        omitidos_t = []
-                        a_importar_t = []
-                        nombres_existentes = {t.nombre for t in session.query(Turno).all()}
-                        
-                        for _, fila in df_tur.iterrows():
-                            nombre_val = str(fila[col_t_nombre]).strip() if pd.notna(fila[col_t_nombre]) else ""
-                            inicio_val = formatear_hora(fila[col_t_inicio])
-                            fin_val    = formatear_hora(fila[col_t_fin])
-                            
-                            if not nombre_val or not inicio_val or not fin_val:
-                                omitidos_t.append(f"Fila {_ + 2}: datos incompletos")
-                                continue
-                            if nombre_val in nombres_existentes:
-                                omitidos_t.append(f"'{nombre_val}': turno ya existe")
-                                continue
-                            
-                            a_importar_t.append({"nombre": nombre_val, "inicio": inicio_val, "fin": fin_val})
-                            nombres_existentes.add(nombre_val)
-                        
-                        st.info(f"✅ {len(a_importar_t)} turnos listos para importar" + (f" | ⚠️ {len(omitidos_t)} omitidos" if omitidos_t else ""))
-                        if omitidos_t:
-                            with st.expander("Ver filas omitidas"):
-                                for o in omitidos_t:
-                                    st.write(f"- {o}")
-                        
-                        if a_importar_t and st.button("✅ Confirmar importación", type="primary", key="confirmar_imp_tur"):
-                            for t_data in a_importar_t:
-                                session.add(Turno(**t_data))
-                            session.commit()
-                            st.success(f"🎉 {len(a_importar_t)} turnos importados correctamente")
-                            st.rerun()
-                
-                except Exception as ex:
-                    st.error(f"❌ Error al leer el archivo: {ex}")
 
     # ============ PAGINA: MATRIZ TURNOS (ADMIN) ============
     elif op == "Matriz turnos":
