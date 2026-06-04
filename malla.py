@@ -514,10 +514,10 @@ if "user" in st.session_state:
             if st.button("🔄 Sincronizar ahora", use_container_width=True, key="btn_sync_drive_now"):
                 with st.spinner("Sincronizando con Drive..."):
                     try:
-                        from drive_sync import sync_si_cambio, _ultimo_hash
                         import drive_sync as ds
+                        import traceback
                         ds._ultimo_hash = None  # Forzar sync aunque no haya cambios
-                        stats = sync_si_cambio(DRIVE_FILE_ID)
+                        stats = ds.sync_si_cambio(DRIVE_FILE_ID)
                         if stats:
                             with open("/tmp/last_drive_sync.json", "w") as f:
                                 json.dump(stats, f)
@@ -526,7 +526,9 @@ if "user" in st.session_state:
                         else:
                             st.info("Sin cambios desde la última sync.")
                     except Exception as ex:
+                        import traceback
                         st.error(f"❌ Error: {ex}")
+                        st.code(traceback.format_exc())
         
         if "pagina_actual" not in st.session_state:
             if user.rol == "empleado":
