@@ -17,6 +17,49 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER
 from sqlalchemy import create_engine, text
 
+# ============ SINCRONIZACIÓN AUTOMÁTICA CON GOOGLE DRIVE ============
+DRIVE_FILE_ID = os.environ.get("DRIVE_FILE_ID", "")
+
+def _iniciar_scheduler_drive():
+    """Inicia el scheduler de sincronización con Drive (solo una vez por proceso)."""
+    if not DRIVE_FILE_ID:
+        return
+    try:
+        from apscheduler.schedulers.background import BackgroundScheduler
+        from drive_sync import sync_si_cambio
+
+        if "drive_scheduler_iniciado" not in st.session_state:
+            scheduler = BackgroundScheduler()
+            intervalo = int(os.environ.get("DRIVE_SYNC_INTERVAL_MIN", "5"))
+            scheduler.add_job(
+                lambda: _ejecutar_sync_background(),
+                "interval",
+                minutes=intervalo,
+                id="drive_sync",
+                replace_existing=True,
+            )
+            scheduler.start()
+            st.session_state["drive_scheduler_iniciado"] = True
+
+    except Exception as e:
+        pass  # Si falla el scheduler la app sigue funcionando normal
+
+def _ejecutar_sync_background():
+    """Ejecuta la sync y guarda el resultado en un archivo temporal para que la UI lo lea."""
+    try:
+        from drive_sync import sync_si_cambio
+        import json
+        stats = sync_si_cambio(DRIVE_FILE_ID)
+        if stats:
+            with open("/tmp/last_drive_sync.json", "w") as f:
+                json.dump(stats, f)
+    except Exception:
+        pass
+
+# Iniciar scheduler al cargar la app
+if DRIVE_FILE_ID:
+    _iniciar_scheduler_drive()
+
 # ============ FUNCIONES AUXILIARES ============
 
 def get_mes_actual():
@@ -437,6 +480,53 @@ if "user" in st.session_state:
                 🔔 {notificaciones} notificaciones nuevas en tu area
             </div>
             """, unsafe_allow_html=True)
+
+        # ── Panel Drive Sync (solo admin) ──
+        if user.rol == "admin" and DRIVE_FILE_ID:
+            import json
+            sync_info = None
+            try:
+                if os.path.exists("/tmp/last_drive_sync.json"):
+                    with open("/tmp/last_drive_sync.json") as f:
+                        sync_info = json.load(f)
+            except Exception:
+                pass
+
+            intervalo_min = int(os.environ.get("DRIVE_SYNC_INTERVAL_MIN", "5"))
+            if sync_info:
+                st.markdown(f"""
+                <div style="background:#e8f5e9;border-radius:10px;padding:10px;margin:8px 0;font-size:0.82rem;">
+                    🔄 <b>Drive Sync activo</b> · cada {intervalo_min} min<br>
+                    ✅ Última sync: <b>{sync_info.get('timestamp','—')}</b><br>
+                    👥 {sync_info.get('empleados_nuevos',0)} emp · 
+                    📅 {sync_info.get('asignaciones_nuevas',0)} nuevas · 
+                    🔄 {sync_info.get('asignaciones_actualizadas',0)} actualizadas
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown(f"""
+                <div style="background:#fff3e0;border-radius:10px;padding:10px;margin:8px 0;font-size:0.82rem;">
+                    🔄 <b>Drive Sync activo</b> · cada {intervalo_min} min<br>
+                    ⏳ Esperando primera sincronización...
+                </div>
+                """, unsafe_allow_html=True)
+
+            if st.button("🔄 Sincronizar ahora", use_container_width=True, key="btn_sync_drive_now"):
+                with st.spinner("Sincronizando con Drive..."):
+                    try:
+                        from drive_sync import sync_si_cambio, _ultimo_hash
+                        import drive_sync as ds
+                        ds._ultimo_hash = None  # Forzar sync aunque no haya cambios
+                        stats = sync_si_cambio(DRIVE_FILE_ID)
+                        if stats:
+                            with open("/tmp/last_drive_sync.json", "w") as f:
+                                json.dump(stats, f)
+                            st.success(f"✅ Sincronizado: {stats['asignaciones_nuevas']} nuevas, {stats['asignaciones_actualizadas']} actualizadas")
+                            st.rerun()
+                        else:
+                            st.info("Sin cambios desde la última sync.")
+                    except Exception as ex:
+                        st.error(f"❌ Error: {ex}")
         
         if "pagina_actual" not in st.session_state:
             if user.rol == "empleado":
