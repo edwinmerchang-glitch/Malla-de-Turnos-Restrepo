@@ -516,15 +516,14 @@ if "user" in st.session_state:
                     try:
                         import drive_sync as ds
                         import traceback
-                        ds._ultimo_hash = None  # Forzar sync aunque no haya cambios
-                        stats = ds.sync_si_cambio(DRIVE_FILE_ID)
-                        if stats:
-                            with open("/tmp/last_drive_sync.json", "w") as f:
-                                json.dump(stats, f)
-                            st.success(f"✅ Sincronizado: {stats['asignaciones_nuevas']} nuevas, {stats['asignaciones_actualizadas']} actualizadas")
-                            st.rerun()
-                        else:
-                            st.info("Sin cambios desde la última sync.")
+                        # Descargar y sincronizar siempre, sin verificar hash
+                        data = ds.descargar_excel_drive(DRIVE_FILE_ID)
+                        stats = ds.sincronizar(data)
+                        ds._ultimo_hash = ds._hash_bytes(data)  # Actualizar hash tras sync
+                        with open("/tmp/last_drive_sync.json", "w") as f:
+                            json.dump(stats, f)
+                        st.success(f"✅ Sincronizado: {stats['asignaciones_nuevas']} nuevas, {stats['asignaciones_actualizadas']} actualizadas, {stats['asignaciones_borradas']} borradas")
+                        st.rerun()
                     except Exception as ex:
                         import traceback
                         st.error(f"❌ Error: {ex}")
